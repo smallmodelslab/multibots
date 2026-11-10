@@ -234,9 +234,10 @@ and `bun run build`; in `relay/` and `site/`, the same but `test`.
 [openbots.ca](https://openbots.ca) is [`site`](site/index.html), its own
 package beside the app: the bot from `src/features/avatars` wakes up, greets
 the visitor and says what it does as they scroll. `bun run dev` there serves
-it. A Cloudflare Worker (`site/worker.ts`) serves the build, redirects
-`/download/mac` and `/download/linux` to the current release's installers and
-proxies PostHog. The monorepo's CI deploys it on every merge.
+it. Its download buttons are wrkrsh.com's links to the current installers
+(`wrkrsh.com/download/openbots/<platform>`), and a Cloudflare Worker
+(`site/worker.ts`) serves the build and proxies PostHog. The monorepo's CI
+deploys it on every merge.
 
 `bun run package` builds an unsigned installer for this computer into `dist/`.
 Signed installers and JavaScript updates are released from the wrkrsh
