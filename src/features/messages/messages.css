@@ -1,0 +1,205 @@
+/* What a conversation draws around its messages: the hover bar of actions,
+   quotes, forwarded messages and reactions, as Multiwork draws them. */
+
+.message-acted {
+  position: relative;
+}
+
+/* A bubble in it fills it as far as its words need; how wide a message may
+   grow is the wrapper's to say. */
+.message-acted > .user-bubble,
+.message-acted > .agent-bubble {
+  max-width: 100%;
+}
+
+/* Over the top of a hovered message, at the end away from the user's own
+   side, floating with its own fill. Over a message narrower than it, it
+   hangs toward the middle of the conversation rather than past its edge. */
+.message-bar-track {
+  display: flex;
+  justify-content: flex-start;
+  left: 8px;
+  pointer-events: none;
+  position: absolute;
+  right: 8px;
+  top: -22px;
+  z-index: 5;
+}
+
+.message-bar-track.is-start {
+  justify-content: flex-end;
+}
+
+.message-bar {
+  align-items: center;
+  background: var(--float);
+  border-radius: 10px;
+  box-shadow: var(--float-shadow);
+  display: flex;
+  flex-shrink: 0;
+  gap: 1px;
+  margin-left: auto;
+  opacity: 0;
+  padding: 2px;
+  pointer-events: none;
+  transform: translateY(3px);
+  transition:
+    opacity 120ms ease,
+    transform 160ms var(--ease);
+}
+
+.message-bar-track.is-start > .message-bar {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.message-acted:hover > .message-bar-track > .message-bar,
+.message-acted.is-menu-open > .message-bar-track > .message-bar,
+.message-acted:focus-within > .message-bar-track > .message-bar {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+.message-bar-button {
+  /* Small, so its light reaches as far as an icon button's. */
+  --glow-reach: 22px;
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  min-width: 28px;
+  padding: 0 6px;
+}
+
+.message-bar-button:hover {
+  background: color-mix(in oklab, var(--text) 6%, transparent);
+  color: var(--text);
+}
+
+.message-bar-button[data-popup-open] {
+  background: color-mix(in oklab, var(--text) 3%, transparent);
+  color: var(--text);
+}
+
+.message-bar-emoji {
+  font-size: 15px;
+  transition: transform 120ms ease;
+}
+
+.message-bar-emoji:hover {
+  transform: scale(1.18);
+}
+
+.message-menu-reactions {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px;
+}
+
+.message-menu-emoji {
+  font-size: 16px;
+  justify-content: center;
+  padding: 4px;
+}
+
+/* What a message replies to and what it forwards, set in from its text by
+   a drawn mark at the start. */
+.message-quote,
+.message-forwarded {
+  border: 0;
+  border-left: 2px solid currentColor;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 2px 0 6px;
+  opacity: 0.75;
+  padding: 0 0 0 8px;
+  text-align: left;
+  white-space: normal;
+}
+
+.message-forwarded:last-child {
+  margin-bottom: 2px;
+}
+
+.message-quote {
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.message-quote:hover {
+  opacity: 1;
+}
+
+.message-quote-author {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.message-quote-text {
+  display: -webkit-box;
+  font-size: 12.5px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.message-forwarded-text {
+  white-space: pre-wrap;
+}
+
+/* The user's reactions, in their bubbles' colour. */
+.message-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+.message-reactions.is-end {
+  justify-content: flex-end;
+}
+
+.message-reaction {
+  align-items: center;
+  background: color-mix(in srgb, var(--user-bubble) 18%, var(--bubble));
+  border: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 13px;
+  height: 24px;
+  padding: 0 8px;
+}
+
+.message-reaction:hover {
+  background: color-mix(in srgb, var(--user-bubble) 26%, var(--bubble));
+}
+
+/* Under a message: that the user edited it. */
+.message-note {
+  color: var(--text-muted);
+  font-size: 11.5px;
+  padding: 2px 4px 0;
+}
+
+/* Gone to from a quote: a quick light that fades. */
+@keyframes jumped {
+  from {
+    background: color-mix(in srgb, var(--focus) 16%, transparent);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+.message-acted.is-jumped {
+  animation: jumped 1.4s ease-out;
+  border-radius: 14px;
+}

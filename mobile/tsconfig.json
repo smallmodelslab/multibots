@@ -1,0 +1,23 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "strict": true,
+    "verbatimModuleSyntax": true,
+    // The desktop's shared code, read from here: its packages are this
+    // app's, and the two it names only for types come from packages/.
+    "paths": {
+      "@wrkrsh/electron-update/state": [
+        "../packages/electron-update/src/state.ts"
+      ],
+      "@wrkrsh/whiteboard/scene": ["../packages/whiteboard/src/scene.ts"],
+      "@noble/hashes/*": ["./node_modules/@noble/hashes/*"],
+      "@wrkrsh/webhooks": ["./node_modules/@wrkrsh/webhooks/src/senders.ts"],
+      "zod": ["./node_modules/zod"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
+}

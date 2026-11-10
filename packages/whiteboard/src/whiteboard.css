@@ -1,0 +1,19 @@
+/* A shared board keeps to drawing: no shape library, and none of the extra
+   tools (frames, embeds, generated diagrams). */
+.excalidraw .default-sidebar-trigger,
+.excalidraw .App-toolbar__extra-tools-trigger {
+  display: none;
+}
+
+/* Excalidraw shrinks its tools for a narrow window; a board in a narrow
+   pane of a wide one needs the same. */
+.excalidraw {
+  container-type: inline-size;
+}
+
+@container (max-width: 460px) {
+  .excalidraw .App-toolbar-container .ToolIcon__icon {
+    width: 1.8rem;
+    height: 1.8rem;
+  }
+}

@@ -1,0 +1,31 @@
+// hooks.wrkrsh.com, where webhook routines' requests wait for their
+// computers (src/index.ts).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "openbots-relay",
+  "account_id": "c02dd35017671c5683abf687a5dd3c33",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "durable_objects": {
+    "bindings": [{ "name": "HOOKS", "class_name": "Hook" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Hook"] }],
+  "ratelimits": [
+    {
+      "name": "COMPUTERS",
+      "namespace_id": "1201",
+      "simple": { "limit": 60, "period": 60 },
+    },
+    {
+      "name": "POSTS",
+      "namespace_id": "1202",
+      "simple": { "limit": 30, "period": 60 },
+    },
+  ],
+  "routes": [{ "pattern": "hooks.wrkrsh.com", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
+  // Requests carry secrets and signatures in their headers, so they are not
+  // logged.
+  "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+}

@@ -1,0 +1,605 @@
+/* Composer */
+
+.composer-wrap {
+  flex-shrink: 0;
+  margin: 0 auto;
+  max-width: 760px;
+  padding: 0 24px 10px;
+  width: 100%;
+}
+
+@property --sent {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+/* A pill, one line high until more is written: what goes with the message
+   before the text, send after it. `--sent` flashes up to 1 and back as a
+   message goes, lighting the whole outline and the shadow round it. */
+.composer {
+  --hover: var(--field-hover);
+  --radius: 22px;
+  background: var(--field);
+  border: 1px solid
+    color-mix(
+      in srgb,
+      var(--focus) calc(var(--sent) * 100%),
+      var(--field-border)
+    );
+  border-radius: var(--radius);
+  box-shadow:
+    var(--field-shadow),
+    0 0 calc(var(--sent) * 22px)
+      color-mix(in srgb, var(--focus) calc(var(--sent) * 45%), transparent);
+  padding: 6px;
+}
+
+.composer.is-drop-target {
+  border-color: var(--focus);
+}
+
+.composer.glow::before {
+  content: none;
+}
+
+@property --trace {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+/* The focus outline, drawn in from where the composer was pressed: both
+   ways round at once at an even pace, each end glowing, meeting opposite.
+   `--trace` is how far each way it has gone, of the 100 all round; dashes
+   take units, which the rects' `pathLength` of 100 scales to the outline. */
+.outline-trace {
+  height: calc(100% + 2px);
+  left: -1px;
+  overflow: visible;
+  pointer-events: none;
+  position: absolute;
+  top: -1px;
+  width: calc(100% + 2px);
+}
+
+.outline-trace rect {
+  fill: none;
+  height: calc(100% - 1px);
+  rx: calc(var(--radius) - 0.5px);
+  stroke: var(--focus);
+  stroke-dashoffset: calc((var(--trace) - var(--trace-from, 0)) * 1px);
+  width: calc(100% - 1px);
+  x: 0.5px;
+  y: 0.5px;
+}
+
+.outline-trace-line {
+  stroke-dasharray: calc(2px * var(--trace)) calc(100px - 2px * var(--trace));
+}
+
+/* Only the two ends, each a short way back from its head. */
+.outline-trace-glow {
+  --head: 6px;
+  filter: blur(3px);
+  opacity: 0;
+  stroke-dasharray: var(--head) max(0px, 2px * var(--trace) - 2 * var(--head))
+    var(--head) max(0px, 100px - 2px * var(--trace));
+  stroke-width: 3;
+}
+
+.composer:focus-within > .outline-trace {
+  animation: trace 280ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.composer:focus-within .outline-trace-glow {
+  animation: trace-glow 280ms ease-out forwards;
+}
+
+/* Held at its start while the press that focused the composer lasts. */
+.composer[data-pressing] > .outline-trace,
+.composer[data-pressing] .outline-trace-glow {
+  animation-play-state: paused;
+}
+
+/* Where the trace will start, lit while it waits there: white at the
+   point of the outline nearest the pointer, however far off the pointer is,
+   falling away along the outline either side. Handed over to the two heads
+   as they leave. */
+.outline-ready {
+  border-radius: inherit;
+  filter: drop-shadow(0 0 3px var(--focus));
+  inset: -1px;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  transition: opacity 180ms ease-out;
+}
+
+.outline-ready::before {
+  background: radial-gradient(
+    circle 90px at var(--ready-x, 50%) var(--ready-y, 0),
+    #fff,
+    color-mix(in oklab, #fff 40%, var(--focus)) 10%,
+    var(--focus) 24%,
+    color-mix(in oklab, var(--focus) 45%, transparent) 50%,
+    color-mix(in oklab, var(--focus) 12%, transparent) 75%,
+    transparent
+  );
+  border-radius: inherit;
+  content: "";
+  inset: 0;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  padding: 1.5px;
+  position: absolute;
+}
+
+.composer[data-pressing] > .outline-ready {
+  opacity: 1;
+  transition-duration: 80ms;
+}
+
+@keyframes trace {
+  to {
+    --trace: 50;
+  }
+}
+
+@keyframes trace-glow {
+  10% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.8;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer:focus-within > .outline-trace {
+    --trace: 50;
+    animation: none;
+  }
+
+  .composer:focus-within .outline-trace-glow {
+    animation: none;
+  }
+
+  .outline-ready {
+    display: none;
+  }
+}
+
+.composer-row {
+  align-items: flex-end;
+  display: flex;
+  gap: 6px;
+}
+
+/* Either side of the text, level with its last line. */
+.composer-tools {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  height: 30px;
+}
+
+/* Attaching sits on a soft disc of its own, like send's dark one. */
+.icon-button.composer-attach {
+  background: var(--bubble);
+  height: 30px;
+  width: 30px;
+}
+
+.icon-button.composer-attach:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+/* The text field, over its quotes' markers when it has any. */
+.composer-field {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.composer textarea {
+  background: transparent;
+  border: 0;
+  field-sizing: content;
+  flex: 1;
+  max-height: 200px;
+  min-height: 30px;
+  min-width: 0;
+  outline: none;
+  overflow-y: auto;
+  resize: none;
+  user-select: text;
+}
+
+/* What is written, in the field and in its markers' layer behind it alike. */
+.composer-field > * {
+  font: inherit;
+  font-size: 14px;
+  letter-spacing: inherit;
+  line-height: 20px;
+  padding: 5px 6px;
+}
+
+.composer-field > textarea {
+  position: relative;
+}
+
+/* Laid out as the field lays out what is written, with only the markers'
+   cards seen; the field's own scrollbar covers this one's gutter. */
+.composer-marks {
+  inset: 0;
+  overflow-wrap: break-word;
+  overflow-y: auto;
+  pointer-events: none;
+  position: absolute;
+  scrollbar-color: transparent transparent;
+  white-space: pre-wrap;
+  -webkit-text-fill-color: transparent;
+}
+
+.composer-row > .composer-field:first-child > * {
+  padding-left: 12px;
+}
+
+.composer textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.send-button {
+  align-items: center;
+  background: var(--accent);
+  border: 0;
+  border-radius: 50%;
+  color: var(--accent-text);
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  padding: 0;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+  width: 30px;
+}
+
+.send-button:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+/* Send glows around itself rather than on its edge, brightest toward the
+   pointer. */
+.send-button.glow {
+  --glow-reach: calc(22px * var(--glow-damping));
+  isolation: isolate;
+}
+
+.send-button.glow::after {
+  background: radial-gradient(
+    circle var(--glow-reach) at calc(var(--pointer-x, 14px) + 6px)
+      calc(var(--pointer-y, 14px) + 6px),
+    var(--accent),
+    transparent
+  );
+  filter: blur(4px);
+  inset: -6px;
+  mask: none;
+  padding: 0;
+  z-index: -1;
+}
+
+.send-button.glow:hover:not(:disabled)::after {
+  opacity: calc(0.5 / var(--glow-damping));
+}
+
+.send-button:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.send-button:disabled {
+  opacity: 0.3;
+}
+
+/* What goes with the message, in a row that opens as the first chip comes
+   and closes after the last, each chip easing in as it is added. */
+.attachments-row {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 260ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.attachments-row.is-open {
+  grid-template-rows: 1fr;
+}
+
+.attachments-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 8px;
+}
+
+.attachment-chip {
+  align-items: center;
+  background: var(--bubble);
+  border-radius: 8px;
+  display: inline-flex;
+  font-size: 12px;
+  gap: 6px;
+  padding: 3px 4px 3px 8px;
+  transition:
+    opacity 180ms ease,
+    transform 260ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@starting-style {
+  .attachment-chip {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
+.attachment-name {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-size {
+  color: var(--text-muted);
+}
+
+.attachment-chip button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  display: inline-flex;
+  padding: 0;
+}
+
+/* Removing shows on the chip's hover, lit like any icon button. */
+.attachment-chip .attachment-remove {
+  height: 18px;
+  opacity: 0;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    opacity 140ms ease;
+  width: 18px;
+}
+
+.attachment-chip:hover .attachment-remove,
+.attachment-remove:focus-visible {
+  opacity: 1;
+}
+
+/* An image opens to be marked up from its thumbnail and name. */
+.attachment-chip .attachment-open {
+  color: inherit;
+  gap: 6px;
+}
+
+.attachment-chip .attachment-open:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.attachment-chip:has(.attachment-thumbnail) {
+  padding-left: 3px;
+}
+
+.attachment-thumbnail {
+  border-radius: 3px;
+  height: 18px;
+  object-fit: cover;
+  width: 18px;
+}
+
+.attachment-chip .icon {
+  height: 12px;
+  width: 12px;
+}
+
+/* Small: one tight line of 13px text, for writing on what it is about. It
+   floats there, so it casts a floating surface's shadow. */
+.composer-wrap.is-small {
+  --field-shadow: var(--float-shadow, 0 8px 28px rgb(0 0 0 / 0.16));
+  max-width: none;
+  padding: 0;
+}
+
+.is-small .composer {
+  --radius: 16px;
+  padding: 3px;
+}
+
+.is-small .composer-row,
+.is-small .composer-tools {
+  gap: 4px;
+}
+
+.is-small .composer-tools {
+  height: 26px;
+}
+
+.is-small .composer textarea {
+  max-height: 160px;
+  min-height: 26px;
+}
+
+.is-small .composer-field > * {
+  font-size: 13px;
+  line-height: 18px;
+  padding: 4px 6px;
+}
+
+.is-small .composer-row > .composer-field:first-child > * {
+  padding-left: 10px;
+}
+
+.is-small .send-button,
+.is-small .icon-button.composer-attach {
+  height: 26px;
+  width: 26px;
+}
+
+.is-small .send-button .icon {
+  height: 14px;
+  width: 14px;
+}
+
+.composer input[type="file"] {
+  display: none;
+}
+.composer-spinner {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: composer-spin 1s linear infinite;
+}
+@keyframes composer-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer-spinner {
+    animation: none;
+  }
+
+  .attachments-row,
+  .attachment-chip {
+    transition: none;
+  }
+}
+
+/* Passages quoted with the message, above what is written. The composer
+   stays within the window, the quotes giving up their room, scrolling,
+   before what is written and Send would leave it. */
+.composer:has(> .composer-quotes) {
+  display: flex;
+  flex-direction: column;
+  max-height: 75vh;
+}
+
+.composer-quotes {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 6px;
+}
+
+.quote-card {
+  align-items: flex-start;
+  background: var(--bubble);
+  border-radius: 14px;
+  display: flex;
+  font-size: 13px;
+  gap: 8px;
+  line-height: 20px;
+  min-width: 0;
+  padding: 8px 8px 8px 12px;
+}
+
+/* Easing in as it is cited. */
+.composer-quotes > .quote-card {
+  transition:
+    opacity 180ms ease,
+    transform 260ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@starting-style {
+  .composer-quotes > .quote-card {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+.quote-card > .icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  height: 14px;
+  margin-top: 3px;
+  width: 14px;
+}
+
+.quote-passage {
+  color: var(--text-secondary);
+  flex: 1;
+  max-height: 120px;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.quote-card .quote-remove {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 20px;
+  justify-content: center;
+  padding: 0;
+  width: 20px;
+}
+
+.quote-remove .icon {
+  height: 12px;
+  width: 12px;
+}
+
+/* Where a passage is cited: its marker on a small card of the text's own
+   colour, faint, reaching a little either side without moving the text. */
+.quote-marker {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  border-radius: 5px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 12%, transparent);
+  color: inherit;
+}
+
+.quote-card > .quote-marker {
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 16px;
+  margin: 2px 0;
+  padding: 0 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer-quotes > .quote-card {
+    transition: none;
+  }
+}
+
+/* Offered under text highlighted among a chat's messages, quoting it in
+   the composer (`offerCitations` in @wrkrsh/cite). */
+.cite-button {
+  background: var(--float);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: var(--float-shadow);
+  color: var(--text);
+  font: 500 12px / 1 var(--font);
+  padding: 6px 11px;
+}

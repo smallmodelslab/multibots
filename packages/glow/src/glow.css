@@ -1,0 +1,133 @@
+/* Light from the pointer, which `followPointerLight` (./pointer.ts) tells
+   each lit element through `--pointer-x` and `--pointer-y`.
+
+   `--glow-color` is the light's colour. An app sets it on :root to its text
+   colour, and anything whose fill isn't the page's (a filled button) sets
+   its own; `--glow-press-color` is a filled button's text colour, which its
+   press builds in. `--glow-damping` spreads the light wider by as much as
+   it dims it; anything can set its own. */
+:root {
+  --glow-damping: 1.6;
+}
+
+@property --press {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+/* For rows, buttons and borderless icon buttons: a gaussian centred on the
+   pointer, seen only on the edge, so the side nearest the pointer shines
+   and the far side stays dark. The element's own hover fill brightens all
+   of it beneath. */
+.glow,
+.icon-button,
+.spot {
+  --glow-reach: calc(100px * var(--glow-damping));
+  position: relative;
+}
+
+/* An icon button is small enough that a row's reach would light all of it. */
+.icon-button,
+.spot {
+  --glow-reach: 22px;
+}
+
+.glow::after,
+.icon-button::after,
+.spot::after {
+  background: radial-gradient(
+    circle var(--glow-reach) at var(--pointer-x, 50%) var(--pointer-y, 50%),
+    var(--glow-color),
+    color-mix(in oklab, var(--glow-color) 88%, transparent) 20%,
+    color-mix(in oklab, var(--glow-color) 61%, transparent) 40%,
+    color-mix(in oklab, var(--glow-color) 32%, transparent) 60%,
+    color-mix(in oklab, var(--glow-color) 14%, transparent) 80%,
+    transparent
+  );
+  border-radius: inherit;
+  content: "";
+  inset: 0;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  opacity: 0;
+  padding: 1px;
+  pointer-events: none;
+  position: absolute;
+  transition: opacity 160ms ease;
+}
+
+.glow:hover:not(:disabled)::after,
+.icon-button:hover:not(:disabled)::after,
+.spot:hover:not(:disabled)::after {
+  opacity: calc(0.6 / var(--glow-damping));
+}
+
+/* Pressed, the same light falls on the fill itself, growing in under the
+   pointer while held and fading once let go. */
+.glow::before,
+.icon-button::before,
+.spot::before {
+  --press-light: var(--glow-press-color, var(--glow-color));
+  background: radial-gradient(
+    circle calc(var(--glow-reach) * (0.4 + 0.6 * var(--press))) at var(--pointer-x, 50%)
+      var(--pointer-y, 50%),
+    var(--press-light),
+    color-mix(in oklab, var(--press-light) 61%, transparent) 30%,
+    color-mix(in oklab, var(--press-light) 14%, transparent) 65%,
+    transparent
+  );
+  border-radius: inherit;
+  content: "";
+  inset: 0;
+  opacity: calc(var(--press) * 0.28 / var(--glow-damping));
+  pointer-events: none;
+  position: absolute;
+  transition: --press 420ms ease-out;
+}
+
+.glow:active:not(:disabled)::before,
+.icon-button:active:not(:disabled)::before,
+.spot:active:not(:disabled)::before {
+  --press: 1;
+  transition-duration: 140ms;
+}
+
+/* A borderless icon button lights a round edge of its own. */
+.spot::before,
+.spot::after {
+  border-radius: 9999px;
+}
+
+/* A filled button can't brighten its own fill, so with `glow` it also
+   takes `glow-fill` and glows around itself in `--glow-color`, brightest
+   toward the pointer. */
+.glow-fill {
+  --glow-reach: calc(40px * var(--glow-damping));
+  isolation: isolate;
+}
+
+.glow-fill::after {
+  background: radial-gradient(
+    circle var(--glow-reach) at calc(var(--pointer-x, 50%) + 6px) calc(var(--pointer-y, 50%) + 6px),
+    var(--glow-color),
+    transparent
+  );
+  filter: blur(4px);
+  inset: -6px;
+  mask: none;
+  padding: 0;
+  z-index: -1;
+}
+
+.glow-fill:hover:not(:disabled)::after {
+  opacity: calc(0.5 / var(--glow-damping));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.glow, .icon-button, .spot)::before,
+  :is(.glow, .icon-button, .spot)::after {
+    transition: none;
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "product": "openbots",
+  "name": "OpenBots",
+  "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA5mATJCv5NHKd/G2CpXm80YABaVU+RC3+vz32fIxhZlY=\n-----END PUBLIC KEY-----\n",
+  "contract": [
+    "bun.lock",
+    "bunfig.toml",
+    "package.json",
+    "electron-builder.config.mjs",
+    "build"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@wrkrsh/wizard",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/Wizard.tsx",
+    "./wizard.css": "./src/wizard.css"
+  },
+  "peerDependencies": {
+    "@base-ui/react": "^1.0.0",
+    "react": "^19.0.0"
+  }
+}

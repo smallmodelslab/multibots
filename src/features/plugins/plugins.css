@@ -1,0 +1,90 @@
+/* The apps: a search field over a grid of them, each its logo and name,
+   with where it stands under the name once it is connected. */
+.plugins-search {
+  background: color-mix(in oklab, var(--text) 6%, transparent);
+  border: 0;
+  border-radius: 15px;
+  height: 30px;
+  margin: 8px 0 12px;
+  outline: none;
+  padding: 0 12px;
+  width: 100%;
+}
+
+.plugins-search:focus-visible {
+  box-shadow: 0 0 0 2px var(--focus);
+}
+
+.plugins-grid {
+  display: grid;
+  gap: 2px 8px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.plugin {
+  position: relative;
+}
+
+.plugin-body {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  color: inherit;
+  display: flex;
+  font: inherit;
+  gap: 10px;
+  /* Room for a status under the name, so one showing moves nothing. */
+  min-height: 54px;
+  padding: 8px 36px 8px 10px;
+  text-align: left;
+  width: 100%;
+}
+
+button.plugin-body:hover {
+  background: color-mix(in oklab, var(--text) 5%, transparent);
+}
+
+/* Logos are drawn for a light background, so each sits on its own. */
+.plugin-logo {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--text) 8%, transparent);
+  flex-shrink: 0;
+  height: 28px;
+  object-fit: contain;
+  padding: 4px;
+  width: 28px;
+}
+
+.plugin-logo.is-letter {
+  align-items: center;
+  color: #52525b;
+  display: flex;
+  font-weight: 600;
+  justify-content: center;
+}
+
+.plugin-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.plugin-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plugin-status {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.plugin-remove {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  translate: 0 -50%;
+}

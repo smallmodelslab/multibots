@@ -1,0 +1,293 @@
+/* A wizard: a dialog that asks one thing at a time, in an accent of its
+   own (`--wizard-accent`, softened as `--wizard-accent-soft`). */
+
+.wizard-backdrop {
+  -webkit-app-region: no-drag;
+  backdrop-filter: blur(6px);
+  background: rgb(0 0 0 / 0.28);
+  inset: 0;
+  position: fixed;
+  transition: opacity 240ms ease;
+  z-index: 50;
+}
+
+.wizard-backdrop[data-starting-style],
+.wizard-backdrop[data-ending-style] {
+  opacity: 0;
+}
+
+.wizard-viewport {
+  -webkit-app-region: no-drag;
+  display: grid;
+  inset: 0;
+  place-items: center;
+  position: fixed;
+  z-index: 50;
+}
+
+.wizard {
+  background: var(--background-0);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow:
+    0 24px 64px rgb(0 0 0 / 0.28),
+    0 2px 8px rgb(0 0 0 / 0.12);
+  outline: none;
+  transition:
+    opacity 260ms ease,
+    transform 380ms var(--ease);
+  /* Keep animated contents in a popup-sized surface above the blurred backdrop. */
+  will-change: transform;
+  width: min(380px, calc(100vw - 32px));
+}
+
+.wizard[data-starting-style] {
+  opacity: 0;
+  transform: scale(0.92) translateY(12px);
+}
+
+.wizard[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.96);
+  transition-duration: 160ms;
+}
+
+.wizard-form {
+  --wizard-accent: var(--focus);
+  --wizard-accent-soft: color-mix(in srgb, var(--focus) 14%, transparent);
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  padding: 36px 20px 20px;
+  position: relative;
+}
+
+.wizard-top {
+  display: flex;
+  justify-content: space-between;
+  left: 10px;
+  position: absolute;
+  right: 10px;
+  top: 10px;
+}
+
+/* One question at a time */
+
+.wizard-stage {
+  border: 0;
+  margin: 18px 0 0;
+  min-inline-size: 0;
+  padding: 0;
+  position: relative;
+  width: 100%;
+}
+
+.wizard-step {
+  align-items: center;
+  animation: wizard-in 340ms var(--ease) both;
+  display: flex;
+  flex-direction: column;
+  min-height: 112px;
+}
+
+@keyframes wizard-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--from, 0));
+  }
+}
+
+/* What it will be called, over a line that grows out from the middle as
+   it is written. */
+.wizard-name {
+  background: transparent;
+  border: 0;
+  caret-color: var(--wizard-accent);
+  color: var(--text);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  outline: none;
+  padding: 6px 0 8px;
+  text-align: center;
+  width: 100%;
+}
+
+.wizard-name::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.wizard-step:has(.wizard-name)::after {
+  background: var(--wizard-accent);
+  border-radius: 1px;
+  content: "";
+  height: 2px;
+  order: 1;
+  transition: width 320ms var(--ease);
+  width: 24px;
+}
+
+.wizard-step:has(.wizard-name:not(:placeholder-shown))::after {
+  width: 55%;
+}
+
+.wizard-stage:disabled .wizard-name {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* A choice among a few, as cards side by side. */
+.wizard-choices {
+  border: 0;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  margin: 0;
+  max-height: 168px;
+  min-inline-size: 0;
+  overflow-y: auto;
+  padding: 3px;
+  width: 100%;
+}
+
+.wizard-choice {
+  align-items: center;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 14px 8px 12px;
+  text-align: center;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+/* The pointer's light falls on the card's border, not inside it. */
+.wizard-choice.glow::after {
+  inset: -1px;
+}
+
+.wizard-choice .icon {
+  height: 20px;
+  margin-bottom: 6px;
+  transition: transform 260ms var(--ease);
+  width: 20px;
+}
+
+.wizard-choice:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.wizard-choice:active {
+  transform: scale(0.97);
+}
+
+.wizard-choice:has(:checked) {
+  background: var(--wizard-accent-soft);
+  border-color: var(--wizard-accent);
+  color: var(--text);
+}
+
+.wizard-choice:has(:checked) .icon {
+  color: var(--wizard-accent);
+  transform: translateY(-1px) scale(1.1);
+}
+
+.wizard-choice:focus-visible,
+.wizard-choice:has(:focus-visible) {
+  box-shadow: 0 0 0 3px var(--wizard-accent-soft);
+  outline: none;
+}
+
+.wizard-choice-name {
+  font-size: 13px;
+  font-weight: 500;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wizard-choice-note {
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.wizard-stage:disabled .wizard-choice {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.wizard-error {
+  animation: wizard-shake 360ms ease both;
+  bottom: -2px;
+  color: var(--red);
+  font-size: 12px;
+  left: 0;
+  margin: 0;
+  position: absolute;
+  right: 0;
+  text-align: center;
+}
+
+@keyframes wizard-shake {
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+/* Where it is, and the way on */
+
+.wizard-foot {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+  min-height: 32px;
+  width: 100%;
+}
+
+.wizard-dots {
+  display: flex;
+  gap: 5px;
+  padding-left: 4px;
+}
+
+.wizard-dots span {
+  background: var(--border-strong);
+  border-radius: 3px;
+  height: 6px;
+  transition:
+    background 300ms ease,
+    width 360ms var(--ease);
+  width: 6px;
+}
+
+.wizard-dots .is-done {
+  background: var(--text-muted);
+}
+
+.wizard-dots .is-current {
+  background: var(--wizard-accent);
+  width: 18px;
+}
+
+.wizard-next {
+  min-width: 76px;
+}

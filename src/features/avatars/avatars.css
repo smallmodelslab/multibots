@@ -1,0 +1,11 @@
+.squircle-avatar {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.squircle-avatar > svg {
+  display: block;
+  height: 100%;
+  overflow: visible;
+  width: 100%;
+}

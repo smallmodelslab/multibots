@@ -1,0 +1,205 @@
+/* The new bot wizard: the bot's avatar above, one question at a time
+   below it, in the hue the bot will wear: its name, its hat and glasses,
+   what it is for. */
+
+.new-bot-form {
+  --hue-strong: hsl(var(--bot-hue) 70% 58%);
+  --hue-soft: hsl(var(--bot-hue) 70% 58% / 0.14);
+  --wizard-accent: var(--hue-strong);
+  --wizard-accent-soft: var(--hue-soft);
+}
+
+/* Every step as tall as its hats and glasses, so the avatar stays put. */
+.new-bot-form .wizard-step {
+  min-height: 148px;
+}
+
+/* The avatar */
+
+.new-bot-avatar {
+  border-radius: 50%;
+  position: relative;
+  transition: transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.new-bot-avatar.is-born {
+  transform: scale(1.12);
+}
+
+.new-bot-colors {
+  border: 0;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: repeat(10, 28px);
+  justify-content: center;
+  margin: 16px 0 0;
+  min-inline-size: 0;
+  padding: 0;
+}
+
+.new-bot-color {
+  align-items: center;
+  border-radius: 50%;
+  display: flex;
+  height: 28px;
+  justify-content: center;
+  position: relative;
+  width: 28px;
+}
+
+.new-bot-color span {
+  background: var(--swatch);
+  border-radius: 50%;
+  height: 18px;
+  transition: transform 160ms var(--ease);
+  width: 18px;
+}
+
+.new-bot-color:has(:checked) span {
+  outline: 2px solid var(--swatch);
+  outline-offset: 3px;
+}
+
+.new-bot-color:has(:focus-visible) {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.new-bot-color:active span {
+  transform: scale(0.85);
+}
+
+.new-bot-colors:disabled {
+  pointer-events: none;
+}
+
+@media (max-width: 400px) {
+  .new-bot-colors {
+    grid-template-columns: repeat(5, 28px);
+  }
+}
+
+/* Its hats, then its glasses, as a row of the wizard's choice cards each. */
+.new-bot-outfits {
+  grid-template-columns: repeat(auto-fit, 60px);
+  justify-content: center;
+}
+
+.new-bot-outfits + .new-bot-outfits {
+  margin-top: 8px;
+}
+
+.new-bot-outfits .wizard-choice {
+  padding: 8px 4px;
+}
+
+.new-bot-outfit {
+  display: block;
+  height: 44px;
+  transition: transform 260ms var(--ease);
+  width: 44px;
+}
+
+.new-bot-outfit svg {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.wizard-choice:has(:checked) .new-bot-outfit {
+  transform: translateY(-1px) scale(1.1);
+}
+
+/* Rings of its hue spread out as it comes to be. */
+.new-bot-avatar::before,
+.new-bot-avatar::after {
+  border: 2px solid var(--hue-strong);
+  border-radius: 50%;
+  content: "";
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.new-bot-avatar.is-born::before {
+  animation: new-bot-ring 900ms ease-out 80ms both;
+}
+
+.new-bot-avatar.is-born::after {
+  animation: new-bot-ring 900ms ease-out 260ms both;
+}
+
+@keyframes new-bot-ring {
+  from {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+.new-bot-purpose {
+  background: color-mix(in srgb, var(--bubble) 70%, var(--background-0));
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+  outline: none;
+  padding: 10px 12px;
+  resize: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+  width: 100%;
+}
+
+.new-bot-purpose:hover {
+  border-color: var(--border);
+}
+
+.new-bot-purpose:focus {
+  border-color: var(--hue-strong);
+  box-shadow: 0 0 0 3px var(--hue-soft);
+}
+
+.wizard-stage:disabled .new-bot-purpose {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.new-bot-born-name {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  padding-top: 10px;
+}
+
+.new-bot-hello {
+  animation: rise-in 420ms var(--ease) 220ms both;
+  width: 100%;
+}
+
+/* Or a bot of Grok Bot's, brought over: one its app keeps on this
+   computer, or one from a recipe file. */
+.new-bot-import {
+  color: var(--text-muted);
+  margin-top: 14px;
+  order: 2;
+}
+
+.new-bot-recipe {
+  margin-top: 12px;
+}
+
+.new-bot-recipe-note {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 8px 0 0;
+  max-width: 280px;
+  text-align: center;
+}

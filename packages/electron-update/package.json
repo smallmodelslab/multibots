@@ -1,0 +1,44 @@
+{
+  "name": "@wrkrsh/electron-update",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./state": "./src/state.ts"
+  },
+  "bin": {
+    "electron-update": "./build.mjs"
+  },
+  "scripts": {
+    "check": "tsc --checkers 1",
+    "test": "tsx --test src/*.test.ts"
+  },
+  "peerDependencies": {
+    "@electron/asar": "*",
+    "@wrkrsh/client-log": "*",
+    "electron-updater": "*",
+    "esbuild": "*"
+  },
+  "devDependencies": {
+    "@electron/asar": "4.3.1",
+    "@types/node": "^24.19.2",
+    "electron": "45.2.0",
+    "electron-updater": "6.8.11",
+    "esbuild": "0.28.2",
+    "tsx": "^4.23.15",
+    "typescript": "7.0.2"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.16.1",
+      "onFail": "download"
+    }
+  },
+  "peerDependenciesMeta": {
+    "@wrkrsh/client-log": {
+      "optional": true
+    }
+  }
+}

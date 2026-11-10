@@ -1,0 +1,1015 @@
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "shadcn/tailwind.css";
+
+/* Under the utilities, so a component can adjust a shared control, such as
+   placing a lit button with `absolute`. */
+@import "../../features/shell/theme.css" layer(components);
+@import "@wrkrsh/glow/glow.css" layer(components);
+@import "@wrkrsh/composer/composer.css";
+
+@theme inline {
+  --color-border: var(--border);
+  --color-foreground: var(--text);
+  --color-muted-foreground: var(--text-secondary);
+  --text-sm: 13px;
+}
+
+:root {
+  --radius: 10px;
+  --titlebar: 48px;
+  --details-width: 340px;
+}
+
+/* Element defaults, in the base layer so Tailwind utilities override them. */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background: var(--background-0);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  /* Controls ease into their hover and pressed looks rather than snapping;
+     rules of their own that set a transition replace this. */
+  button,
+  select,
+  summary {
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease,
+      color 120ms ease,
+      opacity 120ms ease;
+  }
+
+  button:disabled,
+  select:disabled {
+    cursor: default;
+  }
+
+  button:focus-visible,
+  select:focus-visible,
+  input:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+  }
+
+  code,
+  pre {
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+}
+
+.icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* The window as Grok Bot lays it out, with no bar along the top: the
+   sidebar, the conversation, and the chosen bot's details, each a column
+   running the window's height, told apart by their backgrounds. The details
+   column opens and closes around the conversation. */
+.app {
+  background: var(--background-2);
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) 0px;
+  height: 100%;
+  position: relative;
+  transition: grid-template-columns 280ms var(--ease);
+}
+
+.app.has-details {
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(
+      --details-width
+    );
+}
+
+.app.is-sidebar-resizing {
+  transition: none;
+}
+
+/* The sidebar keeps its width as its column closes over it. */
+.sidebar-slot {
+  display: flex;
+  grid-row: 1 / -1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sidebar-slot > .sidebar {
+  flex: 0 0 var(--sidebar-width);
+}
+
+.sidebar-resizer {
+  -webkit-app-region: no-drag;
+  bottom: 0;
+  cursor: col-resize;
+  left: calc(var(--sidebar-width) - 3px);
+  position: absolute;
+  top: 0;
+  width: 6px;
+  z-index: 10;
+}
+
+/* Sidebar */
+/* `--surface` is the colour behind a row's contents, which an avatar's
+   presence dot rings itself in: background 2, a shade further from the
+   page than a view's own side column, such as Mail's folders, so the two
+   read apart, with each fill on it a step stronger than the last. */
+.sidebar {
+  --surface: var(--background-2);
+  --hover: color-mix(in oklab, var(--background-1), var(--text) 10%);
+  /* Behind the row the window is on: stronger than hover. */
+  --row-on: color-mix(in oklab, var(--background-1), var(--text) 14%);
+  /* What sits on a row: a fallback avatar, a row action under the pointer. */
+  --active: color-mix(in oklab, var(--background-1), var(--text) 20%);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 8px 8px;
+}
+
+/* Past the window controls: search, and a new bot. */
+.sidebar-top {
+  -webkit-app-region: drag;
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  height: var(--titlebar);
+  justify-content: flex-end;
+  padding: 0 2px 0 8px;
+}
+
+.is-mac .sidebar-top {
+  padding-left: 76px;
+}
+
+.sidebar-top > * {
+  -webkit-app-region: no-drag;
+}
+
+.icon-button.sidebar-round {
+  background: color-mix(in oklab, var(--text) 6%, transparent);
+  height: 30px;
+  width: 30px;
+}
+
+.sidebar-search {
+  background: color-mix(in oklab, var(--text) 6%, transparent);
+  border: 0;
+  border-radius: 15px;
+  flex: 1;
+  height: 30px;
+  min-width: 0;
+  outline: none;
+  padding: 0 12px;
+}
+
+.sidebar-search:focus-visible {
+  box-shadow: 0 0 0 2px var(--focus);
+}
+
+/* The pinned bots, as Messages pins chats: a grid of large avatars with
+   their names, three to a row, a short last row centred. */
+.sidebar-pins {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 4px 0 8px;
+}
+
+.sidebar-pin-slot {
+  display: flex;
+  width: calc(100% / 3);
+}
+
+.sidebar-pin {
+  --surface: var(--background-2);
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 4px;
+}
+
+.sidebar-pin:hover:not(.is-active) {
+  --surface: var(--hover);
+  background: var(--surface);
+}
+
+.sidebar-pin.is-active {
+  --surface: var(--row-on);
+  background: var(--surface);
+}
+
+.sidebar-pin-name {
+  align-items: center;
+  display: flex;
+  font-size: 12px;
+  font-weight: 500;
+  gap: 4px;
+  max-width: 100%;
+}
+
+/* The row the window is on, which the pointer leaves as it is. */
+.chat-row.is-active {
+  --surface: var(--row-on);
+  background: var(--surface);
+}
+
+/* An action shown only while what it acts on (`.hover-actions`) is
+   hovered, or while it has the focus; greyed out there while it can't be
+   taken. */
+.hover-action {
+  opacity: 0;
+}
+
+.hover-actions:hover .hover-action,
+.hover-action:focus-visible {
+  opacity: 1;
+}
+
+.hover-actions:hover .hover-action:disabled {
+  opacity: 0.4;
+}
+
+/* The list fades where it meets what stays put above and below it, and
+   ends clear of the fade. */
+.sidebar-scroll {
+  flex: 1;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 10px,
+    #000 calc(100% - 20px),
+    transparent
+  );
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 20px;
+}
+
+/* The agents, each a chat, as Messages lists them. */
+.sidebar-chats {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 0;
+}
+
+.chat-row {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  display: flex;
+  gap: 10px;
+  min-height: 46px;
+  padding: 6px 10px 6px 8px;
+  text-align: left;
+  width: 100%;
+}
+
+/* A row still loading: its avatar, name and line, breathing. */
+.chat-row.is-placeholder {
+  pointer-events: none;
+}
+
+.chat-row.is-placeholder > .placeholder-bar {
+  flex-shrink: 0;
+}
+
+.chat-row-head .placeholder-bar {
+  height: 9px;
+  margin: calc((1.5em - 9px) / 2) 0;
+}
+
+.chat-row-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.chat-row-head {
+  align-items: baseline;
+  display: flex;
+  gap: 8px;
+}
+
+.chat-row-name {
+  flex: 1;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-row-time {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A chat the list removes: an × takes its time's place on hover. */
+.chat-row-item {
+  position: relative;
+}
+
+.icon-button.chat-row-remove {
+  height: 22px;
+  position: absolute;
+  right: 6px;
+  top: 5px;
+  width: 22px;
+}
+
+.chat-row-item :is(.chat-row-time, .chat-row-unread) {
+  transition: opacity 140ms ease;
+}
+
+.chat-row-item:is(:hover, :has(.chat-row-remove:focus-visible))
+  :is(.chat-row-time, .chat-row-unread) {
+  opacity: 0;
+}
+
+/* A line still loading, breathing; rows stagger it through `--row`. */
+.placeholder-bar {
+  animation: placeholder-breathe 1.6s ease-in-out calc(var(--row, 0) * 70ms)
+    infinite;
+  background: var(--active);
+  border-radius: 4px;
+  display: block;
+}
+
+@keyframes placeholder-breathe {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* An avatar's or a message's shape (`ui/placeholder.tsx`). */
+.placeholder-bar.placeholder-round {
+  border-radius: 50%;
+}
+
+.placeholder-bar.placeholder-bubble {
+  border-radius: 14px;
+}
+
+.chat-row-preview .placeholder-bar {
+  height: 8px;
+  margin-top: calc((1.3em - 8px) / 2);
+  width: 62%;
+}
+
+.chat-row.is-unread .chat-row-preview {
+  color: var(--text);
+}
+
+/* Something unseen: a dot after the time. */
+.chat-row-unread {
+  background: var(--focus);
+  border-radius: 50%;
+  flex-shrink: 0;
+  height: 8px;
+  width: 8px;
+}
+
+.chat-row-preview {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  color: var(--text-muted);
+  display: -webkit-box;
+  line-height: 1.3;
+  min-height: 1.3em;
+  overflow: hidden;
+}
+
+/* A hover card, beside a list: it fades in, then slides from item to item
+   as the pointer moves along them, its contents crossfading. */
+.hover-card-positioner {
+  height: var(--positioner-height);
+  transition: top 160ms ease;
+  width: var(--positioner-width);
+  z-index: 50;
+}
+
+.hover-card-positioner[data-instant] {
+  transition: none;
+}
+
+.hover-card {
+  background: var(--float);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--float-shadow);
+  overflow: hidden;
+  transform-origin: var(--transform-origin);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.hover-card[data-starting-style],
+.hover-card[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+.hover-card[data-instant] {
+  transition: none;
+}
+
+.hover-card-viewport {
+  position: relative;
+}
+
+.hover-card-viewport > [data-previous],
+.hover-card-viewport > [data-current] {
+  transition: opacity 140ms ease;
+}
+
+.hover-card-viewport > [data-previous] {
+  height: var(--popup-height);
+  inset: 0 auto auto 0;
+  position: absolute;
+  width: var(--popup-width);
+}
+
+.hover-card-viewport > [data-previous][data-ending-style],
+.hover-card-viewport > [data-current][data-starting-style] {
+  opacity: 0;
+}
+
+.hover-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 300px;
+  padding: 10px 12px;
+  width: max-content;
+}
+
+.hover-card-title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.hover-card-text {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.hover-card-line {
+  align-items: center;
+  color: var(--text-muted);
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hover-card-line .icon {
+  flex-shrink: 0;
+}
+
+/* The user, whose menu opens upward, then plugins and settings. */
+.sidebar-footer {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  padding-right: 2px;
+}
+
+.sidebar-profile {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text);
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  min-height: 44px;
+  min-width: 0;
+  padding: 6px 10px 6px 8px;
+  text-align: left;
+}
+
+.sidebar-profile[data-popup-open] {
+  background: var(--row-on);
+}
+
+.sidebar-profile:hover:not([data-popup-open]) {
+  background: var(--hover);
+}
+
+.icon-button.sidebar-round[aria-current="page"] {
+  background: var(--row-on);
+  color: var(--text);
+}
+
+.user-avatar-initial {
+  background: var(--active);
+  color: var(--text-secondary);
+}
+
+.sidebar-profile-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sidebar-profile-name,
+.sidebar-profile-note {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-profile-note {
+  color: var(--text-muted);
+}
+
+/* An update on its way, above the user. */
+.sidebar-update {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text);
+  display: flex;
+  flex-shrink: 0;
+  gap: 10px;
+  height: 32px;
+  padding: 0 10px;
+  text-align: left;
+  width: 100%;
+}
+
+button.sidebar-update:hover {
+  background: var(--hover);
+}
+
+.sidebar-update-detail {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+
+/* Main */
+/* Rounded where the sidebar and the header meet, and square against the
+   window's edge once the sidebar is hidden. */
+.main {
+  background: var(--background-0);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* A pane takes the width its column gives it, however wide what it holds
+   would be: a wide table scrolls inside its message rather than widening
+   the conversation past its column. */
+.pane {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+}
+
+.hint-shortcut {
+  opacity: 0.6;
+}
+
+/* Toasts stack at the viewport's edge: the newest in front and the others
+   peeking out behind it, until hovering or focusing spreads them out. */
+.toast-viewport {
+  --toast-toward: -1;
+  bottom: 20px;
+  left: 24px;
+  pointer-events: none;
+  position: absolute;
+  right: 24px;
+  z-index: 10;
+}
+
+.toast {
+  --toast-peek: calc(var(--toast-index) * 6px);
+  --toast-scale: calc(1 - var(--toast-index) * 0.05);
+  background: var(--float);
+  border-radius: 10px;
+  bottom: 0;
+  box-shadow: var(--float-shadow);
+  color: var(--text);
+  font-size: 13px;
+  height: var(--toast-frontmost-height, var(--toast-height));
+  left: 50%;
+  max-width: 100%;
+  pointer-events: auto;
+  position: absolute;
+  transform: translateX(-50%)
+    translateY(
+      calc(
+        var(--toast-swipe-movement-y) + var(--toast-toward) *
+          (
+            var(--toast-peek) + (1 - var(--toast-scale)) *
+              var(--toast-frontmost-height, 0px)
+          )
+      )
+    )
+    scale(var(--toast-scale));
+  transform-origin: bottom center;
+  transition:
+    height 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease;
+  width: 360px;
+  z-index: calc(100 - var(--toast-index));
+}
+
+/* Keeps the pointer over the stack between spread-out toasts. */
+.toast::after {
+  bottom: 100%;
+  content: "";
+  height: 7px;
+  left: 0;
+  position: absolute;
+  width: 100%;
+}
+
+.toast[data-expanded] {
+  height: var(--toast-height);
+  transform: translateX(-50%)
+    translateY(
+      calc(
+        var(--toast-swipe-movement-y) + var(--toast-toward) *
+          (var(--toast-offset-y) + var(--toast-peek))
+      )
+    );
+}
+
+.toast[data-limited] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toast[data-starting-style],
+.toast[data-ending-style] {
+  opacity: 0;
+  transform: translateX(-50%)
+    translateY(calc(var(--toast-swipe-movement-y) - var(--toast-toward) * 8px));
+}
+
+.toast-content {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  padding: 4px 4px 4px 12px;
+  transition: opacity 180ms ease;
+}
+
+.toast-content[data-behind]:not([data-expanded]) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toast-message {
+  flex: 1;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.toast-close {
+  flex-shrink: 0;
+}
+
+/* The user's words on the right, an agent's reply on the left. */
+.user-bubble,
+.agent-bubble {
+  background: var(--bubble);
+  border-radius: 14px;
+  overflow-wrap: break-word;
+  padding: 8px 12px;
+}
+
+.user-bubble {
+  background: var(--user-bubble);
+  color: var(--user-bubble-text);
+  max-width: 80%;
+  white-space: pre-wrap;
+}
+
+.user-bubble::selection {
+  background: rgb(255 255 255 / 0.35);
+}
+
+.agent-bubble {
+  max-width: 88%;
+  min-width: 0;
+  width: fit-content;
+}
+
+/* Code stands off the bubble rather than sinking into it. */
+.agent-bubble .markdown code,
+.agent-bubble .markdown pre {
+  background: var(--background-0);
+}
+
+/* A table wider than the bubble scrolls inside it, as code does. */
+.agent-bubble .markdown table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Markdown */
+.markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown p,
+.markdown ul,
+.markdown ol {
+  margin: 0 0 10px;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 14px 0 6px;
+}
+
+.markdown pre {
+  background: var(--background-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: auto;
+  padding: 10px 12px;
+}
+
+.markdown code {
+  background: var(--background-1);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+.markdown pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown table {
+  border-collapse: collapse;
+  margin: 0 0 10px;
+}
+
+.markdown th,
+.markdown td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+}
+
+.markdown a {
+  color: var(--link);
+}
+
+/* Settings: rows, each a label, where it stands, and short actions, on one
+   card per section. */
+.settings-pane {
+  position: relative;
+}
+
+/* The whole pane scrolls, so the wheel works beside the column too. */
+.settings-scroll {
+  container-type: inline-size;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.settings {
+  margin: 0 auto;
+  max-width: 720px;
+  min-width: 0;
+  padding: var(--titlebar) 24px 40px;
+  user-select: text;
+}
+
+.settings-section {
+  scroll-margin-top: calc(var(--titlebar) + 12px);
+}
+
+.settings-section-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin: 32px 0 8px 2px;
+  min-height: 28px;
+}
+
+.settings-section:first-child .settings-section-head {
+  margin-top: 8px;
+}
+
+.settings-section h2 {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.settings-card {
+  --settings-card: color-mix(in srgb, var(--bubble) 70%, var(--background-0));
+  background: var(--settings-card);
+  border-radius: 10px;
+}
+
+.settings-card > * {
+  padding-inline: 14px;
+}
+
+.settings-card > :not(:first-child) {
+  border-top: 1px solid var(--border);
+}
+
+.setting-row {
+  align-items: center;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 128px minmax(0, 1fr) auto;
+  min-height: 42px;
+  padding: 7px 0;
+}
+
+.setting-label {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* A phone: what the setting is and its actions, then where it stands. */
+@media (max-width: 767px) {
+  .setting-row {
+    grid-template-areas:
+      "label action"
+      "detail detail";
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 2px;
+  }
+
+  .setting-label {
+    grid-area: label;
+  }
+
+  .setting-detail {
+    grid-area: detail;
+  }
+
+  .setting-action {
+    grid-area: action;
+  }
+}
+
+.setting-detail {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.setting-detail.is-mono {
+  color: var(--text-secondary);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.setting-action {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.setting-action .row {
+  padding-top: 0;
+}
+
+/* The bots' models in the order they try them: a handle, the model, and
+   where it runs. */
+.model-order .setting-row {
+  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.model-order.is-moving {
+  opacity: 0.5;
+}
+
+.model-order-handle {
+  cursor: grab;
+  margin-left: -6px;
+}
+
+.login-wait {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 8px;
+}
+
+.device-code {
+  font-family: var(--mono);
+  font-size: 22px;
+  letter-spacing: 0.12em;
+  padding: 6px 0 10px;
+}
+
+/* Arriving: fading in, or rising a little as it does; leaving, fading out. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}

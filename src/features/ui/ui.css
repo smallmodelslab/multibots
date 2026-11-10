@@ -1,0 +1,72 @@
+/* Tailwind and shadcn in a renderer whose own styles came first. Tailwind's
+   theme and utilities come without its reset, which would undo the app's
+   typography and the markdown views; the app's element rules sit in the
+   base layer so utilities win over them. Only the folders that use Tailwind
+   are scanned, so a word in other code never becomes a utility. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@source "./";
+@source "../bots";
+@source "../messages";
+@source "../settings";
+@source "../shell";
+@source "../../renderer";
+
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+/* What the reset would have given: borders drawn only where a utility asks,
+   in the app's border colour. */
+@layer base {
+  *,
+  ::before,
+  ::after,
+  ::backdrop {
+    border-color: var(--border);
+  }
+
+  [data-slot],
+  [data-slot]::before,
+  [data-slot]::after {
+    border-width: 0;
+    border-style: solid;
+  }
+
+  :is(button, input, select, textarea)[data-slot] {
+    background-color: transparent;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* shadcn's tokens are the app's palette, so its components look native
+   and follow light and dark with everything else. */
+@theme inline {
+  --font-sans: var(--font);
+  --font-mono: var(--mono);
+  --color-background: var(--background-0);
+  --color-foreground: var(--text);
+  --color-card: var(--background-0);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--float);
+  --color-popover-foreground: var(--text);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-text);
+  --color-secondary: var(--bubble);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--bubble);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--hover);
+  --color-accent-foreground: var(--text);
+  --color-destructive: var(--red);
+  --color-border: var(--border);
+  --color-input: var(--border-strong);
+  --color-ring: var(--focus);
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+}

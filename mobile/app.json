@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "OpenBots",
+    "slug": "openbots",
+    "owner": "wrkrsh",
+    "version": "0.1.0",
+    "platforms": ["ios"],
+    "orientation": "portrait",
+    "scheme": "openbots",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.wrkrsh.openbots",
+      "icon": "../build/icon.icon",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": { "NSAllowsLocalNetworking": true },
+        "NSCameraUsageDescription": "OpenBots never uses the camera; the framework its calls and live screens use asks that it be declared.",
+        "UIBackgroundModes": ["audio"]
+      }
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "microphonePermission": "OpenBots uses the microphone when you call a bot."
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "OpenBots uses the microphone when you call a bot."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "OpenBots sends the photos you pick to your bots."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

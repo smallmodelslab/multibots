@@ -1,0 +1,94 @@
+/*
+ * What OpenBots draws with, Multiwork's palette. Colours follow the
+ * colour scheme of the element they land on, so the system's appearance
+ * picks them.
+ */
+:root {
+  color-scheme: light dark;
+  /* How things move: up to speed at once, then a long, smooth stop. */
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  /* The three backgrounds, from the page out: 0 under a view's content,
+     1 under a view's own side column (Mail's folders), 2 under the app's
+     sidebar. */
+  --background-0: light-dark(#ffffff, #18181b);
+  --background-1: light-dark(#f6f6f7, #202024);
+  --background-2: color-mix(in oklab, var(--background-1), var(--text) 4%);
+  --border: light-dark(#e7e7ea, #333338);
+  --border-strong: light-dark(#d5d5da, #505059);
+  --text: light-dark(#1d1d1f, #f4f4f5);
+  /* The pointer light's colour (@wrkrsh/glow). */
+  --glow-color: var(--text);
+  --text-secondary: light-dark(#5e5e66, #c4c4cd);
+  --text-muted: light-dark(#8a8a92, #a1a1ad);
+  --hover: light-dark(#ebebee, #2c2c32);
+  --active: light-dark(#e2e2e6, #3a3a42);
+  --bubble: light-dark(#f1f1f4, #27272d);
+  /* What the user sent, in the blue of a chat's sent messages. */
+  --user-bubble: light-dark(#007aff, #0a84ff);
+  --user-bubble-text: #ffffff;
+  /* Where the user writes: raised off the page, so it reads as the place
+     to type. A shadow's colour is all light-dark() can switch, so each
+     scheme's shadow is drawn clear in the other. */
+  --field: light-dark(#ffffff, #2e2e35);
+  --field-border: light-dark(#dcdce1, #3f3f48);
+  --field-shadow:
+    0 2px 12px light-dark(rgba(0, 0, 0, 0.07), transparent),
+    0 1px 2px light-dark(rgba(0, 0, 0, 0.04), transparent),
+    0 2px 14px light-dark(transparent, rgba(0, 0, 0, 0.35));
+  --field-hover: light-dark(#ebebee, #3b3b43);
+  --float: light-dark(#ffffff, #101012);
+  --float-shadow:
+    0 8px 28px light-dark(rgba(0, 0, 0, 0.14), transparent),
+    0 10px 32px light-dark(transparent, rgba(0, 0, 0, 0.55));
+  --accent: light-dark(#1d1d1f, #f4f4f5);
+  --accent-text: light-dark(#ffffff, #18181b);
+  --amber: light-dark(#c2700a, #f5b85a);
+  --red: light-dark(#d32f2f, #ff9292);
+  --green: light-dark(#1f9d55, #68d99a);
+  --focus: light-dark(#497bd6, #8ab4f8);
+  --link: light-dark(#2563eb, #91baff);
+  --warning-bg: light-dark(#fff3dc, #392b18);
+  --warning-text: light-dark(#7a4b00, #f5cb89);
+  --error-bg: light-dark(#fde8e8, #432323);
+  --error-text: light-dark(#991b1b, #ffb1b1);
+  --font:
+    -apple-system, "BlinkMacSystemFont", "SF Pro Text", "Segoe UI", "Inter",
+    "Roboto", sans-serif;
+  --mono:
+    ui-monospace, "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
+}
+
+/* A round icon button. Its pointer light is in @wrkrsh/glow. */
+.icon-button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  display: inline-flex;
+  height: 26px;
+  justify-content: center;
+  padding: 0;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    opacity 140ms ease;
+  width: 26px;
+}
+
+/* An icon button lights like any other button, its fill
+   brightening under the pointer and barely there while on, so a toggle
+   left on stays quiet. */
+.icon-button:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--glow-color) 8%, transparent);
+  color: var(--text);
+}
+
+.icon-button[aria-pressed="true"] {
+  background: color-mix(in oklab, var(--glow-color) 4%, transparent);
+  color: var(--text);
+}
+
+.icon-button:disabled {
+  opacity: 0.4;
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "import", "jsx-a11y"],
+  "categories": {
+    "correctness": "off"
+  },
+  "env": {
+    "browser": true,
+    "builtin": true,
+    "node": true
+  },
+  "ignorePatterns": [
+    "node_modules/**",
+    "out/**",
+    "dist/**",
+    "mobile/**",
+    "relay/**",
+    "packages/**"
+  ],
+  "rules": {
+    "no-unused-vars": "error",
+    "prefer-const": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-asserted-optional-chain": "error",
+    "react/jsx-key": "error",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn"
+  }
+}

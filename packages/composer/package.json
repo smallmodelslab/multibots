@@ -1,0 +1,15 @@
+{
+  "name": "@wrkrsh/composer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/Composer.tsx",
+    "./composer.css": "./src/composer.css",
+    "./icons": "./src/icons.tsx",
+    "./outline": "./src/outline.ts"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  }
+}
