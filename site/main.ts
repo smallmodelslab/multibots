@@ -237,7 +237,8 @@ function onScroll() {
     if (away < distance) [nearest, distance] = [index, away];
   });
   if (nearest !== active) activate(nearest);
-  const at = -steps[0]!.getBoundingClientRect().top / innerHeight;
+  const first = steps[0]!.getBoundingClientRect();
+  const at = -first.top / first.height;
   host.style.setProperty(
     "--x",
     String(reduced ? side : Math.cos(Math.PI * at)),
