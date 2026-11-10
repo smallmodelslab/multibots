@@ -1,0 +1,1 @@
+bots,agent,assistant,ai,automation,routines,self-hosted,open source,remote,desktop,mac,linux

@@ -1,0 +1,72 @@
+name: Release
+
+# The monorepo's openbots-mobile-release.yml starts this at the commit it
+# releases. When the native fingerprint matches the channel's build, the
+# channel gets an OTA update; otherwise a new build goes to App Store Connect:
+# a nightly reaches TestFlight's internal testers, and the GitHub workflow
+# submits a stable one for App Store review.
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        type: choice
+        options: [nightly, stable]
+        required: true
+      version:
+        description: The version a new build carries
+        type: string
+        required: true
+
+defaults:
+  tools:
+    node: 24
+    bun: 1.4.4
+
+jobs:
+  fingerprint:
+    name: Fingerprint
+    type: fingerprint
+    environment: production
+
+  get_build:
+    name: Find compatible build
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: ios
+      profile: ${{ inputs.channel }}
+      distribution: store
+      channel: ${{ inputs.channel }}
+      fingerprint_hash: ${{ needs.fingerprint.outputs.ios_fingerprint_hash }}
+      wait_for_in_progress: true
+
+  update:
+    name: Publish OTA
+    needs: [get_build]
+    if: ${{ needs.get_build.outputs.build_id }}
+    type: update
+    environment: production
+    params:
+      platform: ios
+      channel: ${{ inputs.channel }}
+
+  build:
+    name: Build for new runtime
+    needs: [get_build]
+    if: ${{ !needs.get_build.outputs.build_id }}
+    type: build
+    env:
+      APP_VERSION: ${{ inputs.version }}
+    params:
+      platform: ios
+      profile: ${{ inputs.channel }}
+
+  submit:
+    name: Upload build to App Store Connect
+    needs: [build]
+    if: ${{ needs.build.outputs.build_id }}
+    type: submit
+    params:
+      build_id: ${{ needs.build.outputs.build_id }}
+      profile: ${{ inputs.channel }}

@@ -1,0 +1,22 @@
+{
+  "cli": {
+    "version": "27.2.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "nightly": {
+      "autoIncrement": true,
+      "channel": "nightly",
+      "environment": "production"
+    },
+    "stable": {
+      "autoIncrement": true,
+      "channel": "stable",
+      "environment": "production"
+    }
+  },
+  "submit": {
+    "nightly": {},
+    "stable": {}
+  }
+}

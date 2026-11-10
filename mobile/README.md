@@ -39,3 +39,11 @@ first on its `PATH` that prints
 it then listens on 127.0.0.1, which the simulator reaches as `127.0.0.1:<port>`.
 
 Checks: `bun run format:check`, `bun run lint` and `bun run typecheck`.
+
+## Releases
+
+The monorepo's `openbots-mobile-release.yml` releases the app through EAS
+(`.eas/workflows/release.yml`). Nightly takes main and stable a nightly's tag.
+When the native fingerprint matches the channel's build, the channel gets an
+OTA update; otherwise a new build goes to TestFlight, and a stable one is then
+submitted for App Store review with the listing in `app-store/`.
