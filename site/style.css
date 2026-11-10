@@ -6,10 +6,13 @@
     "Inter Variable", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Familjen Grotesk Variable", var(--font-sans);
   /* The face's box: the face is 96 by 85 of its 224 units. Awake, the bot
-     rises by --rise and shrinks to --shrink, and words start under it. */
+     rises by --rise, moves --shift to its --side and shrinks to --shrink;
+     narrow, words start under its face. */
   --box: min(84vw, 40rem, 72svh);
   --rise: 9svh;
+  --shift: 0px;
   --shrink: 0.6;
+  --under: calc(50svh - var(--rise) + var(--box) * 0.19 * var(--shrink));
   color-scheme: light dark;
 }
 
@@ -25,10 +28,6 @@
 *::before,
 *::after {
   box-sizing: border-box;
-}
-
-html {
-  scroll-snap-type: y proximity;
 }
 
 body {
@@ -47,12 +46,17 @@ a {
   position: relative;
 }
 
-/* The bot stays in the window while the steps scroll under what it says. */
+/* The bot stays in the window while the steps scroll by; narrow, their
+   words pass under it rather than over it. */
 .actor {
   position: sticky;
   top: 0;
   height: 100svh;
   margin-bottom: -100svh;
+  background: linear-gradient(
+    var(--paper) var(--under),
+    transparent calc(var(--under) + 2rem)
+  );
   pointer-events: none;
   z-index: 1;
 }
@@ -69,7 +73,8 @@ a {
 }
 
 .awake .bot {
-  transform: translateY(calc(-1 * var(--rise))) scale(var(--shrink));
+  transform: translate(calc(var(--side) * var(--shift)), calc(-1 * var(--rise)))
+    scale(var(--shrink));
 }
 
 @keyframes arrive {
@@ -199,11 +204,7 @@ a {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: calc(
-      50svh - var(--rise) + var(--box) * 0.19 * var(--shrink) + 3.5rem
-    )
-    1.25rem 0;
-  scroll-snap-align: start;
+  padding: calc(var(--under) + 3.5rem) 1.25rem 0;
 }
 
 .say {
@@ -237,7 +238,15 @@ p a {
   text-underline-offset: 0.18em;
 }
 
-/* Words appear as the bot says them. */
+/* Words appear as the bot says them, each rising into place. */
+.w {
+  display: inline-block;
+}
+
+.say a .w {
+  text-decoration: inherit;
+}
+
 .js .say .w,
 .js .say .whole {
   opacity: 0;
@@ -289,6 +298,43 @@ p a {
 @media (max-width: 40rem) {
   :root {
     --shrink: 0.72;
+  }
+}
+
+/* Wide, the bot and its words take turns on each half of the window. */
+@media (min-width: 50rem) {
+  :root {
+    --rise: 0px;
+    --shift: min(25vw, 17rem);
+  }
+
+  .actor {
+    background: none;
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: repeat(2, calc(2 * var(--shift)));
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+  }
+
+  .say {
+    padding: 0 2rem;
+    text-align: start;
+  }
+
+  .step:nth-of-type(even) .say {
+    grid-column: 2;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .actions {
+    justify-content: start;
   }
 }
 

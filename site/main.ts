@@ -12,6 +12,7 @@ import {
 } from "./bot";
 
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const wide = matchMedia("(min-width: 50rem)");
 const steps = [...document.querySelectorAll<HTMLElement>(".step")];
 const bot = createBot(document.querySelector<HTMLElement>(".bot")!, reduced);
 const dressed: Outfit = { hue: 215, hat: "cap", glasses: "round" };
@@ -23,6 +24,12 @@ const outfits: Outfit[] = [
   { hue: 55, hat: "beanie", glasses: "none" },
   dressed,
 ];
+
+// Wide, the bot takes the half its words don't (style.css) and reads them
+// beside it; narrow, they are under it.
+let side = 1;
+const words = () =>
+  wide.matches ? { gx: -side, gy: 0.1 } : { gx: 0, gy: 0.9 };
 
 async function hop(bot: Director, tilt: number) {
   await bot.to({ sx: 1.08, sy: 0.9 }, 90, ease.out);
@@ -70,7 +77,7 @@ async function intro(bot: Director) {
   await bot.wait(500);
   speak(steps[0]!);
   await bot.wait(1900);
-  await bot.to({ gx: 0, gy: 0.9 }, 420);
+  await bot.to(words(), 420);
   await bot.wait(1000);
 }
 
@@ -141,7 +148,7 @@ const acts: Record<string, (bot: Director) => Promise<void>> = {
   },
   async download(bot) {
     await excited(bot, 2);
-    await bot.to({ gx: 0, gy: 0.9 }, 400);
+    await bot.to(words(), 400);
     await bot.wait(1600);
   },
 };
@@ -179,6 +186,8 @@ let active = -1;
 let introDone = reduced;
 function activate(index: number) {
   active = index;
+  side = index % 2 ? -1 : 1;
+  document.body.style.setProperty("--side", String(side));
   const step = steps[index]!;
   if (!introDone) {
     if (index === 0) return;
