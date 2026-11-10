@@ -6,8 +6,8 @@
     "Inter Variable", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Familjen Grotesk Variable", var(--font-sans);
   /* The face's box: the face is 96 by 85 of its 224 units. Awake, the bot
-     rises by --rise, moves --shift to its --side and shrinks to --shrink;
-     narrow, words start under its face. */
+     rises by --rise, sits --x times --shift aside (main.ts) and shrinks to
+     --shrink; narrow, words start under its face. */
   --box: min(84vw, 40rem, 72svh);
   --rise: 9svh;
   --shift: 0px;
@@ -68,12 +68,11 @@ a {
   width: var(--box);
   aspect-ratio: 1;
   translate: -50% -50%;
-  transition: transform 1.2s cubic-bezier(0.45, 0, 0.15, 1);
   animation: arrive 0.8s ease-out both;
 }
 
 .awake .bot {
-  transform: translate(calc(var(--side) * var(--shift)), calc(-1 * var(--rise)))
+  transform: translate(calc(var(--x) * var(--shift)), calc(-1 * var(--rise)))
     scale(var(--shrink));
 }
 
@@ -340,7 +339,6 @@ p a {
 
 @media (prefers-reduced-motion: reduce) {
   .bot {
-    transition: none;
     animation: none;
   }
 

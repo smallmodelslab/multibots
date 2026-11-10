@@ -14,7 +14,8 @@ import {
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const wide = matchMedia("(min-width: 50rem)");
 const steps = [...document.querySelectorAll<HTMLElement>(".step")];
-const bot = createBot(document.querySelector<HTMLElement>(".bot")!, reduced);
+const host = document.querySelector<HTMLElement>(".bot")!;
+const bot = createBot(host, reduced);
 const dressed: Outfit = { hue: 215, hat: "cap", glasses: "round" };
 const outfits: Outfit[] = [
   { hue: 330, hat: "party", glasses: "none" },
@@ -73,7 +74,7 @@ async function intro(bot: Director) {
   await bot.wait(560);
   await bot.to({ sx: 1, sy: 1, lift: 0 }, 120);
   await excited(bot, 3);
-  document.body.classList.add("awake");
+  wake();
   await bot.wait(500);
   speak(steps[0]!);
   await bot.wait(1900);
@@ -187,12 +188,11 @@ let introDone = reduced;
 function activate(index: number) {
   active = index;
   side = index % 2 ? -1 : 1;
-  document.body.style.setProperty("--side", String(side));
   const step = steps[index]!;
   if (!introDone) {
     if (index === 0) return;
     introDone = true;
-    document.body.classList.add("awake");
+    wake();
   }
   speak(step);
   const yours = steps.findIndex((s) => s.dataset.act === "yours");
@@ -208,8 +208,20 @@ function activate(index: number) {
   });
 }
 
+// Waking, the bot rises from where it slept to wherever the scroll has it.
+function wake() {
+  if (document.body.classList.contains("awake")) return;
+  document.body.classList.add("awake");
+  if (!reduced)
+    host.animate([{ transform: "none", offset: 0 }], {
+      duration: 1200,
+      easing: "cubic-bezier(0.45, 0, 0.15, 1)",
+    });
+}
+
 // A step shows while it is near the top of the window, so the bot says one
-// thing at a time.
+// thing at a time. Wide, the bot crosses halves with the scroll, reaching the
+// middle when no words are there.
 let queued = 0;
 function onScroll() {
   queued = 0;
@@ -222,6 +234,11 @@ function onScroll() {
     if (away < distance) [nearest, distance] = [index, away];
   });
   if (nearest !== active) activate(nearest);
+  const at = -steps[0]!.getBoundingClientRect().top / innerHeight;
+  host.style.setProperty(
+    "--x",
+    String(reduced ? side : Math.cos(Math.PI * at)),
+  );
 }
 addEventListener("scroll", () => (queued ||= requestAnimationFrame(onScroll)), {
   passive: true,
@@ -230,7 +247,7 @@ addEventListener("resize", onScroll);
 document.documentElement.classList.add("js");
 onScroll();
 if (reduced) {
-  document.body.classList.add("awake");
+  wake();
 } else if (active === 0) {
   void bot.play(async (bot) => {
     await intro(bot);
