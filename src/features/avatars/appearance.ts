@@ -45,17 +45,3 @@ export const appearanceOf = (bot: Identity) =>
     ...accessoriesSchema.parse(bot.accessories ?? defaultAccessories(bot.id)),
   });
 export type Appearance = ReturnType<typeof appearanceOf>;
-
-export const avatarColor = (hue: number) => {
-  if (!Number.isFinite(hue))
-    throw new TypeError(`Avatar hue must be finite; received ${hue}.`);
-  const channel = (offset: number) => {
-    const k = (offset + (((hue % 360) + 360) % 360) / 30) % 12;
-    return Math.round(
-      (0.73 - 0.22 * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255,
-    )
-      .toString(16)
-      .padStart(2, "0");
-  };
-  return `#${channel(0)}${channel(8)}${channel(4)}`;
-};

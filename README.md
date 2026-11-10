@@ -203,8 +203,8 @@ command line with `bun run avatar:gif --hue 215 --hat cap --glasses round --out 
 Use Node 24 and Bun 1.4.4.
 
 `packages/` holds copies of the wrkrsh packages OpenBots shares with other
-apps: client-log, composer, computer-use, electron-update, glow, webhooks,
-whiteboard and wizard. They are kept as they are there, so formatting and lint leave them
+apps: client-log, composer, computer-use, electron-update, glow, pencil,
+webhooks, whiteboard and wizard. They are kept as they are there, so formatting and lint leave them
 alone; types still check them.
 
 ```sh
@@ -229,7 +229,14 @@ On macOS the app needs Local Network access to reach other clients; until it
 is allowed, requests to and from it hang.
 
 Checks: `bun run format:check`, `bun run lint`, `bun run typecheck`, `bun run test`
-and `bun run build`; in `relay/`, the same but `test`.
+and `bun run build`; in `relay/` and `site/`, the same but `test`.
+
+[openbots.ca](https://openbots.ca) is [`site`](site/index.html), its own
+package beside the app: the bot from `src/features/avatars` wakes up, greets
+the visitor and says what it does as they scroll. `bun run dev` there serves
+it. A Cloudflare Worker (`site/worker.ts`) serves the build, redirects
+`/download/mac` and `/download/linux` to the current release's installers and
+proxies PostHog. The monorepo's CI deploys it on every merge.
 
 `bun run package` builds an unsigned installer for this computer into `dist/`.
 Signed installers and JavaScript updates are released from the wrkrsh

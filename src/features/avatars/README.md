@@ -7,7 +7,9 @@ or later in its Details → Appearance section, which also downloads a GIF of
 Look around, Working or Waiting.
 
 `appearance.ts` defines identity and validated accessory choices. `motion.ts`
-samples deterministic six-second loops. `artwork.ts` renders a pose as SVG.
+samples deterministic six-second loops. `parts.ts` holds the face, outfits and
+colours, which the landing page (`site/`) draws from too; `artwork.ts` renders
+a pose as SVG from them.
 `controller.ts` adds live gaze, blinking and reactions; `SquircleAvatar.tsx`
 shares one 30fps clock and stops drawing hidden/offscreen/reduced-motion faces.
 `gif.ts` uses the same poses and SVG renderer, with a single global palette and

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { avatarColor } from "../../../../src/features/avatars/appearance";
+import { avatarColor } from "../../../../src/features/avatars/parts";
 import { BotAvatar } from "../../../src/bot-avatar";
 import { useBot } from "../../../src/data";
 import { Icon } from "../../../src/ui";

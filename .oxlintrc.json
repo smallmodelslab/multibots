@@ -15,6 +15,7 @@
     "dist/**",
     "mobile/**",
     "relay/**",
+    "site/**",
     "packages/**"
   ],
   "rules": {

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#fafaf8"
+    />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: dark)"
+      content="#121212"
+    />
+    <title>OpenBots — your own bots, on your own computers</title>
+    <meta
+      name="description"
+      content="Bots that live on your own computers and run on your ChatGPT subscription or models you host. Free and open source."
+    />
+    <meta property="og:title" content="OpenBots" />
+    <meta
+      property="og:description"
+      content="Your own bots, on your own computers."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="canonical" href="https://openbots.ca/" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="../branding/openbots/openbots.svg"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="../branding/openbots/openbots-dark.svg"
+      media="(prefers-color-scheme: dark)"
+    />
+    <script type="module" src="./main.ts"></script>
+  </head>
+  <body>
+    <main class="story">
+      <div class="actor" aria-hidden="true"><div class="bot"></div></div>
+
+      <section class="step" data-act="hello">
+        <div class="say">
+          <h1>Hi! I'm OpenBot.</h1>
+          <p>Your own bot, on your own computer. Let me show you around.</p>
+        </div>
+      </section>
+
+      <section class="step" data-act="home">
+        <div class="say">
+          <h2>No servers. No accounts.</h2>
+          <p>
+            I run right here, on your ChatGPT subscription or on models you
+            host.
+          </p>
+        </div>
+      </section>
+
+      <section class="step" data-act="use">
+        <div class="say">
+          <h2>I can use your computer.</h2>
+          <p>
+            A shell, the web and your screen, for the jobs that need your apps.
+          </p>
+        </div>
+      </section>
+
+      <section class="step" data-act="wake">
+        <div class="say">
+          <h2>I get up on my own.</h2>
+          <p>
+            Routines wake me on a schedule or when a webhook calls, so I keep
+            working while you're away.
+          </p>
+        </div>
+      </section>
+
+      <section class="step" data-act="talk">
+        <div class="say">
+          <h2>Talk to me.</h2>
+          <p>
+            Call me and just say it, or sketch on our whiteboard and I'll draw
+            back.
+          </p>
+        </div>
+      </section>
+
+      <section class="step" data-act="apps">
+        <div class="say">
+          <h2>I reach your apps.</h2>
+          <p>
+            Gmail, GitHub, Slack and hundreds more, through Composio on your own
+            key.
+          </p>
+        </div>
+      </section>
+
+      <section class="step" data-act="anywhere">
+        <div class="say">
+          <h2>Find me from your other computers.</h2>
+          <p>
+            Your laptop talks to the bots on your desktop directly, over
+            Tailscale, and they keep going while it sleeps.
+          </p>
+        </div>
+      </section>
+
+      <section class="step" data-act="yours">
+        <div class="say">
+          <h2>Make me yours.</h2>
+          <p>
+            Make as many bots as you like, each with its own colour, hat and
+            glasses.
+          </p>
+        </div>
+      </section>
+
+      <section class="step" data-act="download">
+        <div class="say">
+          <h2>Take me home.</h2>
+          <p>
+            Free and
+            <a href="https://github.com/smallmodelslab/openbots">open source</a
+            >, for Apple silicon Macs and 64-bit Linux.
+          </p>
+          <div class="actions whole">
+            <a class="button mac" data-download="mac" href="/download/mac"
+              >Download for macOS</a
+            >
+            <a class="button linux" data-download="linux" href="/download/linux"
+              >Download for Linux</a
+            >
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

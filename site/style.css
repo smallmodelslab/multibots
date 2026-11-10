@@ -1,0 +1,305 @@
+:root {
+  --paper: #fafaf8;
+  --ink: #1b1b19;
+  --muted: #6b6b64;
+  --font-sans:
+    "Inter Variable", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Familjen Grotesk Variable", var(--font-sans);
+  /* The face's box: the face is 96 by 85 of its 224 units. Awake, the bot
+     rises by --rise and shrinks to --shrink, and words start under it. */
+  --box: min(84vw, 40rem, 72svh);
+  --rise: 9svh;
+  --shrink: 0.6;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #121212;
+    --ink: #ececea;
+    --muted: #9a9a94;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-snap-type: y proximity;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+.story {
+  position: relative;
+}
+
+/* The bot stays in the window while the steps scroll under what it says. */
+.actor {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  margin-bottom: -100svh;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.bot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--box);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  transition: transform 1.2s cubic-bezier(0.45, 0, 0.15, 1);
+  animation: arrive 0.8s ease-out both;
+}
+
+.awake .bot {
+  transform: translateY(calc(-1 * var(--rise))) scale(var(--shrink));
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+  }
+}
+
+.face {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.head {
+  fill: var(--fill);
+  stroke: var(--line);
+  stroke-width: 6;
+}
+
+.pupil {
+  fill: var(--line);
+}
+
+.lid {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+
+.glasses {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hat {
+  stroke: var(--line);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+/* Drawn on when shown, then they fade. */
+.marks {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mark {
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.mark path {
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 0.35s ease-out;
+}
+
+.mark.on {
+  opacity: 1;
+  transition-duration: 0.1s;
+}
+
+.mark.on path {
+  stroke-dashoffset: 0;
+}
+
+.mark path:nth-child(2) {
+  transition-delay: 0.08s;
+}
+
+.mark path:nth-child(3) {
+  transition-delay: 0.16s;
+}
+
+.mark path:nth-child(4) {
+  transition-delay: 0.24s;
+}
+
+.zzz.on path {
+  animation: drift 1.9s ease-out both;
+}
+
+.zzz.on path:nth-child(2) {
+  animation-delay: 0.35s;
+}
+
+.zzz.on path:nth-child(3) {
+  animation-delay: 0.7s;
+}
+
+@keyframes drift {
+  from {
+    opacity: 0;
+    translate: -6px 8px;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+.waves.on path {
+  animation: pulse 0.8s ease-in-out infinite alternate;
+}
+
+.waves.on path:nth-child(even) {
+  animation-delay: 0.4s;
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.25;
+  }
+}
+
+/* Each step fills the window and puts its words under the bot. */
+.step {
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: calc(
+      50svh - var(--rise) + var(--box) * 0.19 * var(--shrink) + 3.5rem
+    )
+    1.25rem 0;
+  scroll-snap-align: start;
+}
+
+.say {
+  max-width: 38rem;
+  text-align: center;
+  opacity: var(--seen, 1);
+}
+
+h1,
+h2 {
+  margin: 0 0 0.45em;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5.4vw, 3.6rem);
+  font-weight: 600;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0 auto;
+  max-width: 30rem;
+  color: var(--muted);
+  font-size: clamp(1.05rem, 1.7vw, 1.25rem);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+p a {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+/* Words appear as the bot says them. */
+.js .say .w,
+.js .say .whole {
+  opacity: 0;
+  translate: 0 0.3em;
+  transition:
+    opacity 0.3s,
+    translate 0.3s;
+}
+
+.js .spoken .w,
+.js .spoken .whole {
+  opacity: 1;
+  translate: none;
+  transition-delay: calc(var(--i) * 45ms);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+  margin-top: 2rem;
+}
+
+.button {
+  order: 1;
+  padding: 0.85em 0;
+  color: var(--muted);
+  font-weight: 550;
+  text-decoration: none;
+}
+
+/* The visitor's platform leads. */
+.actions:not(.linux) .mac,
+.actions.linux .linux {
+  order: 0;
+  padding: 0.85em 1.5em;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+@media (max-width: 40rem) {
+  :root {
+    --shrink: 0.72;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bot {
+    transition: none;
+    animation: none;
+  }
+
+  .js .say .w,
+  .js .say .whole {
+    transition: none;
+  }
+}
