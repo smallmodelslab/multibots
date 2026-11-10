@@ -194,6 +194,8 @@ function activate(index: number) {
     introDone = true;
     wake();
   }
+  // A visitor who moves on finds the bot already out of the words' way.
+  rising?.finish();
   speak(step);
   const yours = steps.findIndex((s) => s.dataset.act === "yours");
   const act = acts[step.dataset.act!]!;
@@ -209,11 +211,12 @@ function activate(index: number) {
 }
 
 // Waking, the bot rises from where it slept to wherever the scroll has it.
+let rising: Animation | undefined;
 function wake() {
   if (document.body.classList.contains("awake")) return;
   document.body.classList.add("awake");
   if (!reduced)
-    host.animate([{ transform: "none", offset: 0 }], {
+    rising = host.animate([{ transform: "none", offset: 0 }], {
       duration: 1200,
       easing: "cubic-bezier(0.45, 0, 0.15, 1)",
     });
