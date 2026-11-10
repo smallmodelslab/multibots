@@ -12,6 +12,37 @@ find each other over Tailscale and talk directly, so a laptop chats with the
 bots its always-on desktops run, and they run their routines while it sleeps.
 Bots outlive any server: a run goes on from its last step on another one.
 
+## Download and install
+
+OpenBots runs on Apple silicon Macs and x86-64 Linux. There is no Windows or
+Intel Mac version yet.
+
+- [macOS, Apple silicon](https://wrkrsh.com/download/openbots/mac): open the
+  disk image and drag OpenBots to Applications.
+- [Linux, x86-64](https://wrkrsh.com/download/openbots/linux): make the
+  AppImage executable and run it.
+
+  ```sh
+  chmod +x openbots-*-linux-x86_64.AppImage
+  ./openbots-*-linux-x86_64.AppImage
+  ```
+
+The links always give the newest release. Each installer's SHA-256 is in the
+[release catalog](https://downloads.wrkrsh.com/openbots/channels/stable.json).
+
+Then:
+
+1. In Settings, sign in to ChatGPT, or add models you host.
+2. To use bots from more than one computer, install
+   [Tailscale](https://tailscale.com/download) on each, signed in as the same
+   Tailscale user, and copy the pairing code from one computer's Settings
+   into the others.
+3. On macOS, allow what OpenBots asks for: Local Network, to reach OpenBots
+   on your other computers (until it is allowed, they cannot connect);
+   the microphone, when you start a voice chat; and, for bots to see and use
+   the screen, Screen Recording and Accessibility for Multidesktop Bridge,
+   which Settings installs and the Computer tab asks for.
+
 ## How it works
 
 - **Bots** live in each server's data folder, one folder each under
