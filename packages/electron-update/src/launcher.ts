@@ -184,6 +184,10 @@ const versionChannel = channelOf(app.getVersion());
 // In the user data the launcher starts with, beside the JavaScript releases,
 // even when the app moves its user data later.
 const channelPath = join(app.getPath("userData"), "update-channel");
+const javascriptUpdates = join(
+  app.getPath("userData"),
+  "javascript-updates",
+);
 let channel: Channel = (() => {
   try {
     const picked = readFileSync(channelPath, "utf8");
@@ -196,9 +200,27 @@ let channel: Channel = (() => {
 // JavaScript releases are kept per channel, so after a switch they wait for
 // the next launch.
 const launchChannel = channel;
+const stores = new Map<Channel, UpdateStore>();
+const storeOf = (from: Channel): UpdateStore => {
+  let found = stores.get(from);
+  if (!found) {
+    found = new UpdateStore(
+      join(javascriptUpdates, from, __UPDATE__.runtime),
+      __UPDATE__.runtime,
+      __UPDATE__.publicKey,
+      __UPDATE__.installed.sequence,
+      readArchive,
+      removeArchive,
+    );
+    stores.set(from, found);
+  }
+  return found;
+};
 
+// The store this launch runs from, and the one the staged release is in.
 let store: UpdateStore | undefined;
 let staged: SignedRelease | undefined;
+let stagedIn: UpdateStore | undefined;
 let checking: Promise<{ version: string; restart: boolean } | null> | undefined;
 let healthTimer: ReturnType<typeof setTimeout> | undefined;
 let hooks: UpdateHooks | undefined;
@@ -208,18 +230,20 @@ let shownMenu = "";
 const javascript: JavascriptUpdater = {
   check(progress) {
     if (!store || channel !== launchChannel) return Promise.resolve(null);
-    const current = store;
     const feed = (from: Channel) =>
       download(
-        `${origin}/${feedPath(product, current.runtime, from)}`,
+        `${origin}/${feedPath(product, __UPDATE__.runtime, from)}`,
         8192,
         true,
       );
     checking ??= (async () => {
+      const picked = await feed(channel);
       const metadata =
-        (await feed(channel)) ??
+        picked ??
         (channel === versionChannel ? null : await feed(versionChannel));
       if (!metadata) return null;
+      // A release goes to its own channel's store.
+      const current = storeOf(picked ? channel : versionChannel);
       const envelope = JSON.parse(metadata.toString("utf8")) as SignedRelease;
       const release = verifyRelease(
         envelope,
@@ -240,6 +264,7 @@ const javascript: JavascriptUpdater = {
           throw new Error("The JavaScript update download was empty.");
         current.stage(envelope, bytes);
         staged = envelope;
+        stagedIn = current;
       }
       return {
         version: release.version,
@@ -251,10 +276,10 @@ const javascript: JavascriptUpdater = {
     return checking;
   },
   verify() {
-    if (!store || !staged)
+    if (!stagedIn || !staged)
       throw new Error("No JavaScript update is ready to install.");
     try {
-      store.verifiedPath(staged);
+      stagedIn.verifiedPath(staged);
     } catch (error) {
       staged = undefined;
       throw error;
@@ -262,7 +287,7 @@ const javascript: JavascriptUpdater = {
   },
   restart() {
     try {
-      store!.activate(staged!);
+      stagedIn!.activate(staged!);
       relaunch(0);
     } catch (error) {
       // The app has already shut down for the restart the user chose. Restart
@@ -272,13 +297,14 @@ const javascript: JavascriptUpdater = {
     }
   },
   async reload() {
-    const current = store!;
+    const current = stagedIn!;
     const envelope = staged!;
     const release = verifyRelease(envelope, current.publicKey, current.runtime);
-    const previous = { root, running };
+    const previous = { root, running, store };
     current.activate(envelope);
     current.attempt();
     staged = undefined;
+    store = current;
     root = current.path(envelope);
     running = {
       release: release.version,
@@ -290,7 +316,7 @@ const javascript: JavascriptUpdater = {
     healthTimer = setTimeout(() => {
       void record(CRITICAL, "javascript update did not become ready");
       current.rollback();
-      ({ root, running } = previous);
+      ({ root, running, store } = previous);
       Promise.resolve(hooks?.reload()).catch((error: unknown) =>
         log.error("windows could not reload after a rollback", { error }),
       );
@@ -491,19 +517,10 @@ if (app.isPackaged && !cli && !app.requestSingleInstanceLock()) {
   let entry = installedEntry;
   if (disabledReason === null) {
     try {
-      store = new UpdateStore(
-        join(
-          app.getPath("userData"),
-          "javascript-updates",
-          launchChannel,
-          __UPDATE__.runtime,
-        ),
-        __UPDATE__.runtime,
-        __UPDATE__.publicKey,
-        __UPDATE__.installed.sequence,
-        readArchive,
-        removeArchive,
-      );
+      store = storeOf(launchChannel);
+      // A channel picked before it has a release runs its version channel's.
+      if (!store.state.active && !store.state.pending)
+        store = storeOf(versionChannel);
       let path: string | null;
       if (cli) {
         path = store.current();

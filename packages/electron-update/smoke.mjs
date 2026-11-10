@@ -329,9 +329,9 @@ require('./installed.asar/out/bootstrap/index.js');`,
     assert.equal((await result("app")).page, "two");
     assert.equal(open().state.active?.version, "1.0.2");
     assert.deepEqual(open().state.rejected, [3, 5]);
-    // A picked channel lasts across launches. The next launch runs the
-    // installer's code, not the other channel's release; until that channel
-    // has a release it takes its version's, then its own channel's.
+    // A picked channel lasts across launches. Until it has a release, the
+    // install keeps its version channel's releases, the running one
+    // included, then takes its own channel's.
     await rm(join(results, "app.json"));
     await run("nightly");
     assert.deepEqual(await result("channel"), {
@@ -339,18 +339,22 @@ require('./installed.asar/out/bootstrap/index.js');`,
       after: "nightly",
     });
     await rm(join(results, "app.json"));
-    await release(6, "installed", page("six"));
+    await release(6, "one", page("six"));
     await run("update");
     const early = await result("app");
-    assert.deepEqual(early.pages, ["installed", "six"]);
+    assert.deepEqual(early.pages, ["two", "six"]);
     assert.equal(early.release, "1.0.6");
+    assert.equal(open().state.active?.version, "1.0.6");
     await rm(join(results, "app.json"));
-    await release(7, "installed", page("seven"), undefined, "nightly");
+    await release(7, "one", page("seven"), undefined, "nightly");
     await run("update");
     const nightly = await result("app");
     assert.deepEqual(nightly.pages, ["six", "seven"]);
     assert.equal(nightly.release, "1.0.7");
-    assert.equal(open().state.active?.version, "1.0.2");
+    assert.equal(open().state.active?.version, "1.0.6");
+    await rm(join(results, "app.json"));
+    await run("boot");
+    assert.equal((await result("app")).page, "seven");
     console.log(
       `PASS (${format}): boot, CLI, reload into window-only updates, reload rollback, restart detection, startup rollback, channel switch.`,
     );

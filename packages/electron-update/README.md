@@ -28,7 +28,8 @@ ends with `electron-update launcher`, and its main process uses `updates()`:
   behind and checks the new one. JavaScript releases are kept per channel, so
   the new channel's arrive after the next launch. Until the channel picked has
   a release, installer or JavaScript, the install reads its version's feed in
-  its place, so picking nightly before its first release changes nothing.
+  its place and keeps running its version channel's JavaScript release, so
+  picking nightly before its first release changes nothing.
 - `release`, `commit` and `session` for log records. The commit comes from the
   signed release, so builds of unchanged main code stay byte-identical.
 
