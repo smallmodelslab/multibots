@@ -355,6 +355,21 @@ require('./installed.asar/out/bootstrap/index.js');`,
     await rm(join(results, "app.json"));
     await run("boot");
     assert.equal((await result("app")).page, "seven");
+    // A first nightly release whose launch was killed before it became ready
+    // gives way to the working stable one.
+    await rm(join(data, "javascript-updates", "nightly"), { recursive: true });
+    const nightlyStore = new UpdateStore(
+      join(data, "javascript-updates", "nightly", runtime),
+      runtime,
+      publicKey,
+    );
+    const killed = await release(8, "one", page("eight"), undefined, "nightly");
+    nightlyStore.stage(killed.envelope, killed.bytes);
+    nightlyStore.activate(killed.envelope);
+    nightlyStore.attempt();
+    await rm(join(results, "app.json"));
+    await run("boot");
+    assert.equal((await result("app")).page, "six");
     console.log(
       `PASS (${format}): boot, CLI, reload into window-only updates, reload rollback, restart detection, startup rollback, channel switch.`,
     );

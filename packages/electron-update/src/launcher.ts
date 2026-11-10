@@ -237,13 +237,14 @@ const javascript: JavascriptUpdater = {
         true,
       );
     checking ??= (async () => {
-      const picked = await feed(channel);
+      // The channel when the check starts, though it may change meanwhile.
+      const from = channel;
+      const picked = await feed(from);
       const metadata =
-        picked ??
-        (channel === versionChannel ? null : await feed(versionChannel));
+        picked ?? (from === versionChannel ? null : await feed(versionChannel));
       if (!metadata) return null;
       // A release goes to its own channel's store.
-      const current = storeOf(picked ? channel : versionChannel);
+      const current = storeOf(picked ? from : versionChannel);
       const envelope = JSON.parse(metadata.toString("utf8")) as SignedRelease;
       const release = verifyRelease(
         envelope,
@@ -251,7 +252,7 @@ const javascript: JavascriptUpdater = {
         current.runtime,
       );
       if (!current.accepts(envelope)) return null;
-      if (staged?.payload !== envelope.payload) {
+      if (staged?.payload !== envelope.payload || stagedIn !== current) {
         // A previously staged release stays installable until this one is staged.
         progress(release.version, 0);
         const bytes = await download(
@@ -517,42 +518,43 @@ if (app.isPackaged && !cli && !app.requestSingleInstanceLock()) {
   let entry = installedEntry;
   if (disabledReason === null) {
     try {
-      store = storeOf(launchChannel);
-      // A channel picked before it has a release runs its version channel's.
-      if (!store.state.active && !store.state.pending)
-        store = storeOf(versionChannel);
-      let path: string | null;
-      if (cli) {
-        path = store.current();
-      } else {
-        const boot = store.boot();
-        if (boot.recovered)
-          // The previous working version starts; the failed one is not retried.
-          void record(ERROR, "recovered from a failed javascript update");
-        path = boot.path;
-        if (path) {
-          const { confirmed } = boot;
-          healthTimer = setTimeout(() => {
-            const sending = record(
-              CRITICAL,
-              "javascript update did not become ready",
-              { confirmed },
-            );
-            // The next boot counts a confirmed release's unfinished launch.
-            if (!confirmed) store?.rollback();
-            app.relaunch();
-            void leave(sending).then(() => app.exit(1));
-          }, __UPDATE__.readyTimeoutMs);
+      // A channel picked before it has a working release runs its version
+      // channel's.
+      let path: string | null = null;
+      let confirmed = false;
+      for (const from of new Set([launchChannel, versionChannel])) {
+        store = storeOf(from);
+        if (cli) path = store.current();
+        else {
+          const boot = store.boot();
+          if (boot.recovered)
+            // The previous working version starts; the failed one is not retried.
+            void record(ERROR, "recovered from a failed javascript update");
+          ({ path, confirmed } = boot);
         }
+        if (path) break;
+      }
+      if (path && !cli) {
+        healthTimer = setTimeout(() => {
+          const sending = record(
+            CRITICAL,
+            "javascript update did not become ready",
+            { confirmed },
+          );
+          // The next boot counts a confirmed release's unfinished launch.
+          if (!confirmed) store?.rollback();
+          app.relaunch();
+          void leave(sending).then(() => app.exit(1));
+        }, __UPDATE__.readyTimeoutMs);
       }
       const release = cli
-        ? store.state.active
-        : (store.state.pending ?? store.state.active);
+        ? store!.state.active
+        : (store!.state.pending ?? store!.state.active);
       if (path && release) {
         const { version, host, commit } = verifyRelease(
           release,
-          store.publicKey,
-          store.runtime,
+          store!.publicKey,
+          store!.runtime,
         );
         running = { release: version, host, commit };
         root = path;
