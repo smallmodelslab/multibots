@@ -67,7 +67,8 @@ article {
   transition: color 150ms;
 }
 
-.contents li.h3 a {
+/* Below the hover and active colours, which come later. */
+.contents :where(li.h3) a {
   color: var(--muted);
 }
 
