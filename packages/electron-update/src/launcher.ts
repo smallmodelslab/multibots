@@ -523,14 +523,20 @@ if (app.isPackaged && !cli && !app.requestSingleInstanceLock()) {
       let path: string | null = null;
       let confirmed = false;
       for (const from of new Set([launchChannel, versionChannel])) {
-        store = storeOf(from);
-        if (cli) path = store.current();
-        else {
-          const boot = store.boot();
-          if (boot.recovered)
-            // The previous working version starts; the failed one is not retried.
-            void record(ERROR, "recovered from a failed javascript update");
-          ({ path, confirmed } = boot);
+        try {
+          store = storeOf(from);
+          if (cli) path = store.current();
+          else {
+            const boot = store.boot();
+            if (boot.recovered)
+              // The previous working version starts; the failed one is not retried.
+              void record(ERROR, "recovered from a failed javascript update");
+            ({ path, confirmed } = boot);
+          }
+        } catch (error) {
+          // A missing or damaged release gives way to the next channel's.
+          void record(ERROR, "javascript update could not load", { error });
+          path = null;
         }
         if (path) break;
       }

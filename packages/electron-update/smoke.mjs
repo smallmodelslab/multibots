@@ -370,6 +370,15 @@ require('./installed.asar/out/bootstrap/index.js');`,
     await rm(join(results, "app.json"));
     await run("boot");
     assert.equal((await result("app")).page, "six");
+    // So does a nightly release whose archive is gone.
+    const lost = await release(9, "one", page("nine"), undefined, "nightly");
+    nightlyStore.stage(lost.envelope, lost.bytes);
+    nightlyStore.activate(lost.envelope);
+    nightlyStore.healthy();
+    await rm(nightlyStore.path(lost.envelope));
+    await rm(join(results, "app.json"));
+    await run("boot");
+    assert.equal((await result("app")).page, "six");
     console.log(
       `PASS (${format}): boot, CLI, reload into window-only updates, reload rollback, restart detection, startup rollback, channel switch.`,
     );
