@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#fafaf8"
+    />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: dark)"
+      content="#121212"
+    />
+    <title>Install OpenBots</title>
+    <meta
+      name="description"
+      content="Download, install and set up OpenBots on an Apple silicon Mac or 64-bit Linux, and connect your computers."
+    />
+    <link rel="canonical" href="https://openbots.ca/docs/" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="../../branding/openbots/openbots.svg"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="../../branding/openbots/openbots-dark.svg"
+      media="(prefers-color-scheme: dark)"
+    />
+    <script type="module" src="./docs.ts"></script>
+  </head>
+  <body>
+    <header class="masthead">
+      <a class="brand" href="/">OpenBots</a>
+    </header>
+    <div class="docs">
+      <nav class="contents" aria-label="Contents"></nav>
+      <article>
+        <h1>Install OpenBots</h1>
+        <p>
+          OpenBots runs on Apple silicon Macs and 64-bit (x86-64) Linux. There
+          is no Windows or Intel Mac version yet.
+        </p>
+
+        <h2 id="download">Download</h2>
+        <ul>
+          <li>
+            <a
+              data-download="mac"
+              href="https://wrkrsh.com/download/openbots/mac"
+              >macOS, Apple silicon</a
+            >: a disk image, signed and notarized.
+          </li>
+          <li>
+            <a
+              data-download="linux"
+              href="https://wrkrsh.com/download/openbots/linux"
+              >Linux, x86-64</a
+            >: an AppImage.
+          </li>
+        </ul>
+        <p>
+          The links always give the newest release. Each installer's SHA-256 is
+          in the
+          <a href="https://downloads.wrkrsh.com/openbots/channels/stable.json"
+            >release catalog</a
+          >.
+        </p>
+
+        <h2 id="install">Install</h2>
+        <h3 id="install-mac">macOS</h3>
+        <p>
+          Open the disk image, drag OpenBots to Applications, and open it from
+          there.
+        </p>
+        <h3 id="install-linux">Linux</h3>
+        <p>Make the AppImage executable and run it:</p>
+        <pre><code>chmod +x openbots-*-linux-x86_64.AppImage
+./openbots-*-linux-x86_64.AppImage</code></pre>
+
+        <h2 id="set-up">Set up</h2>
+        <h3 id="chatgpt">Sign in to ChatGPT</h3>
+        <p>
+          Bots run on your ChatGPT plan. In Settings, under Providers, choose
+          Sign in. OpenBots shows a code; enter it on the ChatGPT page that
+          opens. The sign-in stays on this computer.
+        </p>
+        <h3 id="own-models">Or use models you host</h3>
+        <p>
+          Under Providers, Custom models adds a model served behind an
+          OpenAI-style API, such as vLLM, SGLang, Ollama or LM Studio: its
+          address, its model and an optional key. Voice adds speech and
+          transcription models the same way. With more than one model, the
+          fallback order sets which is tried first, and a bot moves to the next
+          when one stops answering.
+        </p>
+        <h3 id="first-bot">Make a bot</h3>
+        <p>
+          New bot, at the top of the sidebar, asks for a name, an outfit and
+          what the bot is for. It can also bring over a bot from Grok Bot.
+        </p>
+
+        <h2 id="permissions">Permissions on macOS</h2>
+        <p>macOS asks you to allow these the first time each is needed:</p>
+        <ul>
+          <li>
+            <strong>Local Network</strong>, to reach OpenBots on your other
+            computers. Until it is allowed, they cannot connect.
+          </li>
+          <li>
+            <strong>Microphone</strong>, when you start a voice chat with a bot.
+          </li>
+          <li>
+            <strong>Screen Recording</strong> and
+            <strong>Accessibility</strong>, so bots can see and use the screen.
+            They go to Multidesktop Bridge, which OpenBots uses for the screen:
+            install Multidesktop from Settings, under Screen, and the Computer
+            tab asks for both.
+          </li>
+        </ul>
+        <p>
+          You can change any of them later in System Settings, under Privacy
+          &amp; Security.
+        </p>
+
+        <h2 id="computers">Connect your computers</h2>
+        <p>
+          Every computer running OpenBots is a server unless you turn that off:
+          it keeps a copy of every bot and runs them. Your laptop can chat with
+          the bots your desktop runs, and they keep working while it sleeps.
+        </p>
+        <ol>
+          <li>
+            Install <a href="https://tailscale.com/download">Tailscale</a> on
+            each computer, signed in as the same Tailscale user.
+          </li>
+          <li>
+            On one computer, copy the pairing code from Settings, under
+            Computers. On each of the others, paste it into Another computer's
+            pairing code. Your computers answer only each other, and only with
+            this code.
+          </li>
+          <li>
+            Each server signs in to ChatGPT, or adds its models, for itself.
+          </li>
+        </ol>
+        <p>
+          To keep bots off a computer, turn off Server mode in Settings, under
+          Server. It hands its bots to your other servers and then only shows
+          them. The last server can't be turned off.
+        </p>
+
+        <h2 id="updates">Updates</h2>
+        <p>
+          OpenBots updates itself. It downloads updates in the background and,
+          once one is ready, shows Restart to update at the bottom of the
+          sidebar; choose it when it suits you. An update that only changes the
+          window shows Update instead, and reloads it. Check for Updates… is in
+          the app menu on macOS and in Help on Linux.
+        </p>
+
+        <h2 id="security">Before you start</h2>
+        <p>
+          A bot acts as you. Its shell runs any command with your permissions,
+          without asking, and anything it reads can try to steer it. Give a bot
+          only the apps and computers you would let it use. The
+          <a href="https://github.com/smallmodelslab/openbots#security"
+            >README</a
+          >
+          explains how your bots are kept to your own computers.
+        </p>
+      </article>
+    </div>
+  </body>
+</html>

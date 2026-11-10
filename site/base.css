@@ -1,0 +1,36 @@
+/* What every openbots.ca page shares: colours, faces and the page itself. */
+:root {
+  --paper: #fafaf8;
+  --ink: #1b1b19;
+  --muted: #6b6b64;
+  --font-sans:
+    "Inter Variable", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Familjen Grotesk Variable", var(--font-sans);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #121212;
+    --ink: #ececea;
+    --muted: #9a9a94;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}

@@ -1,10 +1,4 @@
 :root {
-  --paper: #fafaf8;
-  --ink: #1b1b19;
-  --muted: #6b6b64;
-  --font-sans:
-    "Inter Variable", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Familjen Grotesk Variable", var(--font-sans);
   /* The face's box: the face is 96 by 85 of its 224 units. Awake, the bot
      rises by --rise, sits --x times --shift aside (main.ts) and shrinks to
      --shrink; narrow, words start under its face. */
@@ -13,33 +7,6 @@
   --shift: 0px;
   --shrink: 0.6;
   --under: calc(50svh - var(--rise) + var(--box) * 0.19 * var(--shrink));
-  color-scheme: light dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #121212;
-    --ink: #ececea;
-    --muted: #9a9a94;
-  }
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-}
-
-a {
-  color: inherit;
 }
 
 .story {

@@ -1,0 +1,167 @@
+/* The docs page's layout follows md-components/DOCS-PAGE.md in
+   wrkrsh/monorepo: the article in the reading column, its contents list in
+   the margin to the left, in line with the brand above. */
+:root {
+  --gutter: 1.5rem;
+  --list: 15rem;
+  --column: 42rem;
+}
+
+.masthead {
+  padding: 1.5rem var(--gutter);
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.docs {
+  padding: 0 var(--gutter) 8rem;
+}
+
+/* Centred while the list fits beside it, then moved right rather than come
+   within 3rem of the list. */
+article {
+  max-width: var(--column);
+  margin-left: max(calc(50% - var(--column) / 2), calc(var(--list) + 3rem));
+  font-size: 1.0625rem;
+  line-height: 1.65;
+}
+
+/* Fixed in its column and centred in the window, below the masthead; it
+   scrolls between its insets when its entries don't fit. */
+.contents {
+  position: fixed;
+  top: 6rem;
+  bottom: 6rem;
+  width: var(--list);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.contents ol {
+  margin: auto 0;
+  padding: 0 0.75rem 0 0;
+  list-style: none;
+  font-size: 0.9375rem;
+  line-height: 1.35;
+}
+
+.contents li {
+  margin: 0.35rem 0;
+}
+
+.contents li.h3 {
+  padding-left: 0.75rem;
+}
+
+.contents a {
+  display: grid;
+  color: color-mix(in srgb, var(--ink) 78%, var(--paper));
+  text-decoration: none;
+  transition: color 150ms;
+}
+
+.contents li.h3 a {
+  color: var(--muted);
+}
+
+.contents a span {
+  grid-area: 1 / 1;
+  transform-origin: left center;
+  transition: transform 150ms;
+}
+
+.contents a span + span {
+  font-weight: 700;
+  visibility: hidden;
+}
+
+.contents a:hover,
+.contents a[aria-current] {
+  color: var(--ink);
+}
+
+.contents a[aria-current] span:first-child {
+  font-weight: 700;
+  transform: scale(1.05);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  scroll-margin-top: 1.5rem;
+}
+
+h1 {
+  margin: 2.5rem 0 1rem;
+  font-size: clamp(2.2rem, 5vw, 3rem);
+}
+
+h2 {
+  margin: 3rem 0 0.75rem;
+  font-size: 1.6rem;
+}
+
+h3 {
+  margin: 1.75rem 0 0.5rem;
+  font-size: 1.2rem;
+}
+
+p,
+ul,
+ol {
+  margin: 0 0 1rem;
+}
+
+ul,
+ol {
+  padding-left: 1.25rem;
+}
+
+li {
+  margin: 0.35rem 0;
+}
+
+article a {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+pre {
+  margin: 0 0 1rem;
+  overflow-x: auto;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* Too narrow for both side by side, the article takes the page alone. */
+@media (max-width: 62rem) {
+  .contents {
+    display: none;
+  }
+
+  article {
+    margin: 0 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contents a,
+  .contents a span {
+    transition: none;
+  }
+}

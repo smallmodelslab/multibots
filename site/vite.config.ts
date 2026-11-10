@@ -4,5 +4,9 @@ import { defineConfig } from "vite";
 export default defineConfig({
   // The app's Tailwind setup (postcss.config.mjs) is not the site's.
   css: { postcss: {} },
-  build: { emptyOutDir: true },
+  // The landing page, and the install guide at /docs/.
+  build: {
+    emptyOutDir: true,
+    rollupOptions: { input: ["index.html", "docs/index.html"] },
+  },
 });

@@ -30,7 +30,8 @@ Intel Mac version yet.
 The links always give the newest release. Each installer's SHA-256 is in the
 [release catalog](https://downloads.wrkrsh.com/openbots/channels/stable.json).
 
-Then:
+Then, as the [install guide](https://openbots.ca/docs/) covers in more
+detail:
 
 1. In Settings, sign in to ChatGPT, or add models you host.
 2. To use bots from more than one computer, install
