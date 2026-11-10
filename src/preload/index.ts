@@ -35,6 +35,8 @@ const bridge: Bridge = {
   platform: process.platform,
   plugins: (query) => ipcRenderer.invoke("openbots:plugins", query),
   ready: () => ipcRenderer.send("openbots:ready"),
+  setChannel: (channel) =>
+    ipcRenderer.invoke("openbots:update-channel", channel),
   setComposioKey: (key) => ipcRenderer.invoke("openbots:composio-key", key),
   setServer: (on) => ipcRenderer.invoke("openbots:server", on),
   signInMultidesktop: () => ipcRenderer.invoke("openbots:sign-in-multidesktop"),

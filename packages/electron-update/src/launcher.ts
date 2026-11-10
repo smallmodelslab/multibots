@@ -2,7 +2,13 @@
 // signed JavaScript release, or the installer's own, and owns updates for the
 // app it starts. It never updates itself: build.mjs fingerprints it into the
 // native contract.
-import { appendFileSync, existsSync, mkdirSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -28,10 +34,12 @@ import { registerInstalledDependencies } from "./dependencies";
 import type { UpdateHooks, Updates } from "./index";
 import {
   artifactPath,
+  channelOf,
   feedPath,
   verifyRelease,
   type SignedRelease,
 } from "./protocol";
+import type { Channel } from "./state";
 import { UpdateStore } from "./store";
 
 declare const __UPDATE__: {
@@ -168,6 +176,27 @@ const disabledReason = !app.isPackaged
         ? "This build is not connected to an update feed."
         : null;
 
+// The channel this install follows: the one picked in the app, else its
+// version's. Another channel's build replaces this one even when it is older,
+// so a switch takes effect at once. Until the channel picked has a release,
+// the install reads its version's feeds, as if nothing were picked.
+const versionChannel = channelOf(app.getVersion());
+// In the user data the launcher starts with, beside the JavaScript releases,
+// even when the app moves its user data later.
+const channelPath = join(app.getPath("userData"), "update-channel");
+let channel: Channel = (() => {
+  try {
+    const picked = readFileSync(channelPath, "utf8");
+    if (picked === "stable" || picked === "nightly") return picked;
+  } catch {
+    // Never picked.
+  }
+  return versionChannel;
+})();
+// JavaScript releases are kept per channel, so after a switch they wait for
+// the next launch.
+const launchChannel = channel;
+
 let store: UpdateStore | undefined;
 let staged: SignedRelease | undefined;
 let checking: Promise<{ version: string; restart: boolean } | null> | undefined;
@@ -178,14 +207,18 @@ let shownMenu = "";
 
 const javascript: JavascriptUpdater = {
   check(progress) {
-    if (!store) return Promise.resolve(null);
+    if (!store || channel !== launchChannel) return Promise.resolve(null);
     const current = store;
-    checking ??= (async () => {
-      const metadata = await download(
-        `${origin}/${feedPath(product, current.runtime, app.getVersion())}`,
+    const feed = (from: Channel) =>
+      download(
+        `${origin}/${feedPath(product, current.runtime, from)}`,
         8192,
         true,
       );
+    checking ??= (async () => {
+      const metadata =
+        (await feed(channel)) ??
+        (channel === versionChannel ? null : await feed(versionChannel));
       if (!metadata) return null;
       const envelope = JSON.parse(metadata.toString("utf8")) as SignedRelease;
       const release = verifyRelease(
@@ -281,6 +314,8 @@ const controller = createController({
     };
     return autoUpdater;
   },
+  channel: () => channel,
+  versionChannel,
   javascript,
   disabledReason,
   log,
@@ -391,6 +426,17 @@ const updates: Updates = {
     timers = [];
   },
   check: controller.check,
+  channel: () => channel,
+  async setChannel(next) {
+    if (next !== channel) {
+      mkdirSync(dirname(channelPath), { recursive: true });
+      writeFileSync(channelPath, next);
+      channel = next;
+      log.info("update channel picked", { channel });
+      await controller.forget();
+    }
+    return controller.check();
+  },
   install,
   menuItem() {
     const state = controller.state();
@@ -446,7 +492,12 @@ if (app.isPackaged && !cli && !app.requestSingleInstanceLock()) {
   if (disabledReason === null) {
     try {
       store = new UpdateStore(
-        join(app.getPath("userData"), "javascript-updates", __UPDATE__.runtime),
+        join(
+          app.getPath("userData"),
+          "javascript-updates",
+          launchChannel,
+          __UPDATE__.runtime,
+        ),
         __UPDATE__.runtime,
         __UPDATE__.publicKey,
         __UPDATE__.installed.sequence,

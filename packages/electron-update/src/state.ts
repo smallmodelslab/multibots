@@ -1,3 +1,7 @@
+// The update channel an install follows: the one picked in the app, else its
+// version's.
+export type Channel = "stable" | "nightly";
+
 // The one update state the main process pushes to every window. Installer and
 // JavaScript updates share it; which one installs is the updater's choice.
 export type UpdateState =

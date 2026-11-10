@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import type { AppState, ModelList, OwnModelKind } from "../../shared/types";
 import { Tabs } from "../ui/tabs";
+import { ChannelSetting } from "./ChannelSetting";
 import { ChatgptSetting } from "./ChatgptSetting";
 import { ModelOrder } from "./ModelOrder";
 import { MultidesktopSetting } from "./MultidesktopSetting";
@@ -77,7 +78,7 @@ const ModelSections = ({
 // whether this computer is a server, which then shows what its bots and
 // voice chats run on, its ChatGPT sign-in and the models the user hosts in
 // the order they are tried, and the Multidesktop through which its bots use
-// its screen and the user's other computers.
+// its screen and the user's other computers; then the channel updates follow.
 export const Settings = ({ state }: { state: AppState }) => {
   const self = state.hosts[0]!;
   return (
@@ -118,6 +119,9 @@ export const Settings = ({ state }: { state: AppState }) => {
               </SettingsSection>
             </>
           ) : null}
+          <SettingsSection title="Updates">
+            <ChannelSetting channel={state.channel} />
+          </SettingsSection>
         </div>
       </div>
     </div>

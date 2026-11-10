@@ -75,6 +75,11 @@ if (process.argv.includes('status')) {
       write('checked',state);
       if (state.status==='downloaded' && !state.restart) return updates.install();
     }
+    if (mode==='nightly') {
+      const before=updates.channel();
+      await updates.setChannel('nightly');
+      write('channel',{before,after:updates.channel()});
+    }
     write('app',{label:${JSON.stringify(label)},page,pages,pid:process.pid,release:updates.release,commit:updates.commit,version:updates.version,esm:(await import('ota-dependency')).default,cjs:require('ota-dependency')});
     app.exit(0);
   });
@@ -128,7 +133,7 @@ async function smoke(format) {
   };
   const open = () =>
     new UpdateStore(
-      join(data, "javascript-updates", runtime),
+      join(data, "javascript-updates", "stable", runtime),
       runtime,
       publicKey,
     );
@@ -139,6 +144,7 @@ async function smoke(format) {
     label,
     window = page(label),
     code = app(label),
+    channel = "latest",
   ) => {
     const payload = join(directory, `payload-${sequence}`);
     await file(join(payload, "package.json"), JSON.stringify({ type }));
@@ -168,7 +174,7 @@ async function smoke(format) {
     };
     feed.clear();
     feed.set(
-      `/smoke/javascript/${runtime}/updates/latest.json`,
+      `/smoke/javascript/${runtime}/updates/${channel}.json`,
       JSON.stringify(envelope),
     );
     feed.set(
@@ -323,8 +329,30 @@ require('./installed.asar/out/bootstrap/index.js');`,
     assert.equal((await result("app")).page, "two");
     assert.equal(open().state.active?.version, "1.0.2");
     assert.deepEqual(open().state.rejected, [3, 5]);
+    // A picked channel lasts across launches. The next launch runs the
+    // installer's code, not the other channel's release; until that channel
+    // has a release it takes its version's, then its own channel's.
+    await rm(join(results, "app.json"));
+    await run("nightly");
+    assert.deepEqual(await result("channel"), {
+      before: "stable",
+      after: "nightly",
+    });
+    await rm(join(results, "app.json"));
+    await release(6, "installed", page("six"));
+    await run("update");
+    const early = await result("app");
+    assert.deepEqual(early.pages, ["installed", "six"]);
+    assert.equal(early.release, "1.0.6");
+    await rm(join(results, "app.json"));
+    await release(7, "installed", page("seven"), undefined, "nightly");
+    await run("update");
+    const nightly = await result("app");
+    assert.deepEqual(nightly.pages, ["six", "seven"]);
+    assert.equal(nightly.release, "1.0.7");
+    assert.equal(open().state.active?.version, "1.0.2");
     console.log(
-      `PASS (${format}): boot, CLI, reload into window-only updates, reload rollback, restart detection, startup rollback.`,
+      `PASS (${format}): boot, CLI, reload into window-only updates, reload rollback, restart detection, startup rollback, channel switch.`,
     );
   } finally {
     // A relaunched app may still be shutting down.

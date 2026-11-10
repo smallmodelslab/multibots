@@ -66,6 +66,8 @@ const setup = (disabledReason: string | null = null) => {
   const states: UpdateState[] = [];
   const controller = createController({
     native: () => updater as unknown as AppUpdater,
+    channel: () => "stable",
+    versionChannel: "stable",
     javascript,
     disabledReason,
     log: { info: () => undefined, error: () => undefined },

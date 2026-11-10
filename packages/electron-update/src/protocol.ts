@@ -1,4 +1,5 @@
 import { createHash, verify } from "node:crypto";
+import type { Channel } from "./state";
 
 export type Release = {
   schema: 2;
@@ -68,11 +69,14 @@ export function verifyRelease(
 
 export const artifactPath = (product: string, release: Release): string =>
   `${product}/javascript/${release.runtime}/releases/${release.version}/${product}-${release.version}.asar`;
-// An installer follows its version's channel, as electron-builder names its
-// feeds: X.Y.Z reads latest.json and X.Y.Z-nightly.N reads nightly.json.
+// A version's channel: X.Y.Z is stable and X.Y.Z-nightly.N nightly.
+export const channelOf = (version: string): Channel =>
+  /^\d+\.\d+\.\d+-nightly\./.test(version) ? "nightly" : "stable";
+// A channel's feed name, as electron-builder names installer feeds.
+export const feedName = (channel: Channel): string =>
+  channel === "stable" ? "latest" : channel;
 export const feedPath = (
   product: string,
   runtime: string,
-  installer: string,
-): string =>
-  `${product}/javascript/${runtime}/updates/${/^\d+\.\d+\.\d+-([0-9A-Za-z-]+)/.exec(installer)?.[1] ?? "latest"}.json`;
+  channel: Channel,
+): string => `${product}/javascript/${runtime}/updates/${feedName(channel)}.json`;

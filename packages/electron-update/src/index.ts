@@ -1,9 +1,10 @@
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { app, type MenuItemConstructorOptions } from "electron";
-import type { UpdateState } from "./state";
+import { channelOf } from "./protocol";
+import type { Channel, UpdateState } from "./state";
 
-export type { UpdateState } from "./state";
+export type { Channel, UpdateState } from "./state";
 
 export type UpdateHooks = {
   // Every state change: push it to the windows, and rebuild the menu when
@@ -37,6 +38,11 @@ export type Updates = {
   start(hooks: UpdateHooks): void;
   stop(): void;
   check(): Promise<UpdateState>;
+  // The channel this install follows: the one picked, else its version's.
+  channel(): Channel;
+  // Follows `channel` from now on, even when its newest build is older than
+  // this one: drops an update downloaded from the other channel and checks.
+  setChannel(channel: Channel): Promise<UpdateState>;
   // Reloads the windows into a JavaScript update that only changes them, or
   // confirms and restarts into any other update.
   install(): Promise<void>;
@@ -69,6 +75,11 @@ export const updates = (): Updates =>
     start: () => undefined,
     stop: () => undefined,
     check: async () => ({
+      status: "disabled",
+      reason: "Started without its launcher.",
+    }),
+    channel: () => channelOf(app.getVersion()),
+    setChannel: async () => ({
       status: "disabled",
       reason: "Started without its launcher.",
     }),

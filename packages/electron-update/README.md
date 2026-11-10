@@ -21,6 +21,14 @@ ends with `electron-update launcher`, and its main process uses `updates()`:
   pages through it, never through `__dirname`, so a reload shows the new release.
 - `ready()` once the window works. A release that never gets there rolls back.
 - `menuItem()`, `check()`, `install()` for the app's update controls.
+- `channel()` and `setChannel(channel)` for an app with stable and nightly
+  releases. An install follows the channel picked in the app, else its
+  version's. A switch takes effect at once, even when the other channel's
+  newest build is older: it drops an update downloaded from the channel left
+  behind and checks the new one. JavaScript releases are kept per channel, so
+  the new channel's arrive after the next launch. Until the channel picked has
+  a release, installer or JavaScript, the install reads its version's feed in
+  its place, so picking nightly before its first release changes nothing.
 - `release`, `commit` and `session` for log records. The commit comes from the
   signed release, so builds of unchanged main code stay byte-identical.
 
@@ -60,10 +68,10 @@ The native contract is a fingerprint of the tracked files `updates.json` lists,
 plus `updates.json` and this package. Dependency changes conservatively need a
 new installer, even JavaScript-only ones. Installer releases publish it as
 `javascript-runtime.json`; releases for it live under
-`<product>/javascript/<runtime>/` in the shared R2 bucket. An installer reads
-the feed of its version's channel there, named as electron-builder names
-installer feeds: `X.Y.Z` reads `updates/latest.json` and `X.Y.Z-nightly.N`
-reads `updates/nightly.json`.
+`<product>/javascript/<runtime>/` in the shared R2 bucket. An install reads
+the feed of the channel it follows there, named as electron-builder names
+installer feeds: stable reads `updates/latest.json` and nightly
+`updates/nightly.json`.
 
 ## Release
 

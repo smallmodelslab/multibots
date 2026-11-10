@@ -1,5 +1,6 @@
 import type { AppUpdater } from "electron-updater";
-import type { UpdateState } from "./state";
+import { feedName } from "./protocol";
+import type { Channel, UpdateState } from "./state";
 
 // A staged JavaScript release: `restart` is false when installing it only
 // reloads the windows.
@@ -22,6 +23,11 @@ export type JavascriptUpdater = {
 export type ControllerOptions = {
   // Created only when updates are enabled.
   native: () => AppUpdater;
+  // The channel whose installer feed each check reads, else, while it has no
+  // installer release yet, the running version's: picking a channel before
+  // its first release changes nothing.
+  channel: () => Channel;
+  versionChannel: Channel;
   javascript?: JavascriptUpdater;
   // Why updates are off for this runtime, or null when they are on.
   disabledReason: string | null;
@@ -45,6 +51,9 @@ export type Controller = {
     confirm: (update: JavascriptUpdate) => Promise<boolean>,
     prepare: (update: JavascriptUpdate) => Promise<boolean>,
   ): Promise<void>;
+  // Drops the downloaded update once any check in flight ends, as when the
+  // feed changed. Nothing is dropped during an install.
+  forget(): Promise<void>;
 };
 
 const messageOf = (error: unknown) =>
@@ -102,7 +111,6 @@ export function createController(options: ControllerOptions): Controller {
     native.autoDownload = false;
     native.autoInstallOnAppQuit = false;
     native.autoRunAppAfterInstall = true;
-    native.allowDowngrade = false;
     native.on("download-progress", ({ percent }) => {
       if (nativeDownload !== null) downloading(nativeDownload, percent);
     });
@@ -165,12 +173,35 @@ export function createController(options: ControllerOptions): Controller {
     }
   };
 
+  const checkNative = async (updater: AppUpdater) => {
+    const follow = (feed: Channel) => {
+      updater.channel = feedName(feed);
+      // Another channel's build replaces this one even when it is older.
+      updater.allowDowngrade = feed !== options.versionChannel;
+    };
+    const channel = options.channel();
+    follow(channel);
+    try {
+      return await updater.checkForUpdates();
+    } catch (error) {
+      if (
+        channel === options.versionChannel ||
+        (error as { code?: unknown }).code !==
+          "ERR_UPDATER_CHANNEL_FILE_NOT_FOUND"
+      )
+        throw error;
+      log.info("update channel has no installer yet", { channel });
+      follow(options.versionChannel);
+      return await updater.checkForUpdates();
+    }
+  };
+
   const runCheck = async () => {
     if (!ready) publish({ status: "checking" });
     nativeDownloadError = null;
     let nativeError: unknown = null;
     try {
-      const result = await native?.checkForUpdates();
+      const result = native && (await checkNative(native));
       if (result?.isUpdateAvailable) {
         const { version } = result.updateInfo;
         log.info("update available", { release: version, kind: "native" });
@@ -286,5 +317,12 @@ export function createController(options: ControllerOptions): Controller {
     }
   };
 
-  return { state: () => state, check, install };
+  const forget = async () => {
+    await checking;
+    if (installing || !ready) return;
+    ready = null;
+    publish({ status: "idle" });
+  };
+
+  return { state: () => state, check, install, forget };
 }

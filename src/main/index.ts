@@ -1,4 +1,4 @@
-import { updates } from "@wrkrsh/electron-update";
+import { updates, type Channel } from "@wrkrsh/electron-update";
 import {
   app,
   BrowserWindow,
@@ -519,6 +519,7 @@ const start = async () => {
     pairing: peers.pairing(),
     tailscale: peers.tailscale,
     update: updates().state(),
+    channel: updates().channel(),
     user,
   });
   const pushState = async () => broadcast("openbots:state", state());
@@ -537,6 +538,12 @@ const start = async () => {
   ipcMain.handle("openbots:server", (_event, on: boolean) => setServer(on));
   ipcMain.handle("openbots:update-check", () => updates().check());
   ipcMain.handle("openbots:update-install", () => updates().install());
+  ipcMain.handle("openbots:update-channel", (_event, channel: Channel) => {
+    // Followed at once; the check it starts may download for a while.
+    const checked = updates().setChannel(channel);
+    void pushState();
+    return checked;
+  });
   ipcMain.handle("openbots:sign-in", () => chatgpt.signIn());
   ipcMain.handle("openbots:sign-out", () => chatgpt.signOut());
   ipcMain.handle("openbots:pair", (_event, code: string | null) =>

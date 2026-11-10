@@ -1,4 +1,4 @@
-import type { UpdateState } from "@wrkrsh/electron-update/state";
+import type { Channel, UpdateState } from "@wrkrsh/electron-update/state";
 import type { Sender } from "@wrkrsh/webhooks";
 import type { BoardElement, BoardFile } from "@wrkrsh/whiteboard/scene";
 
@@ -345,6 +345,8 @@ export type AppState = {
   tailscale: "running" | "stopped" | "missing";
   multidesktop: MultidesktopState;
   update: UpdateState;
+  // The channel updates follow.
+  channel: Channel;
 };
 
 export type Bridge = {
@@ -389,6 +391,8 @@ export type Bridge = {
   grokBots: () => Promise<GrokRecipe[]>;
   checkForUpdate: () => Promise<UpdateState>;
   installUpdate: () => Promise<void>;
+  // Follows the channel from now on and checks it.
+  setChannel: (channel: Channel) => Promise<UpdateState>;
   openFile: (botId: string, path: string) => Promise<void>;
   openFolder: (botId: string) => Promise<void>;
   onState: (listener: (state: AppState) => void) => () => void;
