@@ -188,12 +188,14 @@ function activate(index: number) {
   speak(step);
   const yours = steps.findIndex((s) => s.dataset.act === "yours");
   const act = acts[step.dataset.act!]!;
-  // Before "yours" the bot is plain; from there on it keeps its outfit.
+  // Before "yours" the bot is plain; from there on it keeps its outfit. With
+  // reduced motion it only takes each step's outfit, without acting.
+  const montage = index === yours && !reduced;
   void bot.play(async (bot) => {
-    if (index !== yours) bot.dress(index < yours ? plain : dressed);
-    const color = index === yours ? {} : { color: index < yours ? 0 : 1 };
+    if (!montage) bot.dress(index < yours ? plain : dressed);
+    const color = montage ? {} : { color: index < yours ? 0 : 1 };
     await bot.to({ ...rest, open: 1, ...color }, 220);
-    await act(bot);
+    if (!reduced) await act(bot);
   });
 }
 

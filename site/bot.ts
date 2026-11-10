@@ -236,11 +236,15 @@ export function createBot(host: HTMLElement, reduced: boolean) {
   };
   const wait = (ms: number) =>
     new Promise<void>((done) => setTimeout(done, reduced ? 0 : ms));
+  // A mark shown again restarts its own timer, so a stopped script's timer
+  // never hides the next script's mark.
+  const markTimers: Partial<Record<Mark, ReturnType<typeof setTimeout>>> = {};
   const mark = (name: Mark, ms: number) => {
     if (reduced) return;
     const group = markGroups[name];
     group.classList.add("on");
-    setTimeout(() => group.classList.remove("on"), ms);
+    clearTimeout(markTimers[name]);
+    markTimers[name] = setTimeout(() => group.classList.remove("on"), ms);
   };
 
   // A script runs until it ends or the next one starts; its waits then stop
