@@ -1,5 +1,5 @@
 import { GripVertical } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import type {
@@ -16,27 +16,49 @@ import { hostOf } from "./OwnModelSetting";
 // skipped while it can't run, with why.
 type Source = { id: string; name: string; detail: string; skipped: boolean };
 
+// How an order looks after `id` moved from `before` to `after`.
+type Arrange = (before: string[], after: string[], id: string) => string[];
+
 const moved = (order: string[], id: string, to: number) => {
   const rest = order.filter((each) => each !== id);
   rest.splice(Math.max(0, to), 0, id);
   return rest;
 };
 
+// ChatGPT's voice comes before the user's models or after them, never
+// between: moved up it goes first and moved down last, and a model moved
+// past it puts it on the other side.
+const voiceArranged: Arrange = (before, after, id) => {
+  const was = before.indexOf("chatgpt");
+  if (was === -1) return after;
+  const first =
+    id === "chatgpt"
+      ? after.indexOf("chatgpt") < was
+      : was === 0
+        ? after[0] === "chatgpt"
+        : after.at(-1) !== "chatgpt";
+  const rest = after.filter((each) => each !== "chatgpt");
+  return first ? ["chatgpt", ...rest] : [...rest, "chatgpt"];
+};
+
 // A capability's sources in the order they are tried: each dragged into its
 // place, or moved with the arrow keys from its handle. The new order shows
 // at once, while it is saved.
 const SourceOrder = ({
+  arrange = (_, after) => after,
   label,
   save,
   sources,
 }: {
+  arrange?: Arrange;
   label: string;
   save: (ids: string[]) => Promise<void>;
   sources: Source[];
 }) => {
-  // The order shown while one is dragged (`id`) or saved.
+  // The order shown while one is dragged (`id`, from `start`) or saved.
   const [moving, setMoving] = useState<{
     id: string | null;
+    start: string[];
     order: string[];
   } | null>(null);
   const byId = new Map(sources.map((source) => [source.id, source]));
@@ -44,7 +66,7 @@ const SourceOrder = ({
     byId.has(id),
   );
   const store = (next: string[]) => {
-    const saving = { id: null, order: next };
+    const saving = { id: null, order: next, start: next };
     setMoving(saving);
     void save(next)
       .catch((error: unknown) => toastError(messageOf(error)))
@@ -71,15 +93,17 @@ const SourceOrder = ({
             onDragOver={(event) => {
               if (!moving?.id) return;
               event.preventDefault();
-              if (moving.id !== id)
-                setMoving({
-                  id: moving.id,
-                  order: moved(moving.order, moving.id, index),
-                });
+              const next = arrange(
+                moving.start,
+                moved(moving.start, moving.id, index),
+                moving.id,
+              );
+              if (next.join() !== moving.order.join())
+                setMoving({ ...moving, order: next });
             }}
             onDragStart={(event) => {
               event.dataTransfer.effectAllowed = "move";
-              setMoving({ id, order });
+              setMoving({ id, order, start: order });
             }}
             onDrop={(event) => {
               event.preventDefault();
@@ -99,7 +123,8 @@ const SourceOrder = ({
                       : null;
                 if (to === null) return;
                 event.preventDefault();
-                if (to >= 0 && to < order.length) store(moved(order, id, to));
+                if (to >= 0 && to < order.length)
+                  store(arrange(order, moved(order, id, to), id));
               }}
               type="button"
             >
@@ -118,11 +143,13 @@ const SourceOrder = ({
 };
 
 const Capability = ({
+  arrange,
   empty,
   label,
   save,
   sources,
 }: {
+  arrange?: Arrange;
   // What to set up while none of its sources can run.
   empty: string;
   label: string;
@@ -134,7 +161,12 @@ const Capability = ({
       <div className="setting-label">{label}</div>
       <div className="setting-detail">
         {sources.some(({ skipped }) => !skipped) ? (
-          <SourceOrder label={label} save={save} sources={sources} />
+          <SourceOrder
+            arrange={arrange}
+            label={label}
+            save={save}
+            sources={sources}
+          />
         ) : (
           <span className="capability-empty">{empty}</span>
         )}
@@ -147,10 +179,11 @@ type Voice = Exclude<OwnModelKind, "bots">;
 const other = { speech: "transcription", transcription: "speech" } as const;
 
 // What chat, transcription and speech each run on, in order, with ChatGPT
-// among the models the user hosts. Chat tries each in turn on every call.
-// A voice chat runs on ChatGPT's voice, which hears and speaks in one call,
-// or on the user's transcription and speech models together, so ChatGPT
-// keeps one place in both orders: first, or after them.
+// among the models the user hosts. Chat tries each in turn on every call. A
+// voice chat runs on ChatGPT's voice, which hears and speaks in one call, or
+// on the user's transcription and speech models together, so ChatGPT keeps
+// one place in both lists: first, or after them. Both lists change the one
+// voice order, which shows at once while it is saved.
 export const ModelOrders = ({
   chatgpt,
   ownModels: { bots, voice },
@@ -158,6 +191,17 @@ export const ModelOrders = ({
   chatgpt: ChatgptState;
   ownModels: OwnModelsState;
 }) => {
+  // The voice order being saved: set at once, so a second change made before
+  // the first is saved builds on it, and shown until the save is done.
+  const saving = useRef<string[] | null>(null);
+  const [, setShown] = useState<string[] | null>(null);
+  const byId = new Map(
+    voice.map((entry) => [entry === "chatgpt" ? entry : entry.id, entry]),
+  );
+  const orderOf = (ids: string[]) =>
+    ids.map((id) => byId.get(id)).filter((entry) => entry !== undefined);
+  const voiceOrder = orderOf(saving.current ?? [...byId.keys()]);
+  const ownVoice = voiceOrder.filter((entry) => entry !== "chatgpt");
   const fromChatgpt = (detail: string): Source => ({
     detail: chatgpt.signedIn ? detail : "Not signed in, skipped",
     id: "chatgpt",
@@ -170,7 +214,6 @@ export const ModelOrders = ({
     name: model.model,
     skipped: Boolean(missing),
   });
-  const ownVoice = voice.filter((entry) => entry !== "chatgpt");
   const sourcesOf = (kind: Voice) => {
     const lacking = !ownVoice.some((model) => model.kind === other[kind]);
     const models = ownVoice
@@ -182,21 +225,26 @@ export const ModelOrders = ({
         ),
       );
     const voiceOfChatgpt = fromChatgpt("ChatGPT's voice");
-    return voice[0] === "chatgpt"
+    return voiceOrder[0] === "chatgpt"
       ? [voiceOfChatgpt, ...models]
       : [...models, voiceOfChatgpt];
   };
   // One kind reordered in the voice's order, ChatGPT first or last.
   const saveVoice = (kind: Voice) => (ids: string[]) => {
     const reordered = ids.filter((id) => id !== "chatgpt");
-    let next = 0;
-    const own = ownVoice.map((model) =>
-      model.kind === kind ? reordered[next++]! : model.id,
-    );
-    return bridge.orderModels(
-      "voice",
-      ids[0] === "chatgpt" ? ["chatgpt", ...own] : [...own, "chatgpt"],
-    );
+    let at = 0;
+    const own = orderOf(saving.current ?? [...byId.keys()])
+      .filter((entry) => entry !== "chatgpt")
+      .map((model) => (model.kind === kind ? reordered[at++]! : model.id));
+    const next =
+      ids[0] === "chatgpt" ? ["chatgpt", ...own] : [...own, "chatgpt"];
+    saving.current = next;
+    setShown(next);
+    return bridge.orderModels("voice", next).finally(() => {
+      if (saving.current !== next) return;
+      saving.current = null;
+      setShown(null);
+    });
   };
   return (
     <>
@@ -212,6 +260,7 @@ export const ModelOrders = ({
       />
       {(["transcription", "speech"] as const).map((kind) => (
         <Capability
+          arrange={voiceArranged}
           empty="Sign in to ChatGPT, or add a transcription and a speech model."
           key={kind}
           label={kind === "speech" ? "Speech" : "Transcription"}
@@ -221,8 +270,10 @@ export const ModelOrders = ({
       ))}
       <div className="setting">
         <p className="capability-note">
-          A voice chat starts on the first that's set up and stays on it.
-          ChatGPT's voice hears and speaks, so it moves in both lists.
+          Chat moves to the next when one fails. A voice chat stays on ChatGPT's
+          voice or your models, whichever it starts on, and your models move to
+          the next of their kind when one fails. ChatGPT's voice hears and
+          speaks, so it moves in both lists.
         </p>
       </div>
     </>

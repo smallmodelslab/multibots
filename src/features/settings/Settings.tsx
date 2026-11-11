@@ -66,7 +66,7 @@ export const Settings = ({ state }: { state: AppState }) => {
                 />
               </SettingsSection>
               <SettingsSection
-                note="Either is enough, and both work together: each runs the first in its order, and the next takes over when one fails or isn't set up."
+                note="Either is enough, and both can be set: each list uses the first one that's set up."
                 title="Order"
               >
                 <ModelOrders
