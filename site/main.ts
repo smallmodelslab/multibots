@@ -158,33 +158,12 @@ const acts: Record<string, (bot: Director) => Promise<void>> = {
   },
 };
 
-// Each step is said once, word by word, the first time it is reached.
-for (const step of steps) {
-  const say = step.querySelector(".say")!;
-  const walker = document.createTreeWalker(say, NodeFilter.SHOW_TEXT);
-  const texts: Text[] = [];
-  while (walker.nextNode()) texts.push(walker.currentNode as Text);
-  let index = 0;
-  for (const text of texts) {
-    if (text.parentElement?.closest(".whole")) continue;
-    const words = text.data.split(/(\s+)/).map((part) => {
-      if (!part.trim()) return document.createTextNode(part);
-      const word = document.createElement("span");
-      word.className = "w";
-      word.style.setProperty("--i", String(index++));
-      word.textContent = part;
-      return word;
-    });
-    text.replaceWith(...words);
-  }
-  for (const whole of say.querySelectorAll<HTMLElement>(".whole"))
-    whole.style.setProperty("--i", String(index++ + 2));
-  step.dataset.words = String(index);
-}
+// Each step is said once, the first time it is reached.
 function speak(step: HTMLElement) {
   if (step.classList.contains("spoken")) return;
   step.classList.add("spoken");
-  bot.talk(Number(step.dataset.words) * 45 + 250);
+  const words = step.querySelector(".say")!.textContent!.trim().split(/\s+/);
+  bot.talk(words.length * 45 + 250);
 }
 
 let active = -1;
@@ -247,7 +226,6 @@ function onScroll() {
   if (nearest !== active) activate(nearest);
   const place = buttons.getBoundingClientRect();
   if (place.top < 0 || place.bottom > innerHeight) shown = 0;
-  shown *= Number(getComputedStyle(buttons).opacity);
   corner.style.opacity = String(1 - shown);
   corner.inert = shown > 0.5;
   const first = steps[0]!.getBoundingClientRect();
@@ -261,7 +239,6 @@ addEventListener("scroll", () => (queued ||= requestAnimationFrame(onScroll)), {
   passive: true,
 });
 addEventListener("resize", onScroll);
-buttons.addEventListener("transitionend", onScroll);
 document.documentElement.classList.add("js");
 onScroll();
 if (reduced) {

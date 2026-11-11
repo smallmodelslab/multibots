@@ -216,29 +216,9 @@ p a {
   text-underline-offset: 0.18em;
 }
 
-/* Words appear as the bot says them, each rising into place. */
-.w {
-  display: inline-block;
-}
-
-.say a .w {
-  text-decoration: inherit;
-}
-
-.js .say .w,
-.js .say .whole {
-  opacity: 0;
-  translate: 0 0.3em;
-  transition:
-    opacity 0.3s,
-    translate 0.3s;
-}
-
-.js .spoken .w,
-.js .spoken .whole {
-  opacity: 1;
-  translate: none;
-  transition-delay: calc(var(--i) * 45ms);
+/* The first words wait until the bot wakes and says them. */
+.js .step:first-of-type:not(.spoken) .say {
+  visibility: hidden;
 }
 
 .actions {
@@ -319,10 +299,5 @@ p a {
 @media (prefers-reduced-motion: reduce) {
   .bot {
     animation: none;
-  }
-
-  .js .say .w,
-  .js .say .whole {
-    transition: none;
   }
 }
