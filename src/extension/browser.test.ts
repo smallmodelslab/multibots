@@ -103,9 +103,10 @@ before(async () => {
 
 after(async () => {
   // Its profile is removed once it has exited.
-  if (chrome?.exitCode === null) {
+  if (chrome && chrome.exitCode === null && chrome.signalCode === null) {
+    const exited = once(chrome, "exit");
     chrome.kill();
-    await once(chrome, "exit");
+    await exited;
   }
   fixtures?.stop();
   await browser?.close();

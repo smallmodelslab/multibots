@@ -573,22 +573,71 @@ function scrollBy(this: Element, pixels: number) {
 const partHeight = 2000;
 
 // Which of a view's lines, in order down the content, the view before
-// showed too: the most pairs of the same text in the same order, each
-// moved no further than the content grew or shrank in between, as what
-// loads above moves what follows and a still page moves nothing; where
-// pairings tie, the one that moves lines least.
+// showed too. Only a line the view before showed where the new view could
+// still show it may be the same, and texts each view shows once anchor
+// how far lines moved there, as what loads above or is measured anew moves
+// them. A text either view shows more than once, a row's "Follow" say, is
+// the same line only where it moved as far as the anchors beside it did,
+// or with none, not at all. Then the most pairs of the same text in the
+// same order win, and where pairings tie, the one that moves lines least.
 const shown = (before: View, now: View, lines: Line[]) => {
   const old = before.lines
     .filter((line) => !line.pinned)
     .sort((a, b) => a.y - b.y || a.x - b.x);
-  const growth = now.scrollHeight - before.scrollHeight;
-  const low = Math.min(0, growth) - 4;
-  const high = Math.max(0, growth) + 4;
+  // Above the new view's top, or its first line where the top cuts one,
+  // less what loading above may have pushed down, the view before showed
+  // what has gone.
+  const top =
+    Math.min(
+      now.top + (now.view.top - now.origin),
+      ...lines.map(({ y }) => y),
+    ) -
+    Math.max(0, now.scrollHeight - before.scrollHeight) -
+    4;
+  const counts = (list: Line[]) => {
+    const each = new Map<string, number>();
+    for (const { text } of list) each.set(text, (each.get(text) ?? 0) + 1);
+    return each;
+  };
+  const inOld = counts(old);
+  const inNew = counts(lines);
+  const once = (text: string) => inOld.get(text) === 1 && inNew.get(text) === 1;
+  // The anchors, the longest run of them in order in both views.
+  const found = old.flatMap((line) =>
+    once(line.text) && line.y >= top
+      ? [lines.findIndex(({ text }) => text === line.text)].map((j) => ({
+          j,
+          move: lines[j]!.y - line.y,
+        }))
+      : [],
+  );
+  const runs = found.map((_, index) => [index]);
+  for (let a = 0; a < found.length; a++)
+    for (let b = 0; b < a; b++)
+      if (found[b]!.j < found[a]!.j && runs[b]!.length + 1 > runs[a]!.length)
+        runs[a] = [...runs[b]!, a];
+  const anchors = runs
+    .reduce<number[]>(
+      (most, run) => (run.length > most.length ? run : most),
+      [],
+    )
+    .map((index) => found[index]!);
+  // How far the anchors just above and below a new line moved.
+  const near = (j: number) => {
+    const above = anchors.findLast((anchor) => anchor.j <= j);
+    const below = anchors.find((anchor) => anchor.j >= j);
+    const moves = [above, below].flatMap((anchor) =>
+      anchor ? [anchor.move] : [],
+    );
+    return moves.length ? moves : [0];
+  };
   const pair = (i: number, j: number) => {
-    const move = lines[j]!.y - old[i]!.y;
-    return old[i]!.text === lines[j]!.text && move >= low && move <= high
-      ? 1e6 - Math.abs(move)
-      : null;
+    const line = old[i]!;
+    if (line.text !== lines[j]!.text || line.y < top) return null;
+    const move = lines[j]!.y - line.y;
+    if (!once(line.text) && !near(j).some((each) => Math.abs(each - move) <= 4))
+      return null;
+    return 1e6 - Math.abs(move);
   };
   // score[i][j]: the best pairing of old lines from i and these from j.
   const score = Array.from(
