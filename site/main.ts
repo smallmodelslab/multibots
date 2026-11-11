@@ -17,6 +17,7 @@ const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const wide = matchMedia("(min-width: 50rem)");
 const steps = [...document.querySelectorAll<HTMLElement>(".step")];
 const host = document.querySelector<HTMLElement>(".bot")!;
+const corner = document.querySelector<HTMLAnchorElement>(".corner")!;
 const bot = createBot(host, reduced);
 const dressed: Outfit = { hue: 215, hat: "cap", glasses: "round" };
 const outfits: Outfit[] = [
@@ -191,6 +192,7 @@ function activate(index: number) {
   active = index;
   side = index % 2 ? -1 : 1;
   const step = steps[index]!;
+  corner.classList.toggle("gone", step.dataset.act === "download");
   if (!introDone) {
     if (index === 0) return;
     introDone = true;
@@ -261,7 +263,9 @@ if (reduced) {
   });
 }
 
-// Linux visitors see their download first.
+// Linux visitors see their download first, and get it from the corner.
 if (/Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent)) {
   document.querySelector(".actions")?.classList.add("linux");
+  corner.dataset.download = "linux";
+  corner.href = "https://wrkrsh.com/download/openbots/linux";
 }
