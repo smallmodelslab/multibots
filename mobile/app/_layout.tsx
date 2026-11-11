@@ -22,7 +22,7 @@ export default function Layout() {
               options={{
                 headerLargeTitle: true,
                 headerTransparent: true,
-                title: "OpenBots",
+                title: "Multibots",
               }}
             />
             <Stack.Screen

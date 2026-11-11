@@ -106,6 +106,8 @@ if (mode === "launcher") {
   await buildLauncher(join(out, "bootstrap/index.js"), {
     product: config.product,
     name: config.name,
+    storageName: config.storageName,
+    userDataEnv: config.userDataEnv,
     publicKey: config.publicKey,
     origin,
     cli: config.cli ?? [],

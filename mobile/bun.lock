@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "openbots-mobile",
+      "name": "multibots-mobile",
       "dependencies": {
         "@config-plugins/react-native-webrtc": "15.0.2",
         "@expo/ui": "58.0.25",

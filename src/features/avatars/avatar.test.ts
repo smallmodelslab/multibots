@@ -108,7 +108,7 @@ describe("squircle engine", () => {
 });
 
 test("a bot's chosen color and accessories survive saving and restarting", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "openbots-avatar-test-"));
+  const dir = await mkdtemp(join(tmpdir(), "multibots-avatar-test-"));
   const make = async () => {
     const replica = new Replica({
       dir,

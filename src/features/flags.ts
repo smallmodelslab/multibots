@@ -4,7 +4,7 @@ import { bridge } from "./data";
 
 // Features in progress, under Flags at the bottom of Settings. Delete a flag,
 // and the code path it hides, once its feature is on in stable.
-export const flags = createFlags("openbots.flags", {});
+export const flags = createFlags("multibots.flags", {});
 
 export type FlagId = keyof typeof flags.definitions;
 

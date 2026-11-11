@@ -1,5 +1,5 @@
 {
-  "name": "openbots-mobile",
+  "name": "multibots-mobile",
   "main": "expo-router/entry",
   "version": "0.0.0",
   "private": true,

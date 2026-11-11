@@ -1,6 +1,6 @@
 # Squircle avatars
 
-All OpenBots faces use the approved closed squircle, the bot's color, and its
+All Multibots faces use the approved closed squircle, the bot's color, and its
 saved hat/glasses. Existing bots get a stable outfit from their ID. Choose the
 color, hat and glasses when making a bot, where the face reacts to each change,
 or later in its Details → Appearance section, which also downloads a GIF of
@@ -30,7 +30,7 @@ avatar.react();
 avatar.releaseGaze(); // resumes the autonomous look-around loop
 ```
 
-Generate a GIF without running Electron, from the `openbots` directory:
+Generate a GIF without running Electron, from the `multibots` directory:
 
 ```sh
 bun run avatar:gif --hue 215 --hat cap --glasses round --out blue-bot.gif

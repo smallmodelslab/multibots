@@ -14,36 +14,42 @@
       media="(prefers-color-scheme: dark)"
       content="#121212"
     />
-    <title>Install OpenBots</title>
+    <title>Install Multibots</title>
     <meta
       name="description"
-      content="Download, install and set up OpenBots on an Apple silicon Mac or 64-bit Linux, and connect your computers."
+      content="Download, install and set up Multibots on an Apple silicon Mac or 64-bit Linux, and connect your computers."
     />
-    <link rel="canonical" href="https://openbots.ca/docs/" />
+    <link rel="canonical" href="https://multibots.ca/docs/" />
     <link
       rel="icon"
       type="image/svg+xml"
-      href="../../branding/openbots/openbots.svg"
+      href="../../branding/multibots/multibots.svg"
       media="(prefers-color-scheme: light)"
     />
     <link
       rel="icon"
       type="image/svg+xml"
-      href="../../branding/openbots/openbots-dark.svg"
+      href="../../branding/multibots/multibots-dark.svg"
       media="(prefers-color-scheme: dark)"
     />
     <script type="module" src="./docs.ts"></script>
   </head>
   <body>
     <header class="masthead">
-      <a class="brand" href="/">OpenBots</a>
+      <a class="brand" href="/">Multibots</a>
     </header>
     <div class="docs">
       <nav class="contents" aria-label="Contents"></nav>
       <article>
-        <h1>Install OpenBots</h1>
+        <h1>Install Multibots</h1>
         <p>
-          OpenBots runs on Apple silicon Macs and 64-bit (x86-64) Linux. There
+          Already using OpenBots on a Mac? Quit it on every server computer,
+          install Multibots once, then open it. Your bots, sign-ins, pairing,
+          settings and Chrome extension stay in the existing data folder. Keep
+          offline servers closed until updated. Future updates are automatic.
+        </p>
+        <p>
+          Multibots runs on Apple silicon Macs and 64-bit (x86-64) Linux. There
           is no Windows or Intel Mac version yet.
         </p>
 
@@ -52,14 +58,14 @@
           <li>
             <a
               data-download="mac"
-              href="https://wrkrsh.com/download/openbots/mac"
+              href="https://wrkrsh.com/download/multibots/mac"
               >macOS, Apple silicon</a
             >: a disk image, signed and notarized.
           </li>
           <li>
             <a
               data-download="linux"
-              href="https://wrkrsh.com/download/openbots/linux"
+              href="https://wrkrsh.com/download/multibots/linux"
               >Linux, x86-64</a
             >: an AppImage.
           </li>
@@ -67,7 +73,7 @@
         <p>
           The links always give the newest release. Each installer's SHA-256 is
           in the
-          <a href="https://downloads.wrkrsh.com/openbots/channels/stable.json"
+          <a href="https://downloads.wrkrsh.com/multibots/channels/stable.json"
             >release catalog</a
           >.
         </p>
@@ -75,13 +81,13 @@
         <h2 id="install">Install</h2>
         <h3 id="install-mac">macOS</h3>
         <p>
-          Open the disk image, drag OpenBots to Applications, and open it from
+          Open the disk image, drag Multibots to Applications, and open it from
           there.
         </p>
         <h3 id="install-linux">Linux</h3>
         <p>Make the AppImage executable and run it:</p>
-        <pre><code>chmod +x openbots-*-linux-x86_64.AppImage
-./openbots-*-linux-x86_64.AppImage</code></pre>
+        <pre><code>chmod +x multibots-*-linux-x86_64.AppImage
+./multibots-*-linux-x86_64.AppImage</code></pre>
 
         <h2 id="set-up">Set up</h2>
         <p>
@@ -91,7 +97,7 @@
         <h3 id="chatgpt">Sign in to ChatGPT</h3>
         <p>
           In Settings, under ChatGPT, choose Sign in, then open the link
-          OpenBots shows and enter its code there. The sign-in stays on this
+          Multibots shows and enter its code there. The sign-in stays on this
           computer.
         </p>
         <h3 id="own-models">Use models you host</h3>
@@ -121,7 +127,7 @@
         <p>macOS asks you to allow these the first time each is needed:</p>
         <ul>
           <li>
-            <strong>Local Network</strong>, to reach OpenBots on your other
+            <strong>Local Network</strong>, to reach Multibots on your other
             computers. Until it is allowed, they cannot connect.
           </li>
           <li>
@@ -130,7 +136,7 @@
           <li>
             <strong>Screen Recording</strong> and
             <strong>Accessibility</strong>, so bots can see and use the screen.
-            They go to Multidesktop Bridge, which OpenBots uses for the screen:
+            They go to Multidesktop Bridge, which Multibots uses for the screen:
             install Multidesktop from Settings, under Screen, and the Computer
             tab asks for both.
           </li>
@@ -142,7 +148,7 @@
 
         <h2 id="computers">Connect your computers</h2>
         <p>
-          Every computer running OpenBots is a server unless you turn that off:
+          Every computer running Multibots is a server unless you turn that off:
           it keeps a copy of every bot and runs them. Your laptop can chat with
           the bots your desktop runs, and they keep working while it sleeps.
         </p>
@@ -169,7 +175,7 @@
 
         <h2 id="updates">Updates</h2>
         <p>
-          OpenBots updates itself. It downloads updates in the background and,
+          Multibots updates itself. It downloads updates in the background and,
           once one is ready, shows Restart to update at the bottom of the
           sidebar; choose it when it suits you. An update that only changes the
           window shows Update instead, and reloads it. Check for Updates… is in
@@ -181,7 +187,7 @@
           A bot acts as you. Its shell runs any command with your permissions,
           without asking, and anything it reads can try to steer it. Give a bot
           only the apps and computers you would let it use. The
-          <a href="https://github.com/smallmodelslab/openbots#security"
+          <a href="https://github.com/smallmodelslab/multibots#security"
             >README</a
           >
           explains how your bots are kept to your own computers.

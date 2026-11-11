@@ -1,1 +1,1 @@
-https://github.com/smallmodelslab/openbots/issues
+https://github.com/smallmodelslab/multibots/issues

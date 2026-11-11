@@ -13,18 +13,18 @@ import { SettingRow } from "./SettingRow";
 import { SettingsSection } from "./SettingsSection";
 
 const tailscaleNotes = {
-  missing: "Install Tailscale to reach OpenBots on your other computers.",
-  stopped: "Turn on Tailscale to reach OpenBots on your other computers.",
+  missing: "Install Tailscale to reach Multibots on your other computers.",
+  stopped: "Turn on Tailscale to reach Multibots on your other computers.",
 } as const;
 
-// The user's computers running OpenBots, found over Tailscale and reached
+// The user's computers running Multibots, found over Tailscale and reached
 // with the pairing code they share, the servers among them; and, last,
 // whether this computer is a server, which then shows what its bots and
 // voice chats run on: its ChatGPT sign-in and the models the user hosts,
 // either or both, and the order each capability tries them in; and the
 // Multidesktop through which its bots use its screen and the user's other
 // computers; then the channel updates follow, the flags of features in
-// progress, and whether this computer tells us how OpenBots is used.
+// progress, and whether this computer tells us how Multibots is used.
 export const Settings = ({ state }: { state: AppState }) => {
   const self = state.hosts[0]!;
   return (

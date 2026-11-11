@@ -16,11 +16,11 @@ import {
   type,
 } from "./page";
 
-// OpenBots' hands in the user's Chrome. Bots work in tabs of their own, in
+// Multibots' hands in the user's Chrome. Bots work in tabs of their own, in
 // a window of each bot's that opens without taking the focus, grouped under
 // the bot's name; the user's own tabs stay theirs. A tab is a bot's while it
 // stays in that bot's window. While a bot acts, Chrome shows its bar saying
-// OpenBots is debugging the browser; cancelling it there, or Stop in the
+// Multibots is debugging the browser; cancelling it there, or Stop in the
 // popup, stops every bot until the user lets them go on. Nothing connects
 // until the user, told what bots do and where what they read goes, allows
 // it on the page the extension opens when installed.
@@ -141,7 +141,7 @@ const open = async (bot: string, name: string, url: string) => {
 
 const stoppedError = () =>
   new Error(
-    "The user stopped bots in Chrome. They can let them go on in the OpenBots extension.",
+    "The user stopped bots in Chrome. They can let them go on in the Multibots extension.",
   );
 
 const run = async (request: BrowserRequest): Promise<unknown> => {
@@ -257,7 +257,7 @@ const connect = () => {
       void chrome.alarms.clear("reconnect");
       return;
     }
-    // OpenBots updated the folder this was loaded from.
+    // Multibots updated the folder this was loaded from.
     if ("reload" in message) return chrome.runtime.reload();
     if ("error" in message) {
       error = message.error;

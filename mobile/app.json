@@ -1,21 +1,21 @@
 {
   "expo": {
-    "name": "OpenBots",
-    "slug": "openbots",
+    "name": "Multibots",
+    "slug": "multibots",
     "owner": "wrkrsh",
     "version": "0.1.0",
     "platforms": ["ios"],
     "orientation": "portrait",
-    "scheme": "openbots",
+    "scheme": "multibots",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.wrkrsh.openbots",
+      "bundleIdentifier": "com.multibots",
       "icon": "../build/icon.icon",
       "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSAppTransportSecurity": { "NSAllowsLocalNetworking": true },
-        "NSCameraUsageDescription": "OpenBots never uses the camera; the framework its calls and live screens use asks that it be declared.",
+        "NSCameraUsageDescription": "Multibots never uses the camera; the framework its calls and live screens use asks that it be declared.",
         "UIBackgroundModes": ["audio"]
       }
     },
@@ -24,19 +24,19 @@
       [
         "@config-plugins/react-native-webrtc",
         {
-          "microphonePermission": "OpenBots uses the microphone when you call a bot."
+          "microphonePermission": "Multibots uses the microphone when you call a bot."
         }
       ],
       [
         "expo-audio",
         {
-          "microphonePermission": "OpenBots uses the microphone when you call a bot."
+          "microphonePermission": "Multibots uses the microphone when you call a bot."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "OpenBots sends the photos you pick to your bots."
+          "photosPermission": "Multibots sends the photos you pick to your bots."
         }
       ]
     ],

@@ -35,7 +35,7 @@ import { Spinner } from "../ui/spinner";
 
 // The models the user hosts behind an OpenAI-style API, for chat or a
 // voice chat's transcription or speech. Adding one opens its use, address,
-// model and key in place of the add row, and OpenBots checks the server
+// model and key in place of the add row, and Multibots checks the server
 // answers before keeping it.
 
 const uses: OwnModelKind[] = ["bots", "transcription", "speech"];

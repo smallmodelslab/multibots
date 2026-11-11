@@ -22,8 +22,8 @@
           ],
           "fill": "none",
           "hidden": false,
-          "image-name": "openbots.svg",
-          "name": "openbots light outline",
+          "image-name": "multibots.svg",
+          "name": "multibots light outline",
           "position": {
             "scale": 5.43,
             "translation-in-points": [0, 0]
@@ -60,8 +60,8 @@
           ],
           "fill": "none",
           "hidden": false,
-          "image-name": "openbots-dark.svg",
-          "name": "openbots dark outline",
+          "image-name": "multibots-dark.svg",
+          "name": "multibots dark outline",
           "position": {
             "scale": 5.43,
             "translation-in-points": [0, 0]

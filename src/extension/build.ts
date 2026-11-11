@@ -6,7 +6,7 @@ import { build } from "vite";
 import { browserProtocol } from "../shared/browser";
 
 // The Chrome extension, built into out/extension, which installers and
-// JavaScript updates carry: OpenBots copies it to the folder Chrome loads.
+// JavaScript updates carry: Multibots copies it to the folder Chrome loads.
 
 const path = (name: string) => fileURLToPath(new URL(name, import.meta.url));
 const outDir = path("../../out/extension");

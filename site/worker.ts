@@ -1,4 +1,4 @@
-// openbots.ca serves the built page from its assets. The Worker only proxies
+// multibots.ca serves the built page from its assets. The Worker only proxies
 // PostHog, reached through the site so blocklists that name PostHog's hosts
 // still let visits through.
 type Env = { ASSETS: { fetch(request: Request): Promise<Response> } };
@@ -8,6 +8,13 @@ const ANALYTICS_PATH = "/antenna";
 export default {
   async fetch(request: Request, env: Env) {
     const url = new URL(request.url);
+    if (
+      !url.pathname.startsWith(`${ANALYTICS_PATH}/`) &&
+      url.hostname !== "multibots.ca"
+    ) {
+      url.hostname = "multibots.ca";
+      return Response.redirect(url.toString(), 308);
+    }
     if (!url.pathname.startsWith(`${ANALYTICS_PATH}/`))
       return env.ASSETS.fetch(request);
     const path = url.pathname.slice(ANALYTICS_PATH.length) + url.search;

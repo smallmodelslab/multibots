@@ -9,7 +9,7 @@ import { readSealed, writeSealed } from "./sealed";
 // The one user of the Composio project the key belongs to. The project is
 // the user's own, so each of their computers given its key shares the apps
 // connected on any of them.
-const userId = "openbots";
+const userId = "multibots";
 
 // Bots have this computer's shell, so they need no Composio sandbox.
 const sessionConfig = { sandbox: { enable: false } };

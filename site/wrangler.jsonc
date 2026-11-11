@@ -1,4 +1,4 @@
-// openbots.ca, built by `bun run site:build` and deployed by
+// multibots.ca, built by `bun run site:build` and deployed by
 // `bun run site:deploy` (worker.ts).
 {
   "$schema": "node_modules/wrangler/config-schema.json",
@@ -9,11 +9,13 @@
   "assets": {
     "directory": "dist",
     "binding": "ASSETS",
-    "run_worker_first": ["/antenna/*"],
+    "run_worker_first": true,
   },
   "routes": [
     { "pattern": "openbots.ca", "custom_domain": true },
     { "pattern": "www.openbots.ca", "custom_domain": true },
+    { "pattern": "multibots.ca", "custom_domain": true },
+    { "pattern": "www.multibots.ca", "custom_domain": true },
   ],
   "workers_dev": false,
   "preview_urls": false,

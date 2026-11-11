@@ -16,7 +16,7 @@ export const SidebarUpdate = ({ state }: { state: UpdateState }) => {
     case "available":
     case "downloading":
       return (
-        <Hint label={`Downloading OpenBots ${state.version}`}>
+        <Hint label={`Downloading Multibots ${state.version}`}>
           <div className="sidebar-update">
             <ArrowDown {...icon} />
             <span className="truncate">Downloading update</span>
@@ -28,10 +28,10 @@ export const SidebarUpdate = ({ state }: { state: UpdateState }) => {
       );
     case "downloaded":
       return (
-        <Hint label={`Install OpenBots ${state.version}`}>
+        <Hint label={`Install Multibots ${state.version}`}>
           <button
             className="sidebar-update glow"
-            onClick={() => void window.openbots.installUpdate()}
+            onClick={() => void window.multibots.installUpdate()}
             type="button"
           >
             <RefreshCw {...icon} />
@@ -44,7 +44,7 @@ export const SidebarUpdate = ({ state }: { state: UpdateState }) => {
         <Hint label={state.message}>
           <button
             className="sidebar-update glow"
-            onClick={() => void window.openbots.checkForUpdate()}
+            onClick={() => void window.multibots.checkForUpdate()}
             type="button"
           >
             <RefreshCw {...icon} />

@@ -56,12 +56,6 @@ import { Replica } from "./replica";
 import { readSealed } from "./sealed";
 import { Webhooks, type SavedWebhook } from "./webhooks";
 
-// A second client on one computer, for development, keeps its own data and
-// port.
-if (process.env.OPENBOTS_HOME)
-  app.setPath("userData", process.env.OPENBOTS_HOME);
-app.setName("OpenBots");
-
 const home = app.getPath("userData");
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -119,7 +113,7 @@ const load = (window: BrowserWindow, page = "index.html") =>
 
 // A bot's whiteboard as the bot sees it, a PNG in base64, rendered by the
 // release's whiteboard page in a hidden window, so the bot sees it whether
-// or not a window of OpenBots is open.
+// or not a window of Multibots is open.
 const renderBoard = async (
   elements: readonly BoardElement[],
   files: readonly BoardFile[],
@@ -195,7 +189,7 @@ const createWindow = () => {
     minHeight: 560,
     minWidth: 900,
     show: false,
-    title: "OpenBots",
+    title: "Multibots",
     titleBarStyle: process.platform === "darwin" ? "hidden" : "default",
     trafficLightPosition: { x: 16, y: 18 },
     webPreferences: {
@@ -214,7 +208,7 @@ const createWindow = () => {
     nativeTheme.off("updated", updateBackground);
   });
   window.once("ready-to-show", () => window.show());
-  // The window only ever shows OpenBots; a link opens in the browser.
+  // The window only ever shows Multibots; a link opens in the browser.
   window.webContents.on("will-navigate", (event) => event.preventDefault());
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//.test(url)) void shell.openExternal(url);
@@ -223,7 +217,7 @@ const createWindow = () => {
   void load(window);
 };
 
-// Whether this computer is one of the user's OpenBots servers, which keep
+// Whether this computer is one of the user's Multibots servers, which keep
 // and run the bots: each is, until the user turns server mode off.
 const serverFile = () => join(home, "server.json");
 const readServerMode = () =>
@@ -348,7 +342,7 @@ const start = async () => {
     if (!here) {
       if (handedOn) throw new Error(moved);
       const [server] = peers.servers();
-      if (!server) throw new Error("None of your OpenBots servers is online.");
+      if (!server) throw new Error("None of your Multibots servers is online.");
       return peers.call(server.id, command);
     }
     if (!("botId" in command)) return here.handle(command);
@@ -402,13 +396,13 @@ const start = async () => {
     handle: (command, handedOn) => route(command, handedOn),
     onChange: (change, from, status) => {
       if (status && change.botId) bots?.hear(from, change.botId, status);
-      broadcast("openbots:change", change);
+      broadcast("multibots:change", change);
     },
     onHosts: () => {
       void pushState();
       void serversChanged();
     },
-    port: Number(process.env.OPENBOTS_PORT) || defaultPort,
+    port: Number(process.env.MULTIBOTS_PORT) || defaultPort,
     // Only a server that serves takes copies, and says what it has: one
     // turning server mode off does neither, so another doing so at once
     // cannot hand it the bots.
@@ -445,7 +439,7 @@ const start = async () => {
       hostId,
       hostName: name,
       onChange: (botId, extra) => {
-        broadcast("openbots:change", {
+        broadcast("multibots:change", {
           botId,
           ...(extra?.whiteboard && { whiteboard: true }),
         } satisfies Change);
@@ -484,7 +478,7 @@ const start = async () => {
       const first = (await made.handle({
         hue: 145,
         instructions: "",
-        name: "OpenBot",
+        name: "Multibot",
         type: "bot.create",
       })) as Bot;
       await made.handle({ botId: first.id, pinned: true, type: "bot.update" });
@@ -525,7 +519,7 @@ const start = async () => {
     else await stopServer();
     await writeFile(serverFile(), JSON.stringify({ server: on }));
     hostChanged();
-    broadcast("openbots:change", { botId: null } satisfies Change);
+    broadcast("multibots:change", { botId: null } satisfies Change);
   };
 
   const state = (): AppState => ({
@@ -551,7 +545,7 @@ const start = async () => {
     analytics: analyticsOn(),
     user,
   });
-  const pushState = async () => broadcast("openbots:state", state());
+  const pushState = async () => broadcast("multibots:state", state());
 
   await chatgpt.load();
   await own.load();
@@ -571,24 +565,24 @@ const start = async () => {
     run: (...args: A) => R | Promise<R>,
     failed?: (result: R) => boolean,
   ) =>
-    ipcMain.handle(`openbots:${name}`, (_event, ...args: A) =>
+    ipcMain.handle(`multibots:${name}`, (_event, ...args: A) =>
       tracked(name, () => run(...args), failed),
     );
   // Answers that tell of a failure without throwing.
   const updateFailed = (update: UpdateState) => update.status === "error";
   const openFailed = (problem: string) => problem !== "";
-  ipcMain.handle("openbots:state", () => state());
+  ipcMain.handle("multibots:state", () => state());
   // The window has drawn the app, also after a reload: the release works.
-  ipcMain.on("openbots:ready", () => updates().ready());
-  ipcMain.on("openbots:flags", (_event, flags: string[]) => setFlags(flags));
-  ipcMain.on("openbots:error", (_event, error: unknown) =>
+  ipcMain.on("multibots:ready", () => updates().ready());
+  ipcMain.on("multibots:flags", (_event, flags: string[]) => setFlags(flags));
+  ipcMain.on("multibots:error", (_event, error: unknown) =>
     logError("window", "The window hit an error.", { error }),
   );
-  ipcMain.handle("openbots:analytics", async (_event, on: boolean) => {
+  ipcMain.handle("multibots:analytics", async (_event, on: boolean) => {
     await setAnalytics(on);
     void pushState();
   });
-  ipcMain.handle("openbots:call", (_event, command: Command) =>
+  ipcMain.handle("multibots:call", (_event, command: Command) =>
     untracked.has(command.type)
       ? route(command)
       : tracked(command.type, () => route(command)),
@@ -610,7 +604,7 @@ const start = async () => {
   act("sign-out", () => chatgpt.signOut());
   act("pair", (code: string | null) => peers.pair(code));
   ipcMain.handle(
-    "openbots:served-models",
+    "multibots:served-models",
     (_event, address: string, key: string) => own.served(address, key),
   );
   act("connect-model", (kind: OwnModelKind, input: OwnModelInput) =>
@@ -622,7 +616,7 @@ const start = async () => {
   );
   act("composio-key", (key: string) => plugins.setKey(key));
   ipcMain.handle(
-    "openbots:plugins",
+    "multibots:plugins",
     (_event, query: Parameters<Bridge["plugins"]>[0]) => plugins.plugins(query),
   );
   act("connect-plugin", (slug: string) => plugins.connect(slug));
@@ -643,7 +637,7 @@ const start = async () => {
       .unref();
   });
   act("sign-in-multidesktop", () => computer?.signIn());
-  ipcMain.handle("openbots:grok-bots", () =>
+  ipcMain.handle("multibots:grok-bots", () =>
     localGrokBots(app.getPath("appData")),
   );
   act(

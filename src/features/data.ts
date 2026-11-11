@@ -19,11 +19,11 @@ import {
 
 declare global {
   interface Window {
-    openbots: Bridge;
+    multibots: Bridge;
   }
 }
 
-export const bridge = window.openbots;
+export const bridge = window.multibots;
 
 // What went wrong, without what Electron says around it.
 export const messageOf = (error: unknown) =>

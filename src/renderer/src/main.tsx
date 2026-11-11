@@ -11,10 +11,10 @@ import { App } from "./App";
 
 // What fails in the window that nothing catches goes to the log and analytics.
 window.addEventListener("error", (event) =>
-  window.openbots.reportError(serializeError(event.error ?? event.message)),
+  window.multibots.reportError(serializeError(event.error ?? event.message)),
 );
 window.addEventListener("unhandledrejection", (event) =>
-  window.openbots.reportError(serializeError(event.reason)),
+  window.multibots.reportError(serializeError(event.reason)),
 );
 
 const root = document.getElementById("root");

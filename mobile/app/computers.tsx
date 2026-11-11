@@ -138,9 +138,9 @@ export default function Computers() {
             <Note color={colors.red}>{problem}</Note>
           ) : (
             <Note>
-              A computer running OpenBots on this phone's Tailscale account, and
-              the pairing code in its Settings. Your other computers are found
-              through it.
+              A computer running Multibots on this phone's Tailscale account,
+              and the pairing code in its Settings. Your other computers are
+              found through it.
             </Note>
           )}
         </View>

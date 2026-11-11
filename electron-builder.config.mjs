@@ -1,17 +1,17 @@
 /** @satisfies {import("electron-builder").Configuration} */
 export default {
-  appId: "com.wrkrsh.openbots",
+  appId: "com.multibots",
   // Releases stamp their version here, not in package.json, whose contents are
   // part of the JavaScript runtime fingerprint.
-  ...(process.env.OPENBOTS_VERSION && {
-    extraMetadata: { version: process.env.OPENBOTS_VERSION },
+  ...(process.env.MULTIBOTS_VERSION && {
+    extraMetadata: { version: process.env.MULTIBOTS_VERSION },
   }),
-  productName: "OpenBots",
-  artifactName: "openbots-${version}-${os}-${arch}.${ext}",
+  productName: "Multibots",
+  artifactName: "multibots-${version}-${os}-${arch}.${ext}",
   files: ["out/**/*", "package.json"],
   publish: {
     provider: "generic",
-    url: "https://downloads.wrkrsh.com/openbots/updates",
+    url: "https://downloads.wrkrsh.com/multibots/updates",
     useMultipleRangeRequest: false,
   },
   mac: {
@@ -24,14 +24,14 @@ export default {
     entitlementsInherit: "build/entitlements.mac.plist",
     extendInfo: {
       NSLocalNetworkUsageDescription:
-        "OpenBots talks to OpenBots on your other computers over your tailnet.",
+        "Multibots talks to Multibots on your other computers over your tailnet.",
       NSMicrophoneUsageDescription:
-        "OpenBots listens while you talk with a bot in a voice chat.",
+        "Multibots listens while you talk with a bot in a voice chat.",
     },
   },
   linux: {
     icon: "icon.png",
-    executableName: "openbots",
+    executableName: "multibots",
     target: ["AppImage"],
     category: "Utility",
   },

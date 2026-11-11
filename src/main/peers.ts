@@ -34,7 +34,7 @@ import {
 import type { Copy, Manifests } from "./replica";
 import { readSealed, writeSealed } from "./sealed";
 
-// OpenBots on the user's other computers, found and reached over their
+// Multibots on the user's other computers, found and reached over their
 // tailnet: nothing on the internet between them. Each client listens on its
 // own tailnet address and answers only the computers of the same Tailscale
 // user, whose addresses Tailscale vouches for. A tagged device keeps the ID
@@ -111,7 +111,7 @@ export class Peers {
   private readonly peers = new Map<string, Peer>();
   private readonly subscribers = new Set<ServerResponse>();
   private readonly connecting = new Set<string>();
-  // The user's computers whose OpenBots holds another code, by address.
+  // The user's computers whose Multibots holds another code, by address.
   private readonly unpaired = new Map<string, string>();
   // The user's tailnet addresses, this computer's included.
   private allowed = new Set<string>();
@@ -264,7 +264,7 @@ export class Peers {
       (request, response) => void this.serve(request, response),
     );
     this.server.on("error", (error) => {
-      console.error("OpenBots could not listen on the tailnet:", error);
+      console.error("Multibots could not listen on the tailnet:", error);
       this.listening = null;
     });
     this.server.listen(this.options.port, ip);
@@ -389,7 +389,7 @@ export class Peers {
     }
   }
 
-  // `name` is the computer's on the tailnet, shown while its OpenBots
+  // `name` is the computer's on the tailnet, shown while its Multibots
   // holds another code.
   private async connect(address: string, name = address) {
     if (

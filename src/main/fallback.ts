@@ -159,7 +159,7 @@ export const fallback = async (models: Fallback[]): Promise<CallableModel> => {
       doStream: (options) =>
         each(options, ({ model }, own) => model.doStream(own)),
       modelId: had.map(({ name }) => name).join(", "),
-      provider: "openbots",
+      provider: "multibots",
       specificationVersion: "v4",
       supportedUrls: {},
     },

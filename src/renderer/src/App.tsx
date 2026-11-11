@@ -36,11 +36,11 @@ export const App = () => {
   useEffect(() => followVoiceChat(bots), [bots]);
   const layout = useSidebarLayout();
   const [chosen, setChosen] = useState<Chosen | null>(() =>
-    remembered("openbots.chosen", null),
+    remembered("multibots.chosen", null),
   );
   const [pane, setPane] = useState<Pane | null>(null);
   const [details, setDetails] = useState(() =>
-    remembered("openbots.details", true),
+    remembered("multibots.details", true),
   );
 
   useEffect(() => followPointerLight(document), []);
@@ -50,14 +50,14 @@ export const App = () => {
   }, [channel]);
   const drawn = Boolean(state);
   useEffect(() => {
-    if (drawn) window.openbots.ready();
+    if (drawn) window.multibots.ready();
   }, [drawn]);
   useEffect(
-    () => localStorage.setItem("openbots.chosen", JSON.stringify(chosen)),
+    () => localStorage.setItem("multibots.chosen", JSON.stringify(chosen)),
     [chosen],
   );
   useEffect(
-    () => localStorage.setItem("openbots.details", JSON.stringify(details)),
+    () => localStorage.setItem("multibots.details", JSON.stringify(details)),
     [details],
   );
 
@@ -80,7 +80,7 @@ export const App = () => {
   }, [bot, pane]);
 
   if (!state || !self) return null;
-  const mac = window.openbots.platform === "darwin";
+  const mac = window.multibots.platform === "darwin";
   const shownDetails = Boolean(!pane && details && bot && host);
   return (
     <div

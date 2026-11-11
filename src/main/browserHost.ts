@@ -1,7 +1,7 @@
-// The native messaging host Chrome starts for the OpenBots extension, which
-// OpenBots runs as Node from the folder it set Chrome up with
+// The native messaging host Chrome starts for the Multibots extension, which
+// Multibots runs as Node from the folder it set Chrome up with
 // (src/main/browser.ts). It only passes messages between the extension's
-// stdio, which Chrome frames with their length, and OpenBots' private
+// stdio, which Chrome frames with their length, and Multibots' private
 // socket, a line each, after the socket's token. It imports nothing but
 // Node's own modules, as it runs alone from that folder.
 import { readFileSync } from "node:fs";
@@ -36,17 +36,17 @@ const read = <T>(name: string, missing: string): T => {
 // Chrome names the extension that started it first.
 const { origin } = read<{ origin: string }>(
   "host.json",
-  "Set up Chrome in OpenBots' settings.",
+  "Set up Chrome in Multibots' settings.",
 );
 if (process.argv[2] !== origin)
-  fail("This extension is not the one OpenBots set up.");
+  fail("This extension is not the one Multibots set up.");
 const { socket: path, token } = read<{ socket: string; token: string }>(
   "connection.json",
-  "Open OpenBots on this computer.",
+  "Open Multibots on this computer.",
 );
 
 const socket = connect(path);
-socket.on("error", () => fail("Open OpenBots on this computer."));
+socket.on("error", () => fail("Open Multibots on this computer."));
 socket.on("close", () => process.exit(0));
 socket.write(`${JSON.stringify({ token })}\n`);
 

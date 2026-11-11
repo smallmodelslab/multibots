@@ -14,43 +14,43 @@
       media="(prefers-color-scheme: dark)"
       content="#121212"
     />
-    <title>OpenBots privacy</title>
+    <title>Multibots privacy</title>
     <meta
       name="description"
-      content="What OpenBots and its Chrome extension keep on your computers, and what they send elsewhere."
+      content="What Multibots and its Chrome extension keep on your computers, and what they send elsewhere."
     />
-    <link rel="canonical" href="https://openbots.ca/privacy/" />
+    <link rel="canonical" href="https://multibots.ca/privacy/" />
     <link
       rel="icon"
       type="image/svg+xml"
-      href="../../branding/openbots/openbots.svg"
+      href="../../branding/multibots/multibots.svg"
       media="(prefers-color-scheme: light)"
     />
     <link
       rel="icon"
       type="image/svg+xml"
-      href="../../branding/openbots/openbots-dark.svg"
+      href="../../branding/multibots/multibots-dark.svg"
       media="(prefers-color-scheme: dark)"
     />
     <script type="module" src="../docs/docs.ts"></script>
   </head>
   <body>
     <header class="masthead">
-      <a class="brand" href="/">OpenBots</a>
+      <a class="brand" href="/">Multibots</a>
     </header>
     <div class="docs">
       <nav class="contents" aria-label="Contents"></nav>
       <article>
         <h1>Privacy</h1>
         <p>
-          OpenBots runs on your own computers, with no account with us. This is
+          Multibots runs on your own computers, with no account with us. This is
           what stays on them, and what leaves them.
         </p>
 
         <h2 id="computers">On your computers</h2>
         <p>
           Your bots, their conversations, routines, whiteboards and files are
-          kept on the computers where you run OpenBots, and copied between them
+          kept on the computers where you run Multibots, and copied between them
           directly over your Tailscale network.
         </p>
 
@@ -67,7 +67,7 @@
             In a voice chat, your voice and the bot's spoken replies go to the
             voice you chose in Settings: ChatGPT's voice, or transcription and
             speech servers you host. It can be another provider than the bot's
-            model, and when the first fails, OpenBots tries the next in your
+            model, and when the first fails, Multibots tries the next in your
             order.
           </li>
           <li>
@@ -85,18 +85,18 @@
             until you delete the routine or 30 days after nothing listens to it.
           </li>
           <li>
-            OpenBots checks downloads.wrkrsh.com for updates. When it hits a
+            Multibots checks downloads.wrkrsh.com for updates. When it hits a
             critical error, it reports the error to us, naming what failed,
             never your messages or keys.
           </li>
           <li>
-            Unless you turn it off under Privacy in Settings, OpenBots also
+            Unless you turn it off under Privacy in Settings, Multibots also
             tells us through PostHog which features you use, whether they
             worked, and what failed. PostHog receives your IP address and an
             identifier of your computer. It records no messages, files or keys.
           </li>
           <li>
-            openbots.ca measures visits and clicks on its download and GitHub
+            multibots.ca measures visits and clicks on its download and GitHub
             links with PostHog, which receives your IP address. It keeps nothing
             in your browser, and records no text you see or type, and no
             sessions.
@@ -105,8 +105,8 @@
 
         <h2 id="chrome">The Chrome extension</h2>
         <p>
-          The OpenBots extension lets your bots use tabs of their own in your
-          Chrome. It talks only to OpenBots on the same computer, through
+          The Multibots extension lets your bots use tabs of their own in your
+          Chrome. It talks only to Multibots on the same computer, through
           Chrome's native messaging, and never to a server itself.
         </p>
         <ul>
@@ -117,7 +117,7 @@
           </li>
           <li>
             What it reads there, the page's text, address, title, outline and
-            pictures of it, goes to OpenBots on your computer for the bot that
+            pictures of it, goes to Multibots on your computer for the bot that
             asked, and from there to that bot's model as above.
           </li>
           <li>
@@ -139,8 +139,8 @@
 
         <h2 id="questions">Questions</h2>
         <p>
-          OpenBots is open source. Ask about privacy, or anything else, in
-          <a href="https://github.com/smallmodelslab/openbots/issues"
+          Multibots is open source. Ask about privacy, or anything else, in
+          <a href="https://github.com/smallmodelslab/multibots/issues"
             >its issues</a
           >.
         </p>

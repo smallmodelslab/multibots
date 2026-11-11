@@ -1,7 +1,7 @@
 /// <reference types="chrome" />
 
 // What bots do in Chrome and where what they read goes, and the button that
-// allows it; then whether OpenBots is connected and bots are at work, and
+// allows it; then whether Multibots is connected and bots are at work, and
 // the button that stops every bot in Chrome, or lets them go on.
 
 const statusLine = document.querySelector<HTMLParagraphElement>("#status")!;
@@ -23,7 +23,7 @@ const show = ({ allowed, connected, error, stopped, tabs }: State) => {
   statusLine.textContent = error
     ? error
     : !connected
-      ? "Open OpenBots on this computer. Chrome connects to it by itself."
+      ? "Open Multibots on this computer. Chrome connects to it by itself."
       : stopped
         ? "Bots are stopped. Their tabs stay as they were."
         : tabs

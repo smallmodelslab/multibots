@@ -6,7 +6,7 @@ import { Button } from "../ui/button";
 import { SettingRow } from "./SettingRow";
 
 // This server's Chrome, where its bots use tabs of their own, signed in
-// where the user is: set up here, then the OpenBots extension is loaded
+// where the user is: set up here, then the Multibots extension is loaded
 // from the folder it shows.
 export const ChromeSetting = ({ chrome }: { chrome: ChromeState }) => {
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export const ChromeSetting = ({ chrome }: { chrome: ChromeState }) => {
         ) : chrome.connected ? (
           "Connected. Bots use tabs of their own, signed in where you are."
         ) : chrome.setUp ? (
-          "In Chrome's extensions page, turn on Developer mode, choose Load unpacked and pick the folder OpenBots showed, then choose Allow on the page the extension opens."
+          "In Chrome's extensions page, turn on Developer mode, choose Load unpacked and pick the folder Multibots showed, then choose Allow on the page the extension opens."
         ) : (
           "Lets bots on this server use tabs of their own in your Chrome."
         )

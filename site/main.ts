@@ -254,5 +254,5 @@ if (reduced) {
 if (/Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent)) {
   document.querySelector(".actions")?.classList.add("linux");
   corner.dataset.download = "linux";
-  corner.href = "https://wrkrsh.com/download/openbots/linux";
+  corner.href = "https://wrkrsh.com/download/multibots/linux";
 }

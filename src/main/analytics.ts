@@ -6,9 +6,9 @@ import { updates } from "@wrkrsh/electron-update";
 import { app } from "electron";
 import { PostHog } from "posthog-node";
 
-// Which features OpenBots is used for and what fails, sent to the PostHog
+// Which features Multibots is used for and what fails, sent to the PostHog
 // project every wrkrsh product reports to (docs/analytics.md in the
-// monorepo), through openbots.ca, from released builds, unless the user turns
+// monorepo), through multibots.ca, from released builds, unless the user turns
 // it off in Settings. Events name an action or an error and how it ended,
 // never messages, files, keys or what a model or tool gave. Each carries the
 // feature flags on, so a failure can be compared with how many have a flag on.
@@ -46,7 +46,7 @@ export const startAnalytics = async (home: string, computerId: string) => {
           : Promise.resolve(new Response()),
       flushAt: 1,
       flushInterval: 0,
-      host: "https://openbots.ca/antenna",
+      host: "https://multibots.ca/antenna",
     });
 };
 
@@ -60,7 +60,7 @@ export const setAnalytics = async (next: boolean) => {
 export const activeFlags = () => flags;
 
 const properties = (extra?: Properties) => ({
-  product: "openbots",
+  product: "multibots",
   surface: "desktop",
   app_version: updates().version,
   channel: updates().channel(),
@@ -90,7 +90,7 @@ const framesOf = (error: unknown) => {
 };
 
 // What failed, as `msg` says, with the error's kind, code and where in
-// OpenBots it was thrown, never its message: a provider's error can quote
+// Multibots it was thrown, never its message: a provider's error can quote
 // what the user sent, as a validation error quotes its input.
 export const captureError = (
   scope: string,

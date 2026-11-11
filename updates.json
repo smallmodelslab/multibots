@@ -1,6 +1,6 @@
 {
-  "product": "openbots",
-  "name": "OpenBots",
+  "product": "multibots",
+  "name": "Multibots",
   "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA5mATJCv5NHKd/G2CpXm80YABaVU+RC3+vz32fIxhZlY=\n-----END PUBLIC KEY-----\n",
   "contract": [
     "bun.lock",
@@ -8,5 +8,7 @@
     "package.json",
     "electron-builder.config.mjs",
     "build"
-  ]
+  ],
+  "storageName": "OpenBots",
+  "userDataEnv": "MULTIBOTS_HOME"
 }

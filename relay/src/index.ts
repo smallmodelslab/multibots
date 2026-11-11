@@ -1,7 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { check, isSender, type Sender } from "@wrkrsh/webhooks";
 
-// Webhooks for OpenBots, which has no server: a sender POSTs to a webhook's
+// Webhooks for Multibots, which has no server: a sender POSTs to a webhook's
 // URL here, and the relay holds each request until the computer whose bot it
 // wakes takes it over a WebSocket, so none is lost while that computer
 // sleeps. There are no accounts. Each webhook is a Durable Object named by
