@@ -54,6 +54,7 @@ import {
   type Upload,
 } from "../shared/types";
 import type { Chatgpt } from "./chatgpt";
+import type { Browser } from "./browser";
 import type { Computer, Repls } from "./computer";
 import { fallback, fits, inOrder, unsent } from "./fallback";
 import { fromRecipe } from "./grokBot";
@@ -303,6 +304,7 @@ export class Bots {
       hostName: string;
       replica: Replica;
       servers: () => Server[];
+      browser: Browser;
       chatgpt: Chatgpt;
       own: OwnModels;
       computer: Computer;
@@ -1561,6 +1563,14 @@ export class Bots {
           system: this.instructions(botId, bot, about, plugins.about),
           tools: {
             ...botTools({
+              browser: this.options.browser.state().connected
+                ? {
+                    bot: botId,
+                    name: bot.saved.name,
+                    onUse: () => setWorking("Using Chrome"),
+                    send: this.options.browser.send,
+                  }
+                : null,
               folder: this.folder(botId, "files"),
               here: this.options.hostName,
               others: computer.others(),
@@ -1711,6 +1721,9 @@ export class Bots {
       this.options.computer.screen() === "ready" ||
       this.options.computer.others().length
         ? "The computer tool sees and uses a computer's screen, for what only its apps can do. The user may be working on it: prefer elements' press and setValue, which leave the pointer alone."
+        : "",
+      this.options.browser.state().connected
+        ? "The browser tool uses tabs of your own in the user's Chrome here, signed in where the user is: use it for websites rather than the screen or your shell. Read a page with snapshot and act on its refs; read a long page or list with scroll_capture."
         : "",
       plugins,
       call?.kind === "own"

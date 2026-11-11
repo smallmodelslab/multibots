@@ -126,6 +126,7 @@ test("a bot's chosen color and accessories survive saving and restarting", async
       dir,
       hostId: "test-host",
       hostName: "Test host",
+      browser: {} as never,
       chatgpt: {} as never,
       computer: {} as never,
       own: {} as never,

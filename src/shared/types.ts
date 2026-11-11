@@ -309,6 +309,11 @@ export type MultidesktopState = {
   signingIn: boolean;
 };
 
+// This computer's Chrome, in which its bots use tabs of their own through
+// the OpenBots extension: whether it was set up, and whether the extension
+// is connected.
+export type ChromeState = { setUp: boolean; connected: boolean };
+
 // An app this computer's bots reach through Composio, by Composio's slug:
 // connected, never connected, or connected once and needing a new sign-in.
 export type Plugin = {
@@ -344,6 +349,7 @@ export type AppState = {
   pairing: PairingState;
   tailscale: "running" | "stopped" | "missing";
   multidesktop: MultidesktopState;
+  chrome: ChromeState;
   update: UpdateState;
   // The channel updates follow.
   channel: Channel;
@@ -384,6 +390,9 @@ export type Bridge = {
   // Asks the system to let bots see and use this computer's screen.
   allowScreen: () => Promise<void>;
   installMultidesktop: () => Promise<void>;
+  // Sets this computer's Chrome up for the extension, shows its folder and
+  // opens Chrome's extensions page to load it.
+  setUpChrome: () => Promise<void>;
   // Signs m11 in to Multidesktop's cloud, so bots reach the user's other
   // computers.
   signInMultidesktop: () => Promise<void>;

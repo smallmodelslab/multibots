@@ -8,7 +8,7 @@ import {
   shell,
   type MenuItemConstructorOptions,
 } from "electron";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { hostname, userInfo } from "node:os";
@@ -30,6 +30,7 @@ import type {
 } from "../shared/types";
 import appIconPath from "../../build/icon.png?asset";
 import { Bots, mergeConversations } from "./bots";
+import { Browser } from "./browser";
 import { Chatgpt } from "./chatgpt";
 import { Computer } from "./computer";
 import { localGrokBots } from "./grokBot";
@@ -253,6 +254,8 @@ const start = async () => {
     join(home, "plugins.json"),
     () => void pushState(),
   );
+  // This computer's Chrome, which its bots use when this is a server.
+  const browser = new Browser(home, here, () => void pushState());
   // A server's: its screen, and its copies of the bots, which it runs once
   // it has caught up with the other servers and serves.
   let computer: Computer | null = null;
@@ -413,6 +416,7 @@ const start = async () => {
     );
     await replica.load();
     const made = new Bots({
+      browser,
       chatgpt,
       computer,
       dir: botsDir,
@@ -516,6 +520,7 @@ const start = async () => {
       signingIn: false,
       version: null,
     },
+    chrome: browser.state(),
     pairing: peers.pairing(),
     tailscale: peers.tailscale,
     update: updates().state(),
@@ -529,6 +534,11 @@ const start = async () => {
   await plugins.load();
   await peers.load();
   await peers.start();
+  await browser
+    .start()
+    .catch((error: unknown) =>
+      logError("browser", "Chrome's connection failed to start.", { error }),
+    );
   if (await readServerMode()) await startServer();
 
   ipcMain.handle("openbots:state", () => state());
@@ -580,6 +590,19 @@ const start = async () => {
   );
   ipcMain.handle("openbots:allow-screen", () => computer?.allow());
   ipcMain.handle("openbots:install-multidesktop", () => computer?.install());
+  ipcMain.handle("openbots:set-up-chrome", async () => {
+    const folder = await browser.setUp();
+    shell.showItemInFolder(join(folder, "manifest.json"));
+    spawn(
+      process.platform === "darwin" ? "open" : "google-chrome",
+      process.platform === "darwin"
+        ? ["-a", "Google Chrome", "chrome://extensions"]
+        : ["chrome://extensions"],
+      { detached: true, stdio: "ignore" },
+    )
+      .on("error", () => {})
+      .unref();
+  });
   ipcMain.handle("openbots:sign-in-multidesktop", () => computer?.signIn());
   ipcMain.handle("openbots:grok-bots", () =>
     localGrokBots(app.getPath("appData")),
@@ -614,6 +637,7 @@ const start = async () => {
     void bots?.close();
     peers.close();
     computer?.close();
+    void browser.close();
   };
   app.on("before-quit", shutDown);
   setMenu();

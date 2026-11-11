@@ -13,8 +13,8 @@
   },
   "scripts": {
     "postinstall": "install-electron",
-    "dev": "electron-update launcher && electron-vite dev",
-    "build": "electron-vite build && electron-update launcher",
+    "dev": "bun src/extension/build.ts && electron-update launcher && electron-vite dev",
+    "build": "electron-vite build && bun src/extension/build.ts && electron-update launcher",
     "package": "bun run build && electron-builder --config electron-builder.config.mjs --publish never",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit",
@@ -22,7 +22,8 @@
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "avatar:gif": "bun scripts/avatar-gif.ts",
-    "test": "bun test ./src/features/avatars"
+    "test": "bun test ./src/features/avatars",
+    "test:browser": "bun test --timeout 600000 ./src/extension"
   },
   "dependencies": {
     "@ai-sdk/openai": "4.0.106",
@@ -40,6 +41,7 @@
     "@base-ui/react": "1.9.0",
     "@resvg/resvg-js": "2.6.2",
     "@tailwindcss/postcss": "4.3.3",
+    "@types/chrome": "0.3.7",
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",

@@ -10,7 +10,13 @@ const entry = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 export default defineConfig({
   main: {
     build: {
-      rolldownOptions: { input: { index: entry("src/main/index.ts") } },
+      rolldownOptions: {
+        input: {
+          index: entry("src/main/index.ts"),
+          // Run alone by Chrome, from the folder Chrome is set up with.
+          browserHost: entry("src/main/browserHost.ts"),
+        },
+      },
     },
   },
   preload: {

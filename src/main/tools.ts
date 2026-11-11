@@ -7,10 +7,14 @@ import {
 import { tool } from "ai";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { z } from "zod";
 
+import type { BrowserTab } from "../shared/browser";
 import { nextRun, type Schedule } from "../shared/schedule";
 import type { Routine } from "../shared/types";
+import type { Browser } from "./browser";
 import { remoteShell, type Repls } from "./computer";
 
 // What a shell command's output keeps: its start and its end, each half
@@ -223,10 +227,174 @@ const onComputer = <T extends z.ZodRawShape>(
   >;
 };
 
+const browserActions = [
+  "tabs",
+  "open",
+  "navigate",
+  "back",
+  "close",
+  "snapshot",
+  "click",
+  "type",
+  "press",
+  "screenshot",
+  "scroll_capture",
+] as const;
+
+const tabLine = ({ tab, title, url }: BrowserTab) =>
+  `Tab ${tab}: ${title || "(untitled)"} — ${url}`;
+
+// How much of a long page's text a result shows; all of it is in the
+// bot's folder.
+const capturedTextLimit = 40_000;
+
+// The tabs a bot uses in the user's Chrome, through the OpenBots extension.
+type BotBrowser = {
+  bot: string;
+  name: string;
+  send: Browser["send"];
+  onUse: () => void;
+};
+
+const browserTool = (
+  { bot, name, onUse, send }: BotBrowser,
+  folder: string,
+  here: string,
+) =>
+  tool({
+    description: `Use tabs of your own in the user's Chrome on ${here}, signed in to the sites the user is signed in to; the user's own tabs stay out of reach. Actions:
+tabs lists yours. open {url} opens one. navigate {tab, url}, back {tab}, close {tab}.
+snapshot {tab, ref?} returns the page as an outline of its elements, each with its [ref], or only the part under ref.
+click {tab, ref, or x and y}. type {tab, ref?, text, submit?} types in place of what the field held, or where the focus is without ref; submit presses Enter after. press {tab, key} such as "Enter", "Escape" or "Control+A".
+screenshot {tab} attaches the tab's viewport; its points are what click takes as x and y.
+scroll_capture {tab, ref or x and y?, maxSteps?} reads a long page, or the list that scrolls at ref or at x and y, whole: it scrolls from the top to the end, or maxSteps steps (100 by default), waits for what loads at each, and returns each line of text once, how far it scrolled and whether it reached the end, with pictures of it kept in your folder. Use it rather than scrolling and reading yourself.`,
+    inputSchema: z.object({
+      action: z.enum(browserActions),
+      tab: z.number().int().optional(),
+      url: z.string().optional(),
+      ref: z
+        .number()
+        .int()
+        .optional()
+        .describe("An element's ref from the tab's snapshot"),
+      x: z.number().optional(),
+      y: z.number().optional(),
+      text: z.string().optional(),
+      submit: z.boolean().optional(),
+      key: z.string().optional(),
+      maxSteps: z.number().int().min(2).max(300).optional(),
+    }),
+    execute: async (input): Promise<{ text: string; images: string[] }> => {
+      const { action, key, maxSteps, ref, submit, text, url, x, y } = input;
+      onUse();
+      const need = <T>(value: T | undefined, what: string) => {
+        if (value === undefined) throw new Error(`${action} needs ${what}.`);
+        return value;
+      };
+      const said = (text: string, images: string[] = []) => ({ images, text });
+      if (action === "tabs") {
+        const tabs = await send({ action, bot });
+        return said(tabs.map(tabLine).join("\n") || "You have no tabs open.");
+      }
+      if (action === "open")
+        return said(
+          tabLine(await send({ action, bot, name, url: need(url, "url") })),
+        );
+      const tab = need(input.tab, "tab");
+      switch (action) {
+        case "navigate":
+          return said(
+            tabLine(await send({ action, bot, tab, url: need(url, "url") })),
+          );
+        case "back":
+          return said(tabLine(await send({ action, bot, tab })));
+        case "close":
+          await send({ action, bot, tab });
+          return said(`Closed tab ${tab}.`);
+        case "screenshot": {
+          const shot = await send({ action, bot, tab });
+          return said(`${tabLine(shot)}\n${shot.width}×${shot.height}`, [
+            shot.image,
+          ]);
+        }
+        case "snapshot": {
+          const page = await send({ action, bot, ref, tab });
+          return said(`${tabLine(page)}\n${page.outline}`);
+        }
+        case "click":
+          return said(tabLine(await send({ action, bot, ref, tab, x, y })));
+        case "type":
+          return said(
+            tabLine(
+              await send({
+                action,
+                bot,
+                ref,
+                submit,
+                tab,
+                text: need(text, "text"),
+              }),
+            ),
+          );
+        case "press":
+          return said(
+            tabLine(await send({ action, bot, key: need(key, "key"), tab })),
+          );
+        case "scroll_capture": {
+          const read = await send(
+            { action, bot, maxSteps, ref, tab, x, y },
+            600_000,
+          );
+          const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+          const captures = join(folder, "captures");
+          await mkdir(captures, { recursive: true });
+          const names = read.images.map((_, index) =>
+            read.images.length === 1
+              ? `captures/${stamp}.png`
+              : `captures/${stamp}-${index + 1}.png`,
+          );
+          await Promise.all([
+            ...read.images.map((image, index) =>
+              writeFile(
+                join(folder, names[index]!),
+                Buffer.from(image, "base64"),
+              ),
+            ),
+            writeFile(join(captures, `${stamp}.txt`), read.text.join("\n")),
+          ]);
+          const all = read.text.join("\n");
+          return said(
+            [
+              tabLine(read),
+              `Scrolled ${read.scrolled} of ${read.total} pixels in ${read.steps} steps; ${read.reachedEnd ? "reached the end" : "did not reach the end"}. ${read.text.length} lines of text, each once:`,
+              all.length > capturedTextLimit
+                ? `${all.slice(0, capturedTextLimit)}\n… the rest is in captures/${stamp}.txt`
+                : all,
+              `Pictures: ${names.join(", ")}`,
+            ].join("\n"),
+            read.images.slice(0, 2),
+          );
+        }
+      }
+    },
+    toModelOutput: ({ output }) => ({
+      type: "content",
+      value: [
+        { text: output.text, type: "text" as const },
+        ...output.images.map((data) => ({
+          data: { data, type: "data" as const },
+          mediaType: "image/png",
+          type: "file" as const,
+        })),
+      ],
+    }),
+  });
+
 // What a bot does with its server and the user's other computers: their
-// shells, their screens when it can use them, its routines, and the
-// whiteboard it shares with the user.
+// shells, their screens when it can use them, the user's Chrome when it is
+// connected, its routines, and the whiteboard it shares with the user.
 export const botTools = ({
+  browser,
   folder,
   here,
   onCommand,
@@ -237,6 +405,9 @@ export const botTools = ({
   screen,
   whiteboard,
 }: {
+  // This server's Chrome, for the bot (by id, and its name for the user),
+  // when it is connected.
+  browser: BotBrowser | null;
   folder: string;
   // This server's name, and the user's other computers', which Multidesktop
   // reaches.
@@ -322,6 +493,7 @@ Top-level await; variables last until your run ends. console.log(value) adds tex
         }),
       }),
     }),
+    ...(browser && { browser: browserTool(browser, folder, here) }),
     set_routine: tool({
       description:
         "Create a routine that wakes you on a schedule, or when its webhook is called, with its instructions, or replace one by its id.",

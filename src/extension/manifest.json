@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "OpenBots",
+  "description": "Lets your OpenBots bots use tabs of their own in your Chrome.",
+  "minimum_chrome_version": "125",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzCowVxrx2EQnT4+3chtOKuDCGgl2ojAGYO7Sg2ZYNzdPFqKcYV5PXiu0y2cR+KQ9T+4FpPE7IAHrInMNN8QSYknDU6bCWgEZR61mrdRCH2SA2N2bmIln/EzUUtTd0KrWI/NXGYRm39G3IAtnyDkpbdOUi6Kwnm1Lr27b5Y2+A/8C4jByhaObRkKaD5Xe3zi/Ms1/07HnuGaVInNAf+qMkOjphCo8tLhdeoc3SKeKqIr8YMwy/9ci8vlhcRtmkUIK67CqyR1Ma1f7NIIru4ontgeDbcZRNpHxDSMNdH7qgQXfSdw+xxPLy3iYht7HaEclY5+YbHfniUv5ifo19l0w2QIDAQAB",
+  "permissions": [
+    "alarms",
+    "debugger",
+    "nativeMessaging",
+    "storage",
+    "tabGroups",
+    "tabs"
+  ],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_popup": "popup.html", "default_title": "OpenBots" },
+  "icons": { "128": "icon.png" }
+}

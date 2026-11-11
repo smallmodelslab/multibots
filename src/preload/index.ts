@@ -38,6 +38,7 @@ const bridge: Bridge = {
   setChannel: (channel) =>
     ipcRenderer.invoke("openbots:update-channel", channel),
   setComposioKey: (key) => ipcRenderer.invoke("openbots:composio-key", key),
+  setUpChrome: () => ipcRenderer.invoke("openbots:set-up-chrome"),
   setServer: (on) => ipcRenderer.invoke("openbots:server", on),
   signInMultidesktop: () => ipcRenderer.invoke("openbots:sign-in-multidesktop"),
   servedModels: (address, key) =>

@@ -1,6 +1,7 @@
 import type { AppState } from "../../shared/types";
 import { ChannelSetting } from "./ChannelSetting";
 import { ChatgptSetting } from "./ChatgptSetting";
+import { ChromeSetting } from "./ChromeSetting";
 import { ModelOrders } from "./ModelOrder";
 import { MultidesktopSetting } from "./MultidesktopSetting";
 import { OwnModelSettings } from "./OwnModelSetting";
@@ -76,6 +77,9 @@ export const Settings = ({ state }: { state: AppState }) => {
               </SettingsSection>
               <SettingsSection title="Screen">
                 <MultidesktopSetting multidesktop={state.multidesktop} />
+              </SettingsSection>
+              <SettingsSection title="Browser">
+                <ChromeSetting chrome={state.chrome} />
               </SettingsSection>
             </>
           ) : null}
