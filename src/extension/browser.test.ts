@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn, type ChildProcess } from "node:child_process";
+import { once } from "node:events";
 import { existsSync } from "node:fs";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -34,6 +35,11 @@ let folder: string;
 // Loads an unpacked extension, which only a client on Chrome's pipe may.
 const loadExtension = (path: string) =>
   new Promise<void>((done, fail) => {
+    chrome.once("exit", () => fail(new Error("Chrome exited.")));
+    setTimeout(
+      () => fail(new Error("Chrome did not load the extension.")),
+      30_000,
+    ).unref();
     const output = chrome.stdio[4]!;
     let buffer = "";
     output.on("data", (chunk: Buffer) => {
@@ -96,7 +102,11 @@ before(async () => {
 });
 
 after(async () => {
-  chrome?.kill();
+  // Its profile is removed once it has exited.
+  if (chrome?.exitCode === null) {
+    chrome.kill();
+    await once(chrome, "exit");
+  }
   fixtures?.stop();
   await browser?.close();
   await rm(scratch, { force: true, recursive: true });

@@ -572,11 +572,56 @@ function scrollBy(this: Element, pixels: number) {
 // How much one image of a capture shows at most, in CSS pixels.
 const partHeight = 2000;
 
+// Which of a view's lines, in order down the content, the view before
+// showed too: the most pairs of the same text in the same order, each
+// moved no further than the content grew or shrank in between, as what
+// loads above moves what follows and a still page moves nothing; where
+// pairings tie, the one that moves lines least.
+const shown = (before: View, now: View, lines: Line[]) => {
+  const old = before.lines
+    .filter((line) => !line.pinned)
+    .sort((a, b) => a.y - b.y || a.x - b.x);
+  const growth = now.scrollHeight - before.scrollHeight;
+  const low = Math.min(0, growth) - 4;
+  const high = Math.max(0, growth) + 4;
+  const pair = (i: number, j: number) => {
+    const move = lines[j]!.y - old[i]!.y;
+    return old[i]!.text === lines[j]!.text && move >= low && move <= high
+      ? 1e6 - Math.abs(move)
+      : null;
+  };
+  // score[i][j]: the best pairing of old lines from i and these from j.
+  const score = Array.from(
+    { length: old.length + 1 },
+    () => new Float64Array(lines.length + 1),
+  );
+  for (let i = old.length - 1; i >= 0; i--)
+    for (let j = lines.length - 1; j >= 0; j--) {
+      const paired = pair(i, j);
+      score[i]![j] = Math.max(
+        score[i + 1]![j]!,
+        score[i]![j + 1]!,
+        paired === null ? 0 : score[i + 1]![j + 1]! + paired,
+      );
+    }
+  const known = new Set<number>();
+  for (let i = 0, j = 0; i < old.length && j < lines.length;) {
+    const paired = pair(i, j);
+    if (paired !== null && score[i]![j] === score[i + 1]![j + 1]! + paired) {
+      known.add(j);
+      i++;
+      j++;
+    } else if (score[i]![j] === score[i + 1]![j]) i++;
+    else j++;
+  }
+  return known;
+};
+
 // Scrolls the target from its top step by step, to its end or the step
 // limit, waiting at each for what loads or is drawn as it scrolls, and
-// keeps each line of text the first time it shows: a line is the same
-// line again where its text shows at the same place in the content, or
-// anywhere when a sticky or fixed element pins it to the view.
+// keeps each line of text the first time it shows: what the view before
+// showed too is not new, and one a sticky or fixed element pins to the
+// view shows once.
 // Pictures of each step, with what an earlier one showed cut off, make
 // one tall image, cut into parts when that is too tall to read.
 export const scrollCapture = async (
@@ -646,53 +691,23 @@ export const scrollCapture = async (
   await callOn(tab, element, scrollTo, [0]);
   let view = await settled(3000);
   const start = view.top;
-  const seen = new Map<string, number[]>();
   const pinned = new Set<string>();
   const kept: Line[] = [];
   const parts: { data: string; skip: number; height: number }[] = [];
   let covered = -Infinity;
-  // Where the step before showed each text it showed once.
-  let once = new Map<string, number>();
+  let previous: View | null = null;
   const record = async (now: View) => {
-    const lines = now.lines.filter((line) => !line.pinned);
-    const counts = new Map<string, number>();
-    for (const { text } of lines) counts.set(text, (counts.get(text) ?? 0) + 1);
-    const unique = lines.filter(({ text }) => counts.get(text) === 1);
-    // What loaded above moves what the step before showed: by as far as
-    // most of the texts both showed once moved, from the first of them.
-    // A list that draws its rows anew keeps a text at its row's place.
-    const moves = new Map<number, number[]>();
-    for (const line of unique) {
-      const was = once.get(line.text);
-      const move = was === undefined ? 0 : Math.round(line.y - was);
-      if (Math.abs(move) > 3)
-        moves.set(move, [...(moves.get(move) ?? []), was!]);
-    }
-    const [move, movers] = [...moves].reduce<[number, number[]]>(
-      (most, each) => (each[1].length > most[1].length ? each : most),
-      [0, []],
-    );
-    if (movers.length >= 2) {
-      const from = Math.min(...movers) - 3;
-      for (const places of seen.values())
-        places.forEach((y, index) => {
-          if (y >= from) places[index] = y + move;
-        });
-      for (const line of kept)
-        if (!line.pinned && line.y >= from) line.y += move;
-    }
-    once = new Map(unique.map(({ text, y }) => [text, y]));
-    for (const line of now.lines) {
-      if (line.pinned) {
-        if (!pinned.has(line.text)) kept.push(line);
+    const lines = now.lines
+      .filter((line) => !line.pinned)
+      .sort((a, b) => a.y - b.y || a.x - b.x);
+    const known = previous ? shown(previous, now, lines) : new Set<number>();
+    previous = now;
+    for (const line of now.lines)
+      if (line.pinned && !pinned.has(line.text)) {
         pinned.add(line.text);
-        continue;
+        kept.push(line);
       }
-      const places = seen.get(line.text) ?? [];
-      if (places.some((y) => Math.abs(y - line.y) <= 3)) continue;
-      seen.set(line.text, [...places, line.y]);
-      kept.push(line);
-    }
+    kept.push(...lines.filter((_, index) => !known.has(index)));
     // What of the content this step pictures, past what earlier ones did.
     const from = now.top + (now.view.top - now.origin);
     const to = from + now.view.height;
@@ -715,14 +730,8 @@ export const scrollCapture = async (
     const atEnd = view.top + view.client >= view.scrollHeight - 2;
     // What the next view shows below its pinned header overlaps this one.
     const step = Math.max(1, Math.floor((view.height - view.cover) * 0.9));
-    const { left, top, width, height } = view.view;
-    await send(tab, "Input.dispatchMouseEvent", {
-      deltaX: 0,
-      deltaY: step,
-      type: "mouseWheel",
-      x: left + width / 2,
-      y: top + height / 2,
-    });
+    // At once, not smoothly, so the view it lands on is the step's.
+    await callOn(tab, element, scrollBy, [step]);
     let next: View;
     if (atEnd) {
       // What loads as the end is reached comes within a while, or not at
@@ -734,12 +743,6 @@ export const scrollCapture = async (
       }
     } else {
       next = await settled(3000);
-      // The wheel may land on something over the target: then it scrolls
-      // itself.
-      if (next.top === view.top) {
-        await callOn(tab, element, scrollBy, [step]);
-        next = await settled(3000);
-      }
       if (signature(next) === signature(view)) break;
     }
     await record(next);
@@ -791,7 +794,6 @@ export const scrollCapture = async (
   }
   for (const bitmap of bitmaps) bitmap.close();
 
-  kept.sort((a, b) => a.y - b.y || a.x - b.x);
   return {
     images,
     reachedEnd,
