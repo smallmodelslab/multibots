@@ -21,7 +21,9 @@ import {
 // the bot's name; the user's own tabs stay theirs. A tab is a bot's while it
 // stays in that bot's window. While a bot acts, Chrome shows its bar saying
 // OpenBots is debugging the browser; cancelling it there, or Stop in the
-// popup, stops every bot until the user lets them go on.
+// popup, stops every bot until the user lets them go on. Nothing connects
+// until the user, told what bots do and where what they read goes, allows
+// it on the page the extension opens when installed.
 
 type Owner = { bot: string; window: number };
 
@@ -32,20 +34,22 @@ const queues = new Map<number, Promise<unknown>>();
 let port: chrome.runtime.Port | null = null;
 let connected = false;
 let stopped = false;
+let allowed = false;
 let error: string | undefined;
 
 const loaded = Promise.all([
   chrome.storage.session.get("owners"),
-  chrome.storage.local.get("stopped"),
+  chrome.storage.local.get(["stopped", "allowed"]),
 ]).then(([saved, local]) => {
   stopped = local.stopped === true;
+  allowed = local.allowed === true;
   for (const [tab, owner] of Object.entries(saved.owners ?? {}))
     owners.set(Number(tab), owner as Owner);
 });
 
 const save = async () => {
   await chrome.storage.session.set({ owners: Object.fromEntries(owners) });
-  await chrome.storage.local.set({ stopped });
+  await chrome.storage.local.set({ allowed, stopped });
   await chrome.action.setBadgeText({
     text: owners.size ? String(owners.size) : "",
   });
@@ -242,7 +246,7 @@ chrome.tabs.onRemoved.addListener(drop);
 chrome.tabs.onDetached.addListener(drop);
 
 const connect = () => {
-  if (port) return;
+  if (port || !allowed) return;
   error = undefined;
   const current = chrome.runtime.connectNative(browserHost);
   port = current;
@@ -300,8 +304,12 @@ chrome.runtime.onMessage.addListener((message, sender, answer) => {
       stopped = false;
       await save();
     }
-    if (message === "connect") connect();
-    answer({ connected, error, stopped, tabs: owners.size });
+    if (message === "allow") {
+      allowed = true;
+      await save();
+    }
+    if (message === "connect" || message === "allow") connect();
+    answer({ allowed, connected, error, stopped, tabs: owners.size });
   })();
   return true;
 });
@@ -309,6 +317,10 @@ chrome.alarms.onAlarm.addListener(({ name }) => {
   if (name === "reconnect") connect();
 });
 chrome.runtime.onStartup.addListener(connect);
+// What it does, and the choice to allow it, first.
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === "install") void chrome.tabs.create({ url: "popup.html" });
+});
 void loaded.then(async () => {
   await save();
   connect();

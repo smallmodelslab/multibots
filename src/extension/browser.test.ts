@@ -32,37 +32,78 @@ let browser: Browser;
 let fixtures: Awaited<ReturnType<typeof serveFixtures>>;
 let folder: string;
 
-// Loads an unpacked extension, which only a client on Chrome's pipe may.
-const loadExtension = (path: string) =>
-  new Promise<void>((done, fail) => {
-    chrome.once("exit", () => fail(new Error("Chrome exited.")));
+// Chrome's own protocol over its pipe, the only way to load an unpacked
+// extension into it.
+let next = 0;
+const waiting = new Map<
+  number,
+  { done(value: unknown): void; fail(error: Error): void }
+>();
+const listen = () => {
+  let buffer = "";
+  chrome.stdio[4]!.on("data", (chunk: Buffer) => {
+    buffer += chunk.toString();
+    for (let end = buffer.indexOf("\0"); end >= 0; end = buffer.indexOf("\0")) {
+      const message = JSON.parse(buffer.slice(0, end)) as {
+        id?: number;
+        result?: unknown;
+        error?: { message: string };
+      };
+      buffer = buffer.slice(end + 1);
+      const waiter = waiting.get(message.id ?? 0);
+      waiting.delete(message.id ?? 0);
+      if (message.error) waiter?.fail(new Error(message.error.message));
+      else waiter?.done(message.result);
+    }
+  });
+  chrome.once("exit", () => {
+    for (const waiter of waiting.values())
+      waiter.fail(new Error("Chrome exited."));
+  });
+};
+const cdp = <T>(method: string, params: object = {}, sessionId?: string) =>
+  new Promise<T>((done, fail) => {
+    const id = ++next;
+    waiting.set(id, { done: (value) => done(value as T), fail });
     setTimeout(
-      () => fail(new Error("Chrome did not load the extension.")),
+      () => fail(new Error(`${method} got no answer.`)),
       30_000,
     ).unref();
-    const output = chrome.stdio[4]!;
-    let buffer = "";
-    output.on("data", (chunk: Buffer) => {
-      buffer += chunk.toString();
-      for (
-        let end = buffer.indexOf("\0");
-        end >= 0;
-        end = buffer.indexOf("\0")
-      ) {
-        const message = JSON.parse(buffer.slice(0, end)) as {
-          id?: number;
-          error?: { message: string };
-        };
-        buffer = buffer.slice(end + 1);
-        if (message.id !== 1) continue;
-        if (message.error) fail(new Error(message.error.message));
-        else done();
-      }
-    });
     (chrome.stdio[3] as Writable).write(
-      `${JSON.stringify({ id: 1, method: "Extensions.loadUnpacked", params: { path } })}\0`,
+      `${JSON.stringify({ id, method, params, sessionId })}\0`,
     );
   });
+
+// Allows the extension on the page it opens when installed, as a person
+// would.
+const allow = async () => {
+  for (let waited = 0; ; waited += 100) {
+    const { targetInfos } = await cdp<{
+      targetInfos: { targetId: string; type: string; url: string }[];
+    }>("Target.getTargets");
+    const page = targetInfos.find(
+      ({ type, url }) => type === "page" && url.endsWith("/popup.html"),
+    );
+    if (page) {
+      const { sessionId } = await cdp<{ sessionId: string }>(
+        "Target.attachToTarget",
+        { flatten: true, targetId: page.targetId },
+      );
+      const clicked = await cdp<{ result: { value: boolean } }>(
+        "Runtime.evaluate",
+        {
+          expression: `(() => { const allow = document.querySelector("#allow"); if (!allow || allow.closest("[hidden]")) return false; allow.click(); return true; })()`,
+          returnByValue: true,
+        },
+        sessionId,
+      );
+      if (clicked.result.value) return;
+    }
+    if (waited > 20_000)
+      throw new Error("The extension did not ask to be allowed.");
+    await sleep(100);
+  }
+};
 
 before(async () => {
   if (!existsSync(join(built, "browserHost.js")))
@@ -94,7 +135,12 @@ before(async () => {
     ],
     { stdio: ["ignore", "ignore", "ignore", "pipe", "pipe"] },
   );
-  await loadExtension(extension);
+  listen();
+  await cdp("Extensions.loadUnpacked", { path: extension });
+  // Nothing connects before it is allowed.
+  await sleep(1000);
+  assert.equal(browser.state().connected, false);
+  await allow();
   for (let waited = 0; !browser.state().connected; waited += 100) {
     if (waited > 20_000) throw new Error("The extension did not connect.");
     await sleep(100);

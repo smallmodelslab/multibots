@@ -31,7 +31,7 @@ export const ChromeSetting = ({ chrome }: { chrome: ChromeState }) => {
         ) : chrome.connected ? (
           "Connected. Bots use tabs of their own, signed in where you are."
         ) : chrome.setUp ? (
-          "In Chrome's extensions page, turn on Developer mode, choose Load unpacked and pick the folder OpenBots showed."
+          "In Chrome's extensions page, turn on Developer mode, choose Load unpacked and pick the folder OpenBots showed, then choose Allow on the page the extension opens."
         ) : (
           "Lets bots on this server use tabs of their own in your Chrome."
         )

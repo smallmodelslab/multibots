@@ -37,6 +37,9 @@
         color: light-dark(#fff, #111);
         cursor: pointer;
       }
+      a {
+        color: inherit;
+      }
       button:hover {
         opacity: 0.85;
       }
@@ -48,7 +51,20 @@
   </head>
   <body>
     <h1>OpenBots</h1>
-    <p id="status" role="status">Connecting…</p>
+    <div id="consent" hidden>
+      <p>
+        Bots in OpenBots on this computer will open tabs of their own in this
+        Chrome, signed in where you are, and read and act on those pages. Your
+        own tabs stay out of their reach.
+      </p>
+      <p>
+        What they read there, pages' text, addresses and pictures, goes to the
+        model you chose for each bot, such as ChatGPT.
+        <a href="https://openbots.ca/privacy/" target="_blank">Privacy</a>
+      </p>
+      <button id="allow">Allow</button>
+    </div>
+    <p id="status" role="status" hidden>Connecting…</p>
     <button id="toggle" hidden></button>
     <script type="module" src="popup.js"></script>
   </body>

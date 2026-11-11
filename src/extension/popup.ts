@@ -1,19 +1,25 @@
 /// <reference types="chrome" />
 
-// Whether OpenBots is connected and bots are at work, and the button that
-// stops every bot in Chrome, or lets them go on.
+// What bots do in Chrome and where what they read goes, and the button that
+// allows it; then whether OpenBots is connected and bots are at work, and
+// the button that stops every bot in Chrome, or lets them go on.
 
 const statusLine = document.querySelector<HTMLParagraphElement>("#status")!;
 const toggle = document.querySelector<HTMLButtonElement>("#toggle")!;
+const consent = document.querySelector<HTMLDivElement>("#consent")!;
+const allow = document.querySelector<HTMLButtonElement>("#allow")!;
 
 type State = {
+  allowed: boolean;
   connected: boolean;
   stopped: boolean;
   tabs: number;
   error?: string;
 };
 
-const show = ({ connected, error, stopped, tabs }: State) => {
+const show = ({ allowed, connected, error, stopped, tabs }: State) => {
+  consent.hidden = allowed;
+  statusLine.hidden = !allowed;
   statusLine.textContent = error
     ? error
     : !connected
@@ -23,7 +29,7 @@ const show = ({ connected, error, stopped, tabs }: State) => {
         : tabs
           ? `Bots are using ${tabs === 1 ? "1 tab" : `${tabs} tabs`} of their own.`
           : "Connected. Bots open tabs of their own when they need them.";
-  toggle.hidden = !connected;
+  toggle.hidden = !allowed || !connected;
   toggle.textContent = stopped ? "Let bots go on" : "Stop bots";
 };
 
@@ -32,5 +38,6 @@ const ask = async (message: string) =>
 
 toggle.onclick = () =>
   void ask(toggle.textContent === "Stop bots" ? "stop" : "go on");
+allow.onclick = () => void ask("allow");
 void ask("connect");
 setInterval(() => void ask("status"), 1000);
