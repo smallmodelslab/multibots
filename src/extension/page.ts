@@ -502,10 +502,9 @@ function look(this: Element): View {
     }
     return known;
   };
-  // The text before each, in the page's order, and the held line waiting
-  // for the text after it.
-  let before = "";
-  let waiting: Held[number] | null = null;
+  // Every text in the page's order, and where in it each held line is.
+  const texts: string[] = [];
+  const at: number[] = [];
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     const words = (node as Text).data.replace(/\s+/g, " ").trim();
     const parent = node.parentElement;
@@ -515,10 +514,7 @@ function look(this: Element): View {
       parent.closest("script, style, noscript, template")
     )
       continue;
-    if (waiting) waiting.after = words;
-    waiting = null;
-    const previous = before;
-    before = words;
+    texts.push(words);
     range.selectNodeContents(node);
     const rect = range.getBoundingClientRect();
     if (
@@ -553,18 +549,25 @@ function look(this: Element): View {
     };
     lines.push(last);
     // A pinned line stays in the view as the content scrolls past it.
-    if (!last.pinned)
-      seen.push(
-        (waiting = {
-          after: "",
-          before: previous,
-          node: node as Text,
-          text: words,
-          y: last.y,
-        }),
-      );
+    if (!last.pinned) {
+      seen.push({ back: [], node: node as Text, text: words, y: last.y });
+      at.push(texts.length - 1);
+    }
   }
-  (globalThis as { openbotsSeen?: Held }).openbotsSeen = seen;
+  // Each held line's texts back to the nearest the page shows once, its
+  // row's or post's own, within twenty; a line with none is not held.
+  const counts = new Map<string, number>();
+  for (const text of texts) counts.set(text, (counts.get(text) ?? 0) + 1);
+  (globalThis as { openbotsSeen?: Held }).openbotsSeen = seen.filter(
+    (line, index) => {
+      const end = at[index]!;
+      let from = end;
+      while (from >= 0 && end - from < 20 && counts.get(texts[from]!) !== 1)
+        from--;
+      line.back = texts.slice(from, end);
+      return from >= 0 && end - from < 20;
+    },
+  );
   let cover = 0;
   for (let y = top; y < bottom; y += 4) {
     const hit = doc.elementFromPoint((left + right) / 2, y + 1);
@@ -595,17 +598,11 @@ function scrollBy(this: Element, pixels: number) {
 const partHeight = 2000;
 
 // Text nodes of lines, by their text and place in the content then. They
-// stay in the extension's own world of the page between calls.
-// The texts just before and after each, in the page's order, tell a node
-// a list reused for another row, a row's "Follow" say, from one that
-// stayed.
-type Held = {
-  node: Text;
-  text: string;
-  before: string;
-  after: string;
-  y: number;
-}[];
+// stay in the extension's own world of the page between calls. The texts
+// before each back to one the page showed once, its row's or post's own
+// such as a name, tell a node a list reused for another row, with its
+// "Like" or "Follow" kept, from one that stayed.
+type Held = { node: Text; text: string; back: string[]; y: number }[];
 
 // Keeps the lines the last look saw, for moved() after the next step.
 function hold(this: Element) {
@@ -615,9 +612,9 @@ function hold(this: Element) {
 
 // How far what loaded above, or was measured anew, moved the content just
 // above `below` since hold(): as far as the nearest held lines above it
-// that still show the same text, between the same texts, moved; or
-// nothing when none do, as a list that draws its rows anew replaced or
-// reused them.
+// that still show the same text after the same texts moved; or nothing
+// when none do, as a list that draws its rows anew replaced or reused
+// them.
 function moved(this: Element, below: number) {
   const doc = this.ownerDocument;
   const win = doc.defaultView!;
@@ -631,26 +628,30 @@ function moved(this: Element, below: number) {
   );
   const wordsOf = (node: Node) =>
     (node as Text).data.replace(/\s+/g, " ").trim();
-  // The text next to a node, as look() reads the page.
-  const beside = (node: Node, step: "previousNode" | "nextNode") => {
+  // The texts before a node, as look() reads the page, nearest last.
+  const behind = (node: Node, count: number) => {
+    const found: string[] = [];
     walker.currentNode = node;
-    for (let next = walker[step](); next; next = walker[step]())
+    for (
+      let next = walker.previousNode();
+      next && found.length < count;
+      next = walker.previousNode()
+    )
       if (
         wordsOf(next) &&
         !next.parentElement?.closest("script, style, noscript, template")
       )
-        return wordsOf(next);
-    return "";
+        found.unshift(wordsOf(next));
+    return found;
   };
   const moves = ((globalThis as { openbotsHeld?: Held }).openbotsHeld ?? [])
     .filter(({ y }) => y < below)
     .sort((a, b) => b.y - a.y)
-    .flatMap(({ after, before, node, text, y }) => {
+    .flatMap(({ back, node, text, y }) => {
       if (
         !node.isConnected ||
         wordsOf(node) !== text ||
-        beside(node, "previousNode") !== before ||
-        beside(node, "nextNode") !== after
+        behind(node, back.length).join("\n") !== back.join("\n")
       )
         return [];
       range.selectNodeContents(node);

@@ -35,7 +35,7 @@ const inner = page(
 // Only the rows in view, and a few around them, exist at a time: a pool
 // of rows handed out in order from the first drawn, so each scroll draws
 // every row anew as another member, its text nodes kept, and a row's
-// "Follow" is one node that moves from member to member.
+// "Follow" and "Message" are nodes that move from member to member.
 const list = page(
   "Group members",
   `<div role="dialog" aria-label="Members" style="position:fixed;left:40px;top:60px;width:360px;border:1px solid #ccc;background:#fff">
@@ -46,12 +46,12 @@ const list = page(
 </div>
 <p>Behind the dialog: the group's posts.</p>
 <script>
-  const height = 48, total = ${members}, pool = Math.ceil(480 / height) + 10;
+  const height = 72, total = ${members}, pool = Math.ceil(480 / height) + 10;
   rows.style.height = total * height + "px";
   const drawn = Array.from({ length: pool }, () => {
     const row = document.createElement("div");
     row.style.cssText = "position:absolute;left:8px;right:8px;height:" + height + "px";
-    row.innerHTML = "<div><span>Member</span> <span style=color:#888>@member</span></div><div style=color:#06c>Follow</div>";
+    row.innerHTML = "<div><span>Member</span> <span style=color:#888>@member</span></div><div style=color:#06c>Follow</div><div style=color:#06c>Message</div>";
     rows.append(row);
     return row;
   });
