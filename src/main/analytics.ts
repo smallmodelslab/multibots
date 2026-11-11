@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { serializeError } from "@wrkrsh/client-log";
+import { redactText, serializeError } from "@wrkrsh/client-log";
 import { updates } from "@wrkrsh/electron-update";
 import { app } from "electron";
 import { PostHog } from "posthog-node";
@@ -12,8 +12,8 @@ import { PostHog } from "posthog-node";
 // it off in Settings. Events name an action or an error and how it ended,
 // never messages, files, keys or what a model or tool gave. Each carries the
 // feature flags on, so a failure can be compared with how many have a flag on.
-// Each is sent as it happens, so none waits in a queue past the switch being
-// turned off or the app quitting.
+// Each is sent as it happens, and only while the switch is on: what was not
+// sent yet when it is turned off is dropped.
 
 type Properties = Record<string, string | boolean>;
 
@@ -40,6 +40,10 @@ export const startAnalytics = async (home: string, computerId: string) => {
   );
   if (app.isPackaged && app.getVersion() !== "0.0.0")
     client = new PostHog("phc_oFwEfJVgTTkyJDj6xCPSCb2bbSjb7suJYan9AyfJBqpr", {
+      fetch: (url, options) =>
+        on
+          ? fetch(url, options as RequestInit)
+          : Promise.resolve(new Response()),
       flushAt: 1,
       flushInterval: 0,
       host: "https://openbots.ca/antenna",
@@ -71,6 +75,20 @@ export const capture = (event: string, extra?: Properties) => {
     client.capture({ distinctId, event, properties: properties(extra) });
 };
 
+// Where an error was thrown: the frames after the `name: message` its stack
+// starts with, whose message can span lines that look like frames. None when
+// the stack does not start so.
+const framesOf = (error: unknown) => {
+  const { name, message, stack } = Object(error) as Record<string, unknown>;
+  const head = message ? `${String(name)}: ${String(message)}` : String(name);
+  if (typeof stack !== "string" || !stack.startsWith(`${head}\n`)) return [];
+  const lines = stack.slice(head.length + 1).split("\n");
+  const end = lines.findIndex((line) => !/^\s+at /.test(line));
+  return lines
+    .slice(0, end < 0 ? undefined : end)
+    .map((line) => redactText(line));
+};
+
 // What failed, as `msg` says, with the error's kind, code and where in
 // OpenBots it was thrown, never its message: a provider's error can quote
 // what the user sent, as a validation error quotes its input.
@@ -81,12 +99,9 @@ export const captureError = (
   extra?: Properties,
 ) => {
   if (!client || !on) return;
-  const {
-    name,
-    code,
-    stack = "",
-  } = error === undefined ? { name: "Error" } : serializeError(error);
-  const frames = stack.split("\n").filter((line) => /^\s*at /.test(line));
+  const { name, code } =
+    error === undefined ? { name: "Error" } : serializeError(error);
+  const frames = framesOf(error);
   client.captureException(
     Object.assign(new Error(msg), {
       name,
