@@ -22,7 +22,9 @@ if (location.hostname === "openbots.ca") {
         return event;
       },
     });
-    document.addEventListener("click", (event) => {
+    // A link opened with the middle button fires auxclick, not click.
+    const clicked = (event: MouseEvent) => {
+      if (event.button > 1) return;
       const link = (event.target as Element).closest("a");
       const options = { transport: "sendBeacon" } as const;
       if (link?.dataset.download)
@@ -33,6 +35,8 @@ if (location.hostname === "openbots.ca") {
         );
       else if (link?.hostname === "github.com")
         posthog.capture("github link clicked", { href: link.href }, options);
-    });
+    };
+    document.addEventListener("click", clicked);
+    document.addEventListener("auxclick", clicked);
   });
 }
