@@ -36,5 +36,5 @@ export const logError = (
   void mkdir(folder, { recursive: true })
     .then(() => appendFile(join(folder, "openbots.jsonl"), line))
     .catch(() => {});
-  captureError(scope, fields?.error ?? new Error(msg), { msg });
+  captureError(scope, msg, fields?.error);
 };

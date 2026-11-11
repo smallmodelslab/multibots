@@ -905,7 +905,7 @@ export class Bots {
           onError: (message: string) => {
             this.options.analytics.captureError(
               "voice chat",
-              new Error(message),
+              "A voice chat failed.",
             );
             void this.say(botId, "error", `Voice chat: ${message}`).catch(
               (error: unknown) => this.options.onError(botId, error),
@@ -1665,7 +1665,11 @@ export class Bots {
         // again.
         if (!abort.signal.aborted) {
           this.options.analytics.capture("bot replied", { succeeded: false });
-          this.options.analytics.captureError("bot reply", error);
+          this.options.analytics.captureError(
+            "bot reply",
+            "A reply failed.",
+            error,
+          );
           await this.finish(
             botId,
             bot,

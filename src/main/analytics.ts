@@ -12,6 +12,8 @@ import { PostHog } from "posthog-node";
 // it off in Settings. Events name an action or an error and how it ended,
 // never messages, files, keys or what a model or tool gave. Each carries the
 // feature flags on, so a failure can be compared with how many have a flag on.
+// Each is sent as it happens, so none waits in a queue past the switch being
+// turned off or the app quitting.
 
 type Properties = Record<string, string | boolean>;
 
@@ -38,6 +40,8 @@ export const startAnalytics = async (home: string, computerId: string) => {
   );
   if (app.isPackaged && app.getVersion() !== "0.0.0")
     client = new PostHog("phc_oFwEfJVgTTkyJDj6xCPSCb2bbSjb7suJYan9AyfJBqpr", {
+      flushAt: 1,
+      flushInterval: 0,
       host: "https://openbots.ca/antenna",
     });
 };
@@ -67,18 +71,33 @@ export const capture = (event: string, extra?: Properties) => {
     client.capture({ distinctId, event, properties: properties(extra) });
 };
 
-// What failed, redacted as client logs are (docs/diagnostics.md).
+// What failed, as `msg` says, with the error's kind, code and where in
+// OpenBots it was thrown, never its message: a provider's error can quote
+// what the user sent, as a validation error quotes its input.
 export const captureError = (
   scope: string,
-  error: unknown,
+  msg: string,
+  error?: unknown,
   extra?: Properties,
 ) => {
   if (!client || !on) return;
-  const safe = serializeError(error);
+  const {
+    name,
+    code,
+    stack = "",
+  } = error === undefined ? { name: "Error" } : serializeError(error);
+  const frames = stack.split("\n").filter((line) => /^\s*at /.test(line));
   client.captureException(
-    Object.assign(new Error(safe.message), safe),
+    Object.assign(new Error(msg), {
+      name,
+      stack: [`${name}: ${msg}`, ...frames].join("\n"),
+    }),
     distinctId,
-    properties({ scope, ...extra }),
+    properties({
+      scope,
+      ...(code !== undefined && { code: String(code) }),
+      ...extra,
+    }),
   );
 };
 
@@ -90,18 +109,21 @@ export const setFlags = (next: string[]) => {
   if (opened) capture("app opened");
 };
 
-// An action the user took, by name, and whether it worked.
-export const tracked = async <T>(action: string, run: () => T | Promise<T>) => {
+// An action the user took, by name, and whether it worked: it threw, or
+// gave what `failed` takes for a failure.
+export const tracked = async <T>(
+  action: string,
+  run: () => T | Promise<T>,
+  failed: (result: T) => boolean = () => false,
+) => {
+  let result: T;
   try {
-    const result = await run();
-    capture("action completed", { action, succeeded: true });
-    return result;
+    result = await run();
   } catch (error) {
     capture("action completed", { action, succeeded: false });
-    captureError("action", error, { action });
+    captureError("action", `${action} failed.`, error, { action });
     throw error;
   }
+  capture("action completed", { action, succeeded: !failed(result) });
+  return result;
 };
-
-// Sends what is left, as the app quits.
-export const stopAnalytics = () => client?.shutdown();

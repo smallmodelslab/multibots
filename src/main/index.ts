@@ -1,4 +1,8 @@
-import { updates, type Channel } from "@wrkrsh/electron-update";
+import {
+  updates,
+  type Channel,
+  type UpdateState,
+} from "@wrkrsh/electron-update";
 import {
   app,
   BrowserWindow,
@@ -37,7 +41,6 @@ import {
   setAnalytics,
   setFlags,
   startAnalytics,
-  stopAnalytics,
   tracked,
 } from "./analytics";
 import { Bots, mergeConversations } from "./bots";
@@ -564,13 +567,17 @@ const start = async () => {
   if (await readServerMode()) await startServer();
 
   // What the user asks of this computer, recorded by name and outcome.
-  const act = <A extends unknown[]>(
+  const act = <A extends unknown[], R>(
     name: string,
-    run: (...args: A) => unknown,
+    run: (...args: A) => R | Promise<R>,
+    failed?: (result: R) => boolean,
   ) =>
     ipcMain.handle(`openbots:${name}`, (_event, ...args: A) =>
-      tracked(name, () => run(...args)),
+      tracked(name, () => run(...args), failed),
     );
+  // Answers that tell of a failure without throwing.
+  const updateFailed = (update: UpdateState) => update.status === "error";
+  const openFailed = (problem: string) => problem !== "";
   ipcMain.handle("openbots:state", () => state());
   // The window has drawn the app, also after a reload: the release works.
   ipcMain.on("openbots:ready", () => updates().ready());
@@ -588,14 +595,18 @@ const start = async () => {
       : tracked(command.type, () => route(command)),
   );
   act("server", (on: boolean) => setServer(on));
-  act("update-check", () => updates().check());
+  act("update-check", () => updates().check(), updateFailed);
   act("update-install", () => updates().install());
-  act("update-channel", (channel: Channel) => {
-    // Followed at once; the check it starts may download for a while.
-    const checked = updates().setChannel(channel);
-    void pushState();
-    return checked;
-  });
+  act(
+    "update-channel",
+    (channel: Channel) => {
+      // Followed at once; the check it starts may download for a while.
+      const checked = updates().setChannel(channel);
+      void pushState();
+      return checked;
+    },
+    updateFailed,
+  );
   act("sign-in", () => chatgpt.signIn());
   act("sign-out", () => chatgpt.signOut());
   act("pair", (code: string | null) => peers.pair(code));
@@ -636,26 +647,34 @@ const start = async () => {
   ipcMain.handle("openbots:grok-bots", () =>
     localGrokBots(app.getPath("appData")),
   );
-  act("open-folder", async (botId: string) => {
-    const folder = join(botsDir, botId, "files");
-    await mkdir(folder, { recursive: true });
-    return shell.openPath(folder);
-  });
+  act(
+    "open-folder",
+    async (botId: string) => {
+      const folder = join(botsDir, botId, "files");
+      await mkdir(folder, { recursive: true });
+      return shell.openPath(folder);
+    },
+    openFailed,
+  );
   // A file of a bot opens from this server's copy, or on a client from a
   // copy in the data folder, which only the user reads, kept until the app
   // starts again.
   const opened = join(home, "opened");
   await rm(opened, { force: true, recursive: true });
-  act("open-file", async (botId: string, path: string) => {
-    if (bots) return shell.openPath(join(botsDir, botId, "files", path));
-    const data = (await route({ botId, path, type: "file.read" })) as string;
-    const copy = resolve(opened, botId, path);
-    if (!copy.startsWith(opened + sep))
-      throw new Error("That file is outside the bot's folder.");
-    await mkdir(dirname(copy), { recursive: true });
-    await writeFile(copy, Buffer.from(data, "base64"));
-    return shell.openPath(copy);
-  });
+  act(
+    "open-file",
+    async (botId: string, path: string) => {
+      if (bots) return shell.openPath(join(botsDir, botId, "files", path));
+      const data = (await route({ botId, path, type: "file.read" })) as string;
+      const copy = resolve(opened, botId, path);
+      if (!copy.startsWith(opened + sep))
+        throw new Error("That file is outside the bot's folder.");
+      await mkdir(dirname(copy), { recursive: true });
+      await writeFile(copy, Buffer.from(data, "base64"));
+      return shell.openPath(copy);
+    },
+    openFailed,
+  );
 
   // Stops every bot's run, with what its shell started, the webhooks, the
   // peers and the desktop.
@@ -664,7 +683,6 @@ const start = async () => {
     peers.close();
     computer?.close();
     void browser.close();
-    void stopAnalytics();
   };
   app.on("before-quit", shutDown);
   setMenu();
