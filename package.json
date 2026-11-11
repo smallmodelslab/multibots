@@ -23,7 +23,8 @@
     "format:check": "oxfmt --check .",
     "avatar:gif": "bun scripts/avatar-gif.ts",
     "test": "bun test ./src/features/avatars",
-    "test:browser": "bun test --timeout 600000 ./src/extension"
+    "test:browser": "bun test --timeout 600000 ./src/extension",
+    "extension:store": "bun src/extension/store.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "4.0.106",

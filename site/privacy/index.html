@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#fafaf8"
+    />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: dark)"
+      content="#121212"
+    />
+    <title>OpenBots privacy</title>
+    <meta
+      name="description"
+      content="What OpenBots and its Chrome extension keep on your computers, and what they send elsewhere."
+    />
+    <link rel="canonical" href="https://openbots.ca/privacy/" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="../../branding/openbots/openbots.svg"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="../../branding/openbots/openbots-dark.svg"
+      media="(prefers-color-scheme: dark)"
+    />
+    <script type="module" src="../docs/docs.ts"></script>
+  </head>
+  <body>
+    <header class="masthead">
+      <a class="brand" href="/">OpenBots</a>
+    </header>
+    <div class="docs">
+      <nav class="contents" aria-label="Contents"></nav>
+      <article>
+        <h1>Privacy</h1>
+        <p>
+          OpenBots runs on your own computers, with no account with us. This
+          is what stays on them, and what leaves them.
+        </p>
+
+        <h2 id="computers">On your computers</h2>
+        <p>
+          Your bots, their conversations, routines, whiteboards and files are
+          kept on the computers where you run OpenBots, and copied between them
+          directly over your Tailscale network.
+        </p>
+
+        <h2 id="elsewhere">What leaves them</h2>
+        <ul>
+          <li>
+            A bot sends what it works on, including what it reads in your
+            browser, to the model you chose for it: ChatGPT, through your own
+            account, or a model you host. That provider's own privacy policy
+            applies.
+          </li>
+          <li>
+            Apps you connect under Plugins are reached through Composio, with
+            the key you gave.
+          </li>
+          <li>
+            If you sign in to Multidesktop so bots can use your other computers,
+            their screens and shells are reached through Multidesktop's cloud.
+          </li>
+          <li>
+            A routine you start from a webhook receives its calls through our
+            relay at hooks.wrkrsh.com, which passes them on to your computers.
+          </li>
+          <li>
+            OpenBots checks downloads.wrkrsh.com for updates. When it hits a
+            critical error, it reports the error to us, naming what failed,
+            never your messages or keys.
+          </li>
+          <li>openbots.ca counts visits to its pages.</li>
+        </ul>
+
+        <h2 id="chrome">The Chrome extension</h2>
+        <p>
+          The OpenBots extension lets your bots use tabs of their own in your
+          Chrome. It talks only to OpenBots on the same computer, through
+          Chrome's native messaging, and never to a server.
+        </p>
+        <ul>
+          <li>
+            It reads and acts on pages only in the tabs your bots open, which
+            Chrome groups under each bot's name. Your own tabs stay out of its
+            reach.
+          </li>
+          <li>
+            What it reads there, the page's text, its outline and pictures of
+            it, goes to OpenBots on your computer for the bot that asked, and
+            from there to that bot's model as above.
+          </li>
+          <li>
+            It keeps which tabs belong to which bot, and whether you stopped
+            bots, in Chrome's own storage on your computer.
+          </li>
+          <li>It collects nothing else, and nothing is sold or shared.</li>
+        </ul>
+
+        <h2 id="questions">Questions</h2>
+        <p>
+          OpenBots is open source. Ask about privacy, or anything else, in
+          <a href="https://github.com/smallmodelslab/openbots/issues"
+            >its issues</a
+          >.
+        </p>
+      </article>
+    </div>
+  </body>
+</html>
