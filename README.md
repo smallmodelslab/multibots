@@ -33,7 +33,7 @@ The links always give the newest release. Each installer's SHA-256 is in the
 Then, as the [install guide](https://openbots.ca/docs/) covers in more
 detail:
 
-1. In Settings, sign in to ChatGPT, or add models you host.
+1. In Settings, sign in to ChatGPT, add models you host, or both.
 2. To use bots from more than one computer, install
    [Tailscale](https://tailscale.com/download) on each, signed in as the same
    Tailscale user, and copy the pairing code from one computer's Settings

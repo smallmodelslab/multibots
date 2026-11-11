@@ -1,14 +1,16 @@
 import type { ReactNode } from "react";
 
 // A group of settings: its name, with an action for the whole group beside
-// it, then its rows on one card.
+// it and a line on how it works under it, then its rows on one card.
 export const SettingsSection = ({
   action,
   children,
+  note,
   title,
 }: {
   action?: ReactNode;
   children: ReactNode;
+  note?: string;
   title: string;
 }) => (
   <section
@@ -20,6 +22,7 @@ export const SettingsSection = ({
       <h2>{title}</h2>
       {action}
     </div>
+    {note ? <p className="settings-section-note">{note}</p> : null}
     <div className="settings-card">{children}</div>
   </section>
 );

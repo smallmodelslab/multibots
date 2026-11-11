@@ -1,10 +1,7 @@
-import { useState } from "react";
-
-import type { AppState, ModelList, OwnModelKind } from "../../shared/types";
-import { Tabs } from "../ui/tabs";
+import type { AppState } from "../../shared/types";
 import { ChannelSetting } from "./ChannelSetting";
 import { ChatgptSetting } from "./ChatgptSetting";
-import { ModelOrder } from "./ModelOrder";
+import { ModelOrders } from "./ModelOrder";
 import { MultidesktopSetting } from "./MultidesktopSetting";
 import { OwnModelSettings } from "./OwnModelSetting";
 import { PairingSetting } from "./PairingSetting";
@@ -17,68 +14,13 @@ const tailscaleNotes = {
   stopped: "Turn on Tailscale to reach OpenBots on your other computers.",
 } as const;
 
-const tabs = [
-  ["chatgpt", "ChatGPT"],
-  ["custom", "Custom models"],
-] as const;
-
-const lists: Record<
-  ModelList,
-  { title: string; order: string; note: string; uses: OwnModelKind[] }
-> = {
-  bots: {
-    note: "Runs bots on this server on your ChatGPT plan.",
-    order: "Fallback order",
-    title: "Providers",
-    uses: ["bots"],
-  },
-  voice: {
-    note: "Talks in voice chats on this server on your ChatGPT plan.",
-    order: "Voice fallback order",
-    title: "Voice",
-    uses: ["transcription", "speech"],
-  },
-};
-
-// What one list runs on: ChatGPT and the models the user hosts, each in a
-// tab, then the order they are tried in once there is more than one.
-const ModelSections = ({
-  list,
-  state: { chatgpt, ownModels },
-}: {
-  list: ModelList;
-  state: AppState;
-}) => {
-  const [tab, setTab] = useState<(typeof tabs)[number][0]>("chatgpt");
-  const { note, order, title, uses } = lists[list];
-  const entries = ownModels[list];
-  return (
-    <>
-      <SettingsSection
-        action={<Tabs onChange={setTab} tabs={tabs} value={tab} />}
-        title={title}
-      >
-        {tab === "chatgpt" ? (
-          <ChatgptSetting chatgpt={chatgpt} note={note} />
-        ) : (
-          <OwnModelSettings entries={entries} uses={uses} />
-        )}
-      </SettingsSection>
-      {entries.length > 1 ? (
-        <SettingsSection title={order}>
-          <ModelOrder chatgpt={chatgpt} entries={entries} list={list} />
-        </SettingsSection>
-      ) : null}
-    </>
-  );
-};
-
 // The user's computers running OpenBots, found over Tailscale and reached
 // with the pairing code they share, the servers among them; and, last,
 // whether this computer is a server, which then shows what its bots and
-// voice chats run on, its ChatGPT sign-in and the models the user hosts in
-// the order they are tried, and the Multidesktop through which its bots use
-// its screen and the user's other computers; then the channel updates follow.
+// voice chats run on: its ChatGPT sign-in and the models the user hosts,
+// either or both, and the order each capability tries them in; and the
+// Multidesktop through which its bots use its screen and the user's other
+// computers; then the channel updates follow.
 export const Settings = ({ state }: { state: AppState }) => {
   const self = state.hosts[0]!;
   return (
@@ -112,8 +54,26 @@ export const Settings = ({ state }: { state: AppState }) => {
           </SettingsSection>
           {self.server ? (
             <>
-              <ModelSections list="bots" state={state} />
-              <ModelSections list="voice" state={state} />
+              <SettingsSection title="ChatGPT">
+                <ChatgptSetting
+                  chatgpt={state.chatgpt}
+                  note="Runs chat and voice chats on your ChatGPT plan."
+                />
+              </SettingsSection>
+              <SettingsSection title="Your models">
+                <OwnModelSettings
+                  entries={[...state.ownModels.bots, ...state.ownModels.voice]}
+                />
+              </SettingsSection>
+              <SettingsSection
+                note="Either is enough, and both work together: each runs the first in its order, and the next takes over when one fails or isn't set up."
+                title="Order"
+              >
+                <ModelOrders
+                  chatgpt={state.chatgpt}
+                  ownModels={state.ownModels}
+                />
+              </SettingsSection>
               <SettingsSection title="Screen">
                 <MultidesktopSetting multidesktop={state.multidesktop} />
               </SettingsSection>

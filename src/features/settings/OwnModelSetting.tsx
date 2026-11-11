@@ -33,13 +33,15 @@ import {
 } from "../ui/select";
 import { Spinner } from "../ui/spinner";
 
-// The models the user hosts behind an OpenAI-style API, in one of the
-// lists bots or voice chats try in order. Adding one opens its use, where
-// the list has more than one, its address, model and key in place of the
-// add row, and OpenBots checks the server answers before keeping it.
+// The models the user hosts behind an OpenAI-style API, for chat or a
+// voice chat's transcription or speech. Adding one opens its use, address,
+// model and key in place of the add row, and OpenBots checks the server
+// answers before keeping it.
+
+const uses: OwnModelKind[] = ["bots", "transcription", "speech"];
 
 export const useOf: Record<OwnModelKind, string> = {
-  bots: "Bots",
+  bots: "Chat",
   speech: "Speech",
   transcription: "Transcription",
 };
@@ -94,13 +96,7 @@ const Field = ({
   </div>
 );
 
-const ConnectForm = ({
-  onClose,
-  uses,
-}: {
-  onClose: () => void;
-  uses: OwnModelKind[];
-}) => {
+const ConnectForm = ({ onClose }: { onClose: () => void }) => {
   const ids = { address: useId(), key: useId(), model: useId(), use: useId() };
   const problemId = useId();
   const [kind, setKind] = useState(uses[0]!);
@@ -131,28 +127,26 @@ const ConnectForm = ({
       }}
       onSubmit={submit}
     >
-      {uses.length > 1 ? (
-        <Field id={ids.use} label="Use for">
-          <Select
-            disabled={busy}
-            onValueChange={(next) => next && setKind(next)}
-            value={kind}
-          >
-            <SelectTrigger id={ids.use} size="sm">
-              <SelectValue>
-                {(current: OwnModelKind) => useOf[current]}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent align="start">
-              {uses.map((each) => (
-                <SelectItem key={each} value={each}>
-                  {useOf[each]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-      ) : null}
+      <Field id={ids.use} label="Use for">
+        <Select
+          disabled={busy}
+          onValueChange={(next) => next && setKind(next)}
+          value={kind}
+        >
+          <SelectTrigger id={ids.use} size="sm">
+            <SelectValue>
+              {(current: OwnModelKind) => useOf[current]}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent align="start">
+            {uses.map((each) => (
+              <SelectItem key={each} value={each}>
+                {useOf[each]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
       <Field id={ids.address} label="Address">
         <Input
           autoFocus
@@ -260,10 +254,8 @@ const missing = {
 
 export const OwnModelSettings = ({
   entries,
-  uses,
 }: {
   entries: OwnModelsState[keyof OwnModelsState];
-  uses: OwnModelKind[];
 }) => {
   const [adding, setAdding] = useState(false);
   const models = entries.filter((entry) => entry !== "chatgpt");
@@ -285,7 +277,7 @@ export const OwnModelSettings = ({
       })}
       <div className="setting">
         {adding ? (
-          <ConnectForm onClose={() => setAdding(false)} uses={uses} />
+          <ConnectForm onClose={() => setAdding(false)} />
         ) : (
           <div className="setting-row">
             <Button
@@ -297,6 +289,12 @@ export const OwnModelSettings = ({
               <Plus aria-hidden />
               Add model
             </Button>
+            {models.length ? null : (
+              <div className="setting-detail text-muted-foreground">
+                Models you host behind an OpenAI-style API, such as vLLM, Ollama
+                or LM Studio.
+              </div>
+            )}
           </div>
         )}
       </div>

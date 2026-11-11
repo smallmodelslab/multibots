@@ -954,20 +954,70 @@ button.sidebar-update:hover {
   padding-top: 0;
 }
 
-/* The bots' models in the order they try them: a handle, the model, and
-   where it runs. */
-.model-order .setting-row {
-  gap: 8px;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+.settings-section-note {
+  color: var(--text-secondary);
+  margin: -2px 0 10px 2px;
+  max-width: 560px;
 }
 
-.model-order.is-moving {
+/* A capability's sources in the order it tries them: a handle, the place,
+   the source and where it runs, or why it is skipped. */
+.capability {
+  align-items: start;
+}
+
+.capability .setting-label {
+  min-height: 28px;
+}
+
+.capability-empty {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  min-height: 28px;
+}
+
+.capability-note {
+  color: var(--text-secondary);
+  margin: 0;
+  padding: 10px 0;
+}
+
+.source-order {
+  display: grid;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.source {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: auto 1ch minmax(0, max-content) minmax(0, 1fr);
+  min-height: 28px;
+}
+
+.source.is-moving {
   opacity: 0.5;
 }
 
-.model-order-handle {
+.source.is-skipped > :not(.source-handle) {
+  color: var(--text-secondary);
+}
+
+.source-index {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.source-handle {
   cursor: grab;
   margin-left: -6px;
+}
+
+.source-handle:disabled {
+  visibility: hidden;
 }
 
 .login-wait {
