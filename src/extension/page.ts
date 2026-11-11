@@ -560,30 +560,33 @@ function look(this: Element): View {
       at.push(texts.length - 1);
     }
   }
-  // Each held line's texts back to the nearest before it the page shows
-  // once, and on to the nearest after it, within twenty each way: its
-  // row's or post's own, such as a name and a handle. A line with neither
-  // is not held.
+  // Each held line's texts on each side: at least eight, and on to the
+  // nearest the page shows once, within twenty, so they reach its row's or
+  // post's own, such as a name and a handle. A line with no such text on
+  // either side is not held.
   const counts = new Map<string, number>();
   for (const text of texts) counts.set(text, (counts.get(text) ?? 0) + 1);
+  const side = (end: number, step: 1 | -1) => {
+    const found: string[] = [];
+    let unique = false;
+    for (
+      let at = end + step;
+      at >= 0 && at < texts.length && found.length < 20;
+      at += step
+    ) {
+      found.push(texts[at]!);
+      unique ||= counts.get(texts[at]!) === 1;
+      if (unique && found.length >= 8) break;
+    }
+    return { found: step < 0 ? found.reverse() : found, unique };
+  };
   (globalThis as { openbotsSeen?: Held }).openbotsSeen = seen.filter(
     (line, index) => {
-      const end = at[index]!;
-      let from = end - 1;
-      while (from >= 0 && end - from <= 20 && counts.get(texts[from]!) !== 1)
-        from--;
-      let to = end + 1;
-      while (
-        to < texts.length &&
-        to - end <= 20 &&
-        counts.get(texts[to]!) !== 1
-      )
-        to++;
-      const behind = from >= 0 && end - from <= 20;
-      const after = to < texts.length && to - end <= 20;
-      line.back = behind ? texts.slice(from, end) : [];
-      line.ahead = after ? texts.slice(end + 1, to + 1) : [];
-      return behind || after;
+      const back = side(at[index]!, -1);
+      const ahead = side(at[index]!, 1);
+      line.back = back.found;
+      line.ahead = ahead.found;
+      return back.unique || ahead.unique;
     },
   );
   let cover = 0;
@@ -617,10 +620,9 @@ const partHeight = 2000;
 
 // Text nodes of lines, by their text and place in the content then. They
 // stay in the extension's own world of the page between calls. The texts
-// around each out to ones the page showed once, its row's or post's own
-// such as a name and a handle, tell a node a list reused for another
-// row, with its "Like", "Follow" or even its name kept, from one that
-// stayed.
+// around each, its row's or post's own such as a name and a handle, tell
+// a node a list reused for another row, with its "Like", "Follow" or even
+// its name kept, from one that stayed.
 type Held = {
   node: Text;
   text: string;
