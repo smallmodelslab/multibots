@@ -74,9 +74,10 @@ detail:
   mode off hands every bot to the servers online first, and the last server
   cannot be turned off.
 - **The agent** (`src/main/bots.ts`) runs in a server's main process with the AI SDK
-  on Codex's Responses endpoint (`src/main/codex.ts`) and the user's own
-  models, in the fallback order Settings sets: each model call goes to the
-  first that answers (`src/main/fallback.ts`), so a run that loses ChatGPT
+  on Codex's Responses endpoint (`src/main/codex.ts`), on GPT-6.1 Terra where
+  the ChatGPT account offers it and else its best model (`src/main/chatgpt.ts`),
+  and the user's own models, in the fallback order Settings sets: each model
+  call goes to the first that answers (`src/main/fallback.ts`), so a run that loses ChatGPT
   midway carries on with the next. A model further down is had only when a
   call reaches it, and gets as much of the conversation as fits its own
   window. It has a shell on its server, and through Multidesktop on the

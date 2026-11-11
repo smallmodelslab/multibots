@@ -16,6 +16,9 @@ import {
 import { readSealed, writeSealed } from "./sealed";
 import { startVoiceCall } from "./voice";
 
+// The model bots run on where the account offers it; else its best.
+const preferred = "gpt-6.1-terra";
+
 // This computer's ChatGPT sign-in, which its bots run on. It stays on this
 // computer: another computer signs in for itself, since a refresh token
 // works once and two holders would sign each other out. What a sign-in or
@@ -127,13 +130,14 @@ export class Chatgpt {
     return refresh;
   }
 
-  // The account's best model, with one prompt cache per bot.
+  // The model bots run on, with one prompt cache per bot.
   async model(cacheKey: string) {
     const tokens = await this.fresh();
     this.models ??= await listModels(tokens);
-    const best = this.models[0];
-    if (!best) throw new Error("This ChatGPT account offers no models.");
-    return chatgptModel(tokens, best, cacheKey);
+    const chosen =
+      this.models.find(({ id }) => id === preferred) ?? this.models[0];
+    if (!chosen) throw new Error("This ChatGPT account offers no models.");
+    return chatgptModel(tokens, chosen, cacheKey);
   }
 
   // A voice chat with one of this computer's bots.
