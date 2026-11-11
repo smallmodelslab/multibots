@@ -13,7 +13,7 @@
   position: relative;
 }
 
-/* Until the download buttons show, the corner offers the visitor's one. */
+/* The visitor's download, until the buttons show (main.ts fades it). */
 .corner {
   position: fixed;
   top: 1.25rem;
@@ -22,14 +22,7 @@
   font-weight: 550;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.18em;
-  transition:
-    opacity 0.3s,
-    visibility 0.3s;
-}
-
-.corner.gone {
-  opacity: 0;
-  visibility: hidden;
+  transition: opacity 0.3s;
 }
 
 /* The bot stays in the window while the steps scroll by; narrow, their

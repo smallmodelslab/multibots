@@ -18,6 +18,7 @@ const wide = matchMedia("(min-width: 50rem)");
 const steps = [...document.querySelectorAll<HTMLElement>(".step")];
 const host = document.querySelector<HTMLElement>(".bot")!;
 const corner = document.querySelector<HTMLAnchorElement>(".corner")!;
+const buttons = document.querySelector<HTMLElement>(".actions")!;
 const bot = createBot(host, reduced);
 const dressed: Outfit = { hue: 215, hat: "cap", glasses: "round" };
 const outfits: Outfit[] = [
@@ -192,7 +193,6 @@ function activate(index: number) {
   active = index;
   side = index % 2 ? -1 : 1;
   const step = steps[index]!;
-  corner.classList.toggle("gone", step.dataset.act === "download");
   if (!introDone) {
     if (index === 0) return;
     introDone = true;
@@ -228,19 +228,26 @@ function wake() {
 
 // A step shows while it is near the top of the window, so the bot says one
 // thing at a time. Wide, the bot crosses halves with the scroll, reaching the
-// middle when no words are there.
+// middle when no words are there. The corner's download fades out as the
+// buttons it stands in for show.
 let queued = 0;
 function onScroll() {
   queued = 0;
   let nearest = 0;
   let distance = Infinity;
+  let shown = 0;
   steps.forEach((step, index) => {
     const away = Math.abs(step.getBoundingClientRect().top) / innerHeight;
     const t = Math.max(0, Math.min(1, (away - 0.12) / 0.38));
-    step.style.setProperty("--seen", String(1 - t * t * (3 - 2 * t)));
+    const seen = 1 - t * t * (3 - 2 * t);
+    step.style.setProperty("--seen", String(seen));
+    if (step.contains(buttons)) shown = seen;
     if (away < distance) [nearest, distance] = [index, away];
   });
   if (nearest !== active) activate(nearest);
+  shown *= Number(getComputedStyle(buttons).opacity);
+  corner.style.opacity = String(1 - shown);
+  corner.inert = shown > 0.5;
   const first = steps[0]!.getBoundingClientRect();
   const at = -first.top / first.height;
   host.style.setProperty(
@@ -252,6 +259,7 @@ addEventListener("scroll", () => (queued ||= requestAnimationFrame(onScroll)), {
   passive: true,
 });
 addEventListener("resize", onScroll);
+buttons.addEventListener("transitionend", onScroll);
 document.documentElement.classList.add("js");
 onScroll();
 if (reduced) {
