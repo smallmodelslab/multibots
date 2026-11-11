@@ -1,7 +1,7 @@
 # Electron updates
 
 Installer and JavaScript updates for the Electron apps (Multiwork, Turbotex,
-Tutor, OpenBots, Yeecell). The signed installer owns `out/bootstrap`, Electron,
+Tutor, Multibots, Yeecell). The signed installer owns `out/bootstrap`, Electron,
 installed npm dependencies and native code. A JavaScript release is the rest of `out`, an
 ASAR under the user's application data, outside the signed application.
 Nothing rewrites the installed `app.asar`.

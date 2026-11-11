@@ -17,7 +17,7 @@ import { botTools } from "../main/tools";
 import { feedItems, members, serveFixtures } from "./fixtures";
 
 // A bot's browser tool against a real Chrome, with the built extension
-// loaded and the native messaging host set up as OpenBots sets it up, in a
+// loaded and the native messaging host set up as Multibots sets it up, in a
 // profile of its own. Run `bun run build` first. CHROME names the browser
 // when it is not Google Chrome where it usually is.
 
@@ -110,7 +110,7 @@ const allow = async () => {
 before(async () => {
   if (!existsSync(join(built, "browserHost.js")))
     throw new Error("Run `bun run build` first.");
-  scratch = await mkdtemp(join(tmpdir(), "openbots-chrome-"));
+  scratch = await mkdtemp(join(tmpdir(), "multibots-chrome-"));
   folder = join(scratch, "files");
   const profile = join(scratch, "profile");
   fixtures = await serveFixtures();
@@ -304,7 +304,7 @@ test("scroll_capture waits for a page that loads more at its end, and what loads
   assert.equal(count(lines, "End of feed"), 1);
 });
 
-test("an extension Chrome loaded before OpenBots updated it reloads into this one", async () => {
+test("an extension Chrome loaded before Multibots updated it reloads into this one", async () => {
   const { socket: path, token } = JSON.parse(
     await readFile(join(scratch, "home", "browser", "connection.json"), "utf8"),
   ) as { socket: string; token: string };

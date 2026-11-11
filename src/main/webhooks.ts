@@ -5,7 +5,7 @@ import { senders, type Sender } from "@wrkrsh/webhooks";
 import type { Webhook } from "../shared/types";
 import { logError } from "./log";
 
-// Webhook routines' webhooks. OpenBots has no server of its own on the
+// Webhook routines' webhooks. Multibots has no server of its own on the
 // internet, so they are at a relay (relay/, at hooks.wrkrsh.com) that holds
 // each request until the server writing the routine's bot takes it. Each
 // webhook is kept with its bot (src/main/bots.ts), sealed on every server:
@@ -15,7 +15,7 @@ import { logError } from "./log";
 // hash names the webhook at the relay. The bot never sees either secret.
 
 const relay = (
-  process.env.OPENBOTS_RELAY ?? "https://hooks.wrkrsh.com"
+  process.env.MULTIBOTS_RELAY ?? "https://hooks.wrkrsh.com"
 ).replace(/\/+$/, "");
 
 export type SavedWebhook = {

@@ -11,8 +11,8 @@ import type { MultidesktopState, Screen } from "../shared/types";
 // This server's screen, for the bots it runs and the windows that watch
 // them, through the computer's own Multidesktop, so its bridge is the one
 // copy macOS allows to record the screen and control it. When Multidesktop
-// runs as the user's service, OpenBots signals through that desktop's local
-// socket. Otherwise OpenBots runs the installed release itself, without a
+// runs as the user's service, Multibots signals through that desktop's local
+// socket. Otherwise Multibots runs the installed release itself, without a
 // cloud (`multidesktop --local`), until the app quits. Settings installs it
 // with Multidesktop's own installer when it is missing or too old. Bots use
 // the screen through m11's computer-use REPL, the one every wrkrsh product
@@ -23,9 +23,9 @@ import type { MultidesktopState, Screen } from "../shared/types";
 
 const mac = process.platform === "darwin";
 // Where Multidesktop's installer puts `multidesktop` and `m11`.
-// OPENBOTS_MULTIDESKTOP names a build of one's own instead, for development:
-// OpenBots then neither installs Multidesktop nor uses the service.
-const override = process.env.OPENBOTS_MULTIDESKTOP;
+// MULTIBOTS_MULTIDESKTOP names a build of one's own instead, for development:
+// Multibots then neither installs Multidesktop nor uses the service.
+const override = process.env.MULTIBOTS_MULTIDESKTOP;
 const bin = override ?? join(homedir(), ".local", "bin");
 const m11 = join(bin, "m11");
 const cloud = "https://multidesktop.cloud";
@@ -215,7 +215,7 @@ const cloudDesktops = () =>
   );
 
 export class Computer {
-  // The config of the desktop in use: the service's, or OpenBots' own.
+  // The config of the desktop in use: the service's, or Multibots' own.
   private config: string | null = null;
   private readonly own: string;
   private desktop: ChildProcess | null = null;
@@ -410,7 +410,7 @@ export class Computer {
     });
   }
 
-  // Ends OpenBots' own desktop, which closing its stdin does.
+  // Ends Multibots' own desktop, which closing its stdin does.
   private stop() {
     this.desktop?.stdin?.end();
     this.desktop = null;

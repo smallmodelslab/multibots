@@ -12,8 +12,8 @@ import { app } from "electron";
 
 import { activeFlags, captureError } from "./analytics";
 
-// An error the app recovers from, in OpenBots' log, the launcher's
-// openbots.jsonl in the platform's log folder, in its session
+// An error the app recovers from, in Multibots' log, the launcher's
+// multibots.jsonl in the platform's log folder, in its session
 // (docs/diagnostics.md in the monorepo), and in analytics. Fields name
 // things, never secrets.
 export const logError = (
@@ -34,7 +34,7 @@ export const logError = (
   process.stderr.write(line);
   const folder = app.getPath("logs");
   void mkdir(folder, { recursive: true })
-    .then(() => appendFile(join(folder, "openbots.jsonl"), line))
+    .then(() => appendFile(join(folder, "multibots.jsonl"), line))
     .catch(() => {});
   captureError(scope, msg, fields?.error);
 };

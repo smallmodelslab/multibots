@@ -354,7 +354,7 @@ export const startVoiceChat = async (
     if (current !== session) return;
     toastError(
       error instanceof DOMException && error.name === "NotAllowedError"
-        ? `OpenBots isn't allowed to use the microphone.${bridge.platform === "darwin" ? " Allow it in System Settings › Privacy & Security › Microphone." : ""}`
+        ? `Multibots isn't allowed to use the microphone.${bridge.platform === "darwin" ? " Allow it in System Settings › Privacy & Security › Microphone." : ""}`
         : messageOf(error),
     );
     session.end();

@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "openbots",
+      "name": "multibots",
       "dependencies": {
         "@ai-sdk/openai": "4.0.106",
         "@ai-sdk/openai-compatible": "3.0.81",

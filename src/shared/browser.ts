@@ -1,13 +1,13 @@
-// What OpenBots and its Chrome extension say to each other, through the
+// What Multibots and its Chrome extension say to each other, through the
 // native messaging host Chrome starts for the extension (src/main/browser.ts).
-// OpenBots asks only for what a bot does in its own tabs; the extension
+// Multibots asks only for what a bot does in its own tabs; the extension
 // carries each out with code of its own, and never runs code it was sent.
 
 export const browserHost = "com.wrkrsh.openbots";
 // Chrome shows it as the extension's version. An extension Chrome loaded
-// before OpenBots updated its folder reloads from it when this differs.
+// before Multibots updated its folder reloads from it when this differs.
 // 2: the extension asks the user before it connects.
-export const browserProtocol = 2;
+export const browserProtocol = 3;
 
 // A tab of a bot's: Chrome's id for it, and what it shows.
 export type BrowserTab = { tab: number; url: string; title: string };
@@ -71,8 +71,8 @@ export type BrowserResults = {
 // On the line between them: requests carry an id their reply repeats.
 export type BrowserRequest = BrowserCommand & { id: number };
 export type BrowserReply = { id: number; result?: unknown; error?: string };
-// What OpenBots tells the extension when it connects: go ahead, reload
-// from the folder OpenBots updated, or why it can't.
+// What Multibots tells the extension when it connects: go ahead, reload
+// from the folder Multibots updated, or why it can't.
 export type BrowserWelcome =
   | { ready: true }
   | { reload: true }

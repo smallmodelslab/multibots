@@ -188,7 +188,7 @@ export const Sidebar = ({
             </Hint>
             <NewBotDialog
               hues={(bots ?? []).map((bot) => bot.hue)}
-              onOpenBot={(botId) => onSelect({ id: botId })}
+              onMultibot={(botId) => onSelect({ id: botId })}
               trigger={(props) => (
                 <Hint label="New bot" side="bottom">
                   <button

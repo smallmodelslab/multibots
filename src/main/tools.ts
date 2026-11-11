@@ -254,7 +254,7 @@ const tabLine = ({ tab, title, url }: BrowserTab) =>
 // bot's folder.
 const capturedTextLimit = 40_000;
 
-// The tabs a bot uses in the user's Chrome, through the OpenBots extension.
+// The tabs a bot uses in the user's Chrome, through the Multibots extension.
 type BotBrowser = {
   bot: string;
   name: string;

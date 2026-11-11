@@ -1,36 +1,55 @@
-# OpenBots
+# Multibots
 
 Bots that run on your own computers, on your ChatGPT subscription or models
 you host. An open alternative to Grok Bot: each bot has a conversation, routines that wake it on
 a schedule or when their webhook is called, a library of the files it keeps, and the computer it runs on.
 
 Nothing runs on the internet for it. Any of the user's computers running
-OpenBots can be a server, which keeps a copy of every bot and runs them with
+Multibots can be a server, which keeps a copy of every bot and runs them with
 its own ChatGPT sign-in or the models it connects; Settings turns server mode
 off on the rest, which then only show the bots, as the phone does. Computers
 find each other over Tailscale and talk directly, so a laptop chats with the
 bots its always-on desktops run, and they run their routines while it sleeps.
 Bots outlive any server: a run goes on from its last step on another one.
 
+## Moving from OpenBots
+
+Multibots replaces OpenBots. On macOS, quit OpenBots on every server computer,
+install Multibots once from [multibots.ca](https://multibots.ca/docs/), and remove
+only the old application bundle. Keep offline servers stopped until updated.
+The new bundle ID is `com.multibots`; macOS's updater cannot cross bundle
+IDs. Future Multibots releases update normally. Linux's existing update feed
+redirects to Multibots.
+
+The profile stays at `~/Library/Application Support/OpenBots` on macOS and
+`$XDG_CONFIG_HOME/OpenBots` (normally `~/.config/OpenBots`) on Linux. Its bots,
+computer ID, credentials, pairing, analytics preference, update channel,
+Chromium session and extension folder remain in place. Electron keeps the
+`OpenBots` encryption identity before ready and switches to the Multibots name
+once ready. The Chrome extension retains its key and native host ID; protocol
+3 reloads its existing unpacked installation with the new name. The peer HTTP
+protocol and webhook relay namespace remain unchanged for existing peers and
+queued requests. These are persistent identities, not public branding.
+
 ## Download and install
 
-OpenBots runs on Apple silicon Macs and x86-64 Linux. There is no Windows or
+Multibots runs on Apple silicon Macs and x86-64 Linux. There is no Windows or
 Intel Mac version yet.
 
-- [macOS, Apple silicon](https://wrkrsh.com/download/openbots/mac): open the
-  disk image and drag OpenBots to Applications.
-- [Linux, x86-64](https://wrkrsh.com/download/openbots/linux): make the
+- [macOS, Apple silicon](https://wrkrsh.com/download/multibots/mac): open the
+  disk image and drag Multibots to Applications.
+- [Linux, x86-64](https://wrkrsh.com/download/multibots/linux): make the
   AppImage executable and run it.
 
   ```sh
-  chmod +x openbots-*-linux-x86_64.AppImage
-  ./openbots-*-linux-x86_64.AppImage
+  chmod +x multibots-*-linux-x86_64.AppImage
+  ./multibots-*-linux-x86_64.AppImage
   ```
 
 The links always give the newest release. Each installer's SHA-256 is in the
-[release catalog](https://downloads.wrkrsh.com/openbots/channels/stable.json).
+[release catalog](https://downloads.wrkrsh.com/multibots/channels/stable.json).
 
-Then, as the [install guide](https://openbots.ca/docs/) covers in more
+Then, as the [install guide](https://multibots.ca/docs/) covers in more
 detail:
 
 1. In Settings, sign in to ChatGPT, add models you host, or both.
@@ -38,7 +57,7 @@ detail:
    [Tailscale](https://tailscale.com/download) on each, signed in as the same
    Tailscale user, and copy the pairing code from one computer's Settings
    into the others.
-3. On macOS, allow what OpenBots asks for: Local Network, to reach OpenBots
+3. On macOS, allow what Multibots asks for: Local Network, to reach Multibots
    on your other computers (until it is allowed, they cannot connect);
    the microphone, when you start a voice chat; and, for bots to see and use
    the screen, Screen Recording and Accessibility for Multidesktop Bridge,
@@ -93,7 +112,7 @@ detail:
   is lost or said twice, but a tool call in flight at that moment may run
   again.
 - **Webhooks** wake routines from elsewhere, such as admin.wrkrsh.com's
-  alerts. With nothing of its own on the internet, OpenBots takes them at a
+  alerts. With nothing of its own on the internet, Multibots takes them at a
   relay, a Cloudflare Worker and Durable Object at hooks.wrkrsh.com
   ([`relay`](relay/src/index.ts)), which holds each request until the server
   writing the bot takes it over a WebSocket, so none is lost while no server
@@ -119,7 +138,7 @@ detail:
   Bot's bots have theirs (`src/main/computer.ts`), through the server's own
   [Multidesktop](https://wrkrsh.com/multidesktop), so one copy of its bridge holds
   the screen's permissions. When Multidesktop runs as the user's service,
-  OpenBots uses that desktop through its local socket; otherwise it runs the
+  Multibots uses that desktop through its local socket; otherwise it runs the
   installed release itself, without a cloud (`multidesktop --local`). Settings
   installs it with Multidesktop's own installer when it is missing or older
   than 0.4.7, and moves an older service onto it with `multidesktop up`. A
@@ -132,7 +151,7 @@ detail:
   On macOS, Multidesktop Bridge needs Screen Recording and Accessibility,
   which the Computer tab asks for. A window on another of the user's
   computers watches the server's screen live there, over WebRTC, its offer
-  handed to the desktop by that server's OpenBots. A bot on this computer
+  handed to the desktop by that server's Multibots. A bot on this computer
   uses the screen the user sees, so nothing streams.
 - **ChatGPT** (`src/main/chatgpt.ts`) signs in with Codex's device code. The
   tokens stay on this computer, sealed by the system keychain, or on Linux
@@ -171,7 +190,7 @@ detail:
 - **Peers** (`src/main/peers.ts`) come from `tailscale status`: the online
   devices of the same Tailscale user, not tagged devices such as shared
   servers. Each client listens on its own tailnet
-  address (port 47100, or `OPENBOTS_PORT`) and answers only those devices'
+  address (port 47100, or `MULTIBOTS_PORT`) and answers only those devices'
   addresses, and of those only the clients holding its pairing code
   (`src/shared/peer.ts`). Settings shows the code; the user copies one
   computer's into the others and into the phone. Every request is signed
@@ -235,27 +254,27 @@ command line with `bun run avatar:gif --hue 215 --hat cap --glasses round --out 
 
 Use Node 24 and Bun 1.4.4.
 
-`packages/` holds copies of the wrkrsh packages OpenBots shares with other
+`packages/` holds copies of the wrkrsh packages Multibots shares with other
 apps: client-log, composer, computer-use, electron-update, flags, glow, pencil,
 webhooks, whiteboard and wizard. They are kept as they are there, so formatting and lint leave them
 alone; types still check them.
 
 ```sh
-cd openbots
+cd multibots
 bun install
 bun run dev
 ```
 
-`OPENBOTS_HOME` points a client at another data folder and `OPENBOTS_PORT` at
+`MULTIBOTS_HOME` points a client at another data folder and `MULTIBOTS_PORT` at
 another port, so more clients, servers or not, run beside the first on one
 computer. Each finds the first on this computer's tailnet address, and the
 rest through it.
 
-`OPENBOTS_RELAY` points a client's webhooks at another relay, such as
+`MULTIBOTS_RELAY` points a client's webhooks at another relay, such as
 `wrangler dev`'s at `http://127.0.0.1:8787` (`bun run dev` in `relay/`).
 
-`OPENBOTS_MULTIDESKTOP` points at a Multidesktop build of one's own, such as
-a `cargo build` directory after `./bundle-macos.sh` on macOS, which OpenBots
+`MULTIBOTS_MULTIDESKTOP` points at a Multidesktop build of one's own, such as
+a `cargo build` directory after `./bundle-macos.sh` on macOS, which Multibots
 then runs in place of the installed one or the service.
 
 On macOS the app needs Local Network access to reach other clients; until it
@@ -264,11 +283,11 @@ is allowed, requests to and from it hang.
 Checks: `bun run format:check`, `bun run lint`, `bun run typecheck`, `bun run test`
 and `bun run build`; in `relay/` and `site/`, the same but `test`.
 
-[openbots.ca](https://openbots.ca) is [`site`](site/index.html), its own
+[multibots.ca](https://multibots.ca) is [`site`](site/index.html), its own
 package beside the app: the bot from `src/features/avatars` wakes up, greets
 the visitor and says what it does as they scroll. `bun run dev` there serves
 it. Its download buttons are wrkrsh.com's links to the current installers
-(`wrkrsh.com/download/openbots/<platform>`), and a Cloudflare Worker
+(`wrkrsh.com/download/multibots/<platform>`), and a Cloudflare Worker
 (`site/worker.ts`) serves the build and proxies PostHog, for the site and for
 the app. The monorepo's CI deploys it on every merge.
 
@@ -285,5 +304,5 @@ monorepo's GitHub Actions. Installed apps update through
 
 ## License
 
-OpenBots is free software under the [GNU Affero General Public License
+Multibots is free software under the [GNU Affero General Public License
 v3.0](LICENSE).

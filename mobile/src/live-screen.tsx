@@ -33,7 +33,7 @@ type Status = { type: "status"; width: number; quality?: { scale?: number } };
 
 // The screen of a bot's computer, live, as its bots see and use it: a
 // session of that computer's Multidesktop, offered from here and answered
-// through its OpenBots. It runs while `shown`, only as sharp as it is shown.
+// through its Multibots. It runs while `shown`, only as sharp as it is shown.
 export const LiveScreen = ({
   hostId,
   shown,

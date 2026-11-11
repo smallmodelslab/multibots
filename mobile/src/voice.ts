@@ -97,7 +97,7 @@ export const useVoiceCall = (
     const own = async (placed: { callId: string } | null) => {
       if (!(await requestRecordingPermissionsAsync()).granted)
         throw new Error(
-          "OpenBots isn't allowed to use the microphone. Allow it in Settings.",
+          "Multibots isn't allowed to use the microphone. Allow it in Settings.",
         );
       const answer = placed ?? (await place(null));
       if (!answer) return;

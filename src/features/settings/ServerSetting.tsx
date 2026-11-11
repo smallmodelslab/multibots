@@ -6,7 +6,7 @@ import { Spinner } from "../ui/spinner";
 import { Switch } from "../ui/switch";
 import { SettingRow } from "./SettingRow";
 
-// Whether this computer is one of the user's OpenBots servers, which keep a
+// Whether this computer is one of the user's Multibots servers, which keep a
 // copy of every bot and run them. Turning it off hands its copies to the
 // other servers online and lets them go.
 export const ServerSetting = ({ server }: { server: boolean }) => {

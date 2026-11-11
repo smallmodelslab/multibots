@@ -1,6 +1,6 @@
 name: Release
 
-# The monorepo's openbots-mobile-release.yml starts this at the commit it
+# The monorepo's multibots-mobile-release.yml starts this at the commit it
 # releases. When the native fingerprint matches the channel's build, the
 # channel gets an OTA update; otherwise a new build goes to App Store Connect:
 # a nightly reaches TestFlight's internal testers, and the GitHub workflow

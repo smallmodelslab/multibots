@@ -4,7 +4,7 @@
 // checked here their way. For "Any" and GitHub the webhook makes the
 // secret and the user gives it to the sender; Stripe, Slack and senders of
 // Standard Webhooks make their own, which the user pastes into the
-// webhook. On Web Crypto, for Multiwork's Convex and OpenBots' relay.
+// webhook. On Web Crypto, for Multiwork's Convex and Multibots' relay.
 
 export type Sender = "bearer" | "github" | "stripe" | "slack" | "standard";
 

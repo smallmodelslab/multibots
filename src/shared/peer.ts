@@ -4,7 +4,7 @@ import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 
 import type { BotStatus, Change, Host } from "./types";
 
-// How a client reaches another's OpenBots over the user's tailnet: another
+// How a client reaches another's Multibots over the user's tailnet: another
 // computer's (src/main/peers.ts), or the phone's (mobile/src/data.ts).
 //
 // The user's computers and phone share a pairing code. Every request is
@@ -83,7 +83,7 @@ type Answer = {
   headers: { get: (name: string) => string | null };
 };
 
-// Asks the OpenBots at `address`, and checks the answer comes from one that
+// Asks the Multibots at `address`, and checks the answer comes from one that
 // holds the same code. A phone passes its own fetch for a stream.
 export const ask = async <A extends Answer = Response>(
   address: string,
@@ -126,7 +126,7 @@ export const ask = async <A extends Answer = Response>(
   });
   if (answer.status === 401) throw new Unpaired();
   if (answer.headers.get("x-openbots-proof") !== proofOf(code, signature))
-    throw new Error("No OpenBots of this user answered there.");
+    throw new Error("No Multibots of this user answered there.");
   return answer;
 };
 
@@ -162,7 +162,7 @@ export const readEvents = async (
   }
 };
 
-// Asks the OpenBots at `address` what it answers at `path`, with what a
+// Asks the Multibots at `address` what it answers at `path`, with what a
 // POST carries: a command a client asks the servers at "/call", or the
 // computers it reaches at "/peers".
 export const askAt = async <T = unknown>(

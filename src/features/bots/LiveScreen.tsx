@@ -50,7 +50,7 @@ const useSeen = (element: RefObject<Element | null>) => {
 type Status = { type: "status"; width: number; quality?: { scale?: number } };
 
 // Another computer's screen, live, as its bots see and use it: a session of
-// its Multidesktop's, offered from here and answered through OpenBots on
+// its Multidesktop's, offered from here and answered through Multibots on
 // that computer. It shows while it can be seen, at the size it is shown.
 export const LiveScreen = ({ hostId }: { hostId: string }) => {
   const frame = useRef<HTMLDivElement>(null);

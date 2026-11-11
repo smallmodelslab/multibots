@@ -190,6 +190,7 @@ const rendezvous = (botId: string, servers: string[]) =>
 
 // An image the user sent stands in the context as its path in the bot's
 // folder, read in only for the newest few the model sees.
+// Stored in saved model contexts, including conversations from before the rename.
 const imageMark = "openbots-file:";
 const imageTypes = new Set([
   "image/png",
@@ -1711,7 +1712,7 @@ export class Bots {
   private voiceContext({ saved }: Record) {
     const { language, speed } = saved.voice;
     return [
-      `You are the voice of ${saved.name}, a bot in OpenBots that runs on the user's own computers. To the user, you are ${saved.name}.`,
+      `You are the voice of ${saved.name}, a bot in Multibots that runs on the user's own computers. To the user, you are ${saved.name}.`,
       saved.instructions.trim()
         ? `The user's instructions for ${saved.name}:\n${saved.instructions.trim()}`
         : "",
@@ -1730,7 +1731,7 @@ export class Bots {
   ) {
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     return [
-      `You are ${saved.name}, a bot in OpenBots. This run is on ${this.options.hostName} (${process.platform}), one of the user's OpenBots servers, on ${model}; another run may be on another. Your conversation, routines, whiteboard and folder are the same on each.`,
+      `You are ${saved.name}, a bot in Multibots. This run is on ${this.options.hostName} (${process.platform}), one of the user's Multibots servers, on ${model}; another run may be on another. Your conversation, routines, whiteboard and folder are the same on each.`,
       saved.instructions.trim()
         ? `The user's instructions for you:\n${saved.instructions.trim()}`
         : "",

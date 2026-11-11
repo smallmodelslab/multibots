@@ -164,7 +164,7 @@ export const refreshTokens = async (refresh: string) => {
 export const headers = (tokens: Pick<Tokens, "access" | "accountId">) => ({
   authorization: `Bearer ${tokens.access}`,
   "chatgpt-account-id": tokens.accountId,
-  originator: "openbots",
+  originator: "multibots",
 });
 
 export type ChatgptModel = {

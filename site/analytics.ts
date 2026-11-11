@@ -3,7 +3,7 @@
 // It keeps nothing in the browser: PostHog tells visitors apart by a hash of
 // their address and browser that changes daily, which the project's
 // cookieless setting turns on.
-if (location.hostname === "openbots.ca") {
+if (location.hostname === "multibots.ca") {
   void import("posthog-js").then(({ default: posthog }) => {
     posthog.init("phc_oFwEfJVgTTkyJDj6xCPSCb2bbSjb7suJYan9AyfJBqpr", {
       api_host: "/antenna",
@@ -16,7 +16,7 @@ if (location.hostname === "openbots.ca") {
       before_send: (event) => {
         if (event)
           Object.assign(event.properties, {
-            product: "openbots",
+            product: "multibots",
             surface: "web",
           });
         return event;

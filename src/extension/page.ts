@@ -29,7 +29,7 @@ const world = async (tab: Tab) => {
   const { executionContextId } = await send<{ executionContextId: number }>(
     tab,
     "Page.createIsolatedWorld",
-    { frameId: frameTree.frame.id, worldName: "openbots" },
+    { frameId: frameTree.frame.id, worldName: "multibots" },
   );
   worlds.set(tab, {
     context: executionContextId,
@@ -566,7 +566,7 @@ function look(this: Element): View {
   // is not held.
   const counts = new Map<string, number>();
   for (const text of texts) counts.set(text, (counts.get(text) ?? 0) + 1);
-  (globalThis as { openbotsSeen?: Held }).openbotsSeen = seen.filter(
+  (globalThis as { multibotsSeen?: Held }).multibotsSeen = seen.filter(
     (line, index) => {
       const end = at[index]!;
       let from = end - 1;
@@ -631,8 +631,8 @@ type Held = {
 
 // Keeps the lines the last look saw, for moved() after the next step.
 function hold(this: Element) {
-  const kept = globalThis as { openbotsSeen?: Held; openbotsHeld?: Held };
-  kept.openbotsHeld = kept.openbotsSeen;
+  const kept = globalThis as { multibotsSeen?: Held; multibotsHeld?: Held };
+  kept.multibotsHeld = kept.multibotsSeen;
 }
 
 // How far what loaded above, or was measured anew, moved the content just
@@ -673,7 +673,7 @@ function moved(this: Element, below: number) {
         found.push(wordsOf(next));
     return step === "previousNode" ? found.reverse() : found;
   };
-  const moves = ((globalThis as { openbotsHeld?: Held }).openbotsHeld ?? [])
+  const moves = ((globalThis as { multibotsHeld?: Held }).multibotsHeld ?? [])
     .filter(({ y }) => y < below)
     .sort((a, b) => b.y - a.y)
     .flatMap(({ ahead, back, node, text, y }) => {

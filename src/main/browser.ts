@@ -24,14 +24,14 @@ import {
 import type { ChromeState } from "../shared/types";
 
 // The user's Chrome, for bots to use tabs of their own in, through the
-// OpenBots extension. Setting it up copies the extension to a folder of
-// OpenBots', for the user to load in Chrome once, and registers a native
-// messaging host that only that extension may start: OpenBots itself run as
-// Node (browserHost.ts). The host reaches OpenBots over a private socket,
+// Multibots extension. Setting it up copies the extension to a folder of
+// Multibots', for the user to load in Chrome once, and registers a native
+// messaging host that only that extension may start: Multibots itself run as
+// Node (browserHost.ts). The host reaches Multibots over a private socket,
 // with a token both read from a file only the user can; nothing listens on
 // a port a web page could find. A setup made before is refreshed at each
 // launch, so updates reach the extension, which reloads when its protocol
-// is not OpenBots'.
+// is not Multibots'.
 
 // Where Chrome looks for the user's own native messaging hosts.
 export const chromeHosts = join(
@@ -56,7 +56,7 @@ const quoted = (text: string) => `'${text.replaceAll("'", `'\\''`)}'`;
 
 const disconnected = () =>
   new Error(
-    "Chrome is not connected. Set it up in OpenBots' settings, with the OpenBots extension on in Chrome.",
+    "Chrome is not connected. Set it up in Multibots' settings, with the Multibots extension on in Chrome.",
   );
 
 export class Browser {
@@ -129,7 +129,7 @@ export class Browser {
         join(hosts, `${browserHost}.json`),
         JSON.stringify({
           allowed_origins: [origin],
-          description: "OpenBots",
+          description: "Multibots",
           name: browserHost,
           path: host,
           type: "stdio",
@@ -145,7 +145,7 @@ export class Browser {
     if (this.state().setUp) await this.setUp();
     this.token = randomBytes(32).toString("hex");
     // Socket paths are short: under the system's temporary folder.
-    this.temporary = await mkdtemp(join(tmpdir(), "openbots-browser-"));
+    this.temporary = await mkdtemp(join(tmpdir(), "multibots-browser-"));
     const path = join(this.temporary, "browser.sock");
     const server = createServer((socket) => this.accept(socket));
     this.server = server;
@@ -201,7 +201,7 @@ export class Browser {
           if (message.hello !== browserProtocol) {
             if (this.reloading)
               return socket.end(
-                `${JSON.stringify({ error: "This extension does not match OpenBots. Set Chrome up again in OpenBots' settings." })}\n`,
+                `${JSON.stringify({ error: "This extension does not match Multibots. Set Chrome up again in Multibots' settings." })}\n`,
               );
             this.reloading = true;
             say({ reload: true });
@@ -211,7 +211,7 @@ export class Browser {
           if (this.connected && this.connected !== socket) {
             say({
               error:
-                "Another Chrome profile is connected to OpenBots. Turn the extension off there first.",
+                "Another Chrome profile is connected to Multibots. Turn the extension off there first.",
             });
             return socket.end();
           }

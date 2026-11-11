@@ -50,7 +50,7 @@ export const App = () => {
   }, [channel]);
   const drawn = Boolean(state);
   useEffect(() => {
-    if (drawn) window.openbots.ready();
+    if (drawn) window.multibots.ready();
   }, [drawn]);
   useEffect(
     () => localStorage.setItem("openbots.chosen", JSON.stringify(chosen)),
@@ -80,7 +80,7 @@ export const App = () => {
   }, [bot, pane]);
 
   if (!state || !self) return null;
-  const mac = window.openbots.platform === "darwin";
+  const mac = window.multibots.platform === "darwin";
   const shownDetails = Boolean(!pane && details && bot && host);
   return (
     <div

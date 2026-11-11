@@ -31,7 +31,7 @@ import type {
   ResultOf,
 } from "../../src/shared/types";
 
-// The user's computers running OpenBots, reached over their tailnet as they
+// The user's computers running Multibots, reached over their tailnet as they
 // reach each other: the phone is one of the user's devices there, and holds
 // the pairing code they share, so their computers answer it. It asks the
 // servers among them about the bots, keeps none of its own, and listens for
@@ -71,7 +71,7 @@ let code: string = (() => {
 type Connection = { address: string; info: HostInfo; stop: AbortController };
 const connections = new Map<string, Connection>();
 const connecting = new Set<string>();
-// The addresses whose OpenBots holds another code.
+// The addresses whose Multibots holds another code.
 const unpaired = new Set<string>();
 
 // What the screens show of the computers: those it reaches, the addresses
@@ -255,7 +255,7 @@ export const addComputer = async (typedAddress: string, typedCode: string) => {
       : `${typed}:${defaultPort}`;
   if (address && !(await get(address, "", next)))
     throw new Error(
-      "No OpenBots answered there. Check the address, and that this phone is on the same Tailscale account.",
+      "No Multibots answered there. Check the address, and that this phone is on the same Tailscale account.",
     );
   if (next !== code) {
     code = next;
@@ -281,7 +281,7 @@ export const call = async <K extends CommandName>(
     throw new Error(
       "hostId" in command
         ? "That computer is offline."
-        : "None of your OpenBots servers is online.",
+        : "None of your Multibots servers is online.",
     );
   return askAt<ResultOf<K>>(
     connection.address,

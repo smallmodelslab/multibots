@@ -24,7 +24,7 @@ at it, and neither applies:
 
 - **The user's computers.** Messages, photos and files the user picks,
   routine edits, and their voice on calls that use the user's own speech
-  models go over Tailscale to OpenBots on the user's own Macs or Linux
+  models go over Tailscale to Multibots on the user's own Macs or Linux
   computers (`src/shared/peer.ts`, `mobile/src/data.ts`), which hold the
   bots. The live screen is a WebRTC stream from that computer to the phone
   over the tailnet.

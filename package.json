@@ -1,6 +1,6 @@
 {
-  "name": "openbots",
-  "productName": "OpenBots",
+  "name": "multibots",
+  "productName": "Multibots",
   "version": "0.0.0",
   "description": "Bots that run on your own computers, on your ChatGPT subscription or models you host",
   "author": "wrkrsh",

@@ -8,11 +8,11 @@ import type { VoiceSettings } from "./voice";
 import type { Accessories } from "../features/avatars/appearance";
 
 // Whether a host's bots can see and use its screen, through the Multidesktop
-// OpenBots carries: they can, or the system has yet to allow it, or the host
+// Multibots carries: they can, or the system has yet to allow it, or the host
 // has no screen for them.
 export type Screen = "ready" | "blocked" | null;
 
-// An OpenBots client: this computer, or another of the user's on their
+// A Multibots client: this computer, or another of the user's on their
 // tailnet. A server keeps a copy of every bot and runs them; a computer with
 // server mode off only shows them, as the phone does.
 export type Host = {
@@ -310,7 +310,7 @@ export type MultidesktopState = {
 };
 
 // This computer's Chrome, in which its bots use tabs of their own through
-// the OpenBots extension: whether it was set up, and whether the extension
+// the Multibots extension: whether it was set up, and whether the extension
 // is connected.
 export type ChromeState = { setUp: boolean; connected: boolean };
 
@@ -333,7 +333,7 @@ export type PluginsState = {
 export type PairingState = {
   // This computer's pairing code, in groups.
   code: string;
-  // The user's computers whose OpenBots holds another code, by their names
+  // The user's computers whose Multibots holds another code, by their names
   // on the tailnet.
   unpaired: string[];
 };

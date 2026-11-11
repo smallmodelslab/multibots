@@ -45,6 +45,8 @@ import { UpdateStore } from "./store";
 declare const __UPDATE__: {
   product: string;
   name: string;
+  storageName?: string;
+  userDataEnv?: string;
   publicKey: string;
   origin: string;
   // Top-level CLI commands: they run beside the app without its lock or boot state.
@@ -56,6 +58,16 @@ declare const __UPDATE__: {
   readyTimeoutMs: number;
 };
 const { product, name, origin } = __UPDATE__;
+
+// Renaming an app must preserve its keychain identity and profile, including
+// the launcher's channel and lock. Electron initializes OSCrypt before ready.
+if (__UPDATE__.storageName) {
+  app.setName(__UPDATE__.storageName);
+  app.setPath("userData", join(app.getPath("appData"), __UPDATE__.storageName));
+  void app.whenReady().then(() => app.setName(name));
+}
+const userData = __UPDATE__.userDataEnv && process.env[__UPDATE__.userDataEnv];
+if (userData) app.setPath("userData", userData);
 
 const here =
   __UPDATE__.format === "cjs"

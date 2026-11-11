@@ -1,6 +1,6 @@
 Your own bots, on your phone.
 
-OpenBots runs bots on your own computers, on your ChatGPT subscription or models you host. Each bot has a conversation, routines that wake it on a schedule or when a webhook calls, the files it keeps, and the computer it runs on. This app is how you reach them when you're away from your desk.
+Multibots runs bots on your own computers, on your ChatGPT subscription or models you host. Each bot has a conversation, routines that wake it on a schedule or when a webhook calls, the files it keeps, and the computer it runs on. This app is how you reach them when you're away from your desk.
 
 Message any bot and send it photos and files. Call a bot and just say it.
 
@@ -8,6 +8,6 @@ Open a bot to watch its computer live, see its whiteboard and its files, and tur
 
 No servers. No accounts. Your phone talks to your computers directly over Tailscale and keeps no bots of its own; your bots keep working while it's away.
 
-To use it, you need OpenBots running on a Mac or Linux computer, Tailscale on the same account on that computer and this phone, and the pairing code from OpenBots' settings. Get OpenBots for your computer at openbots.ca.
+To use it, you need Multibots running on a Mac or Linux computer, Tailscale on the same account on that computer and this phone, and the pairing code from Multibots' settings. Get Multibots for your computer at multibots.ca.
 
 Free and open source under the GNU AGPL.

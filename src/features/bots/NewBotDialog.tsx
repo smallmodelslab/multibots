@@ -433,12 +433,12 @@ const Wizard = ({
 // `trigger`. The wizard starts over each time it opens.
 export const NewBotDialog = ({
   hues,
-  onOpenBot,
+  onMultibot,
   trigger,
 }: {
   // The colours the user's bots already wear.
   hues: number[];
-  onOpenBot: (botId: string) => void;
+  onMultibot: (botId: string) => void;
   trigger: Dialog.Trigger.Props["render"];
 }) => {
   const [open, setOpen] = useState(false);
@@ -453,7 +453,7 @@ export const NewBotDialog = ({
         hues={hues}
         onDone={(botId) => {
           setOpen(false);
-          onOpenBot(botId);
+          onMultibot(botId);
         }}
       />
     </WizardDialog>
