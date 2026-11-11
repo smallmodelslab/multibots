@@ -219,7 +219,9 @@ test("scroll_capture reads a long virtualized list inside a dialog whole, each r
     const n = String(index).padStart(4, "0");
     assert.equal(count(lines, `Member ${n} @member${n}`), 1, `Member ${n}`);
   }
-  // The sticky header once, and nothing from behind the dialog.
+  // Each row's own "Follow", though the list moves its node from row to
+  // row; the sticky header once; and nothing from behind the dialog.
+  assert.equal(count(lines, "Follow"), members);
   assert.equal(count(lines, "Members"), 1);
   assert.doesNotMatch(read.text, /Behind the dialog/);
   assert.ok(read.images.length > 0);

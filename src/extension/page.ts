@@ -410,16 +410,9 @@ export const screenshot = async (tab: Tab) => {
 
 // ---- Reading a long page or list whole ----
 
-// A line of text: where in the content it is, and in the viewport; the
-// text node it starts in, by a number that lasts while the node does;
-// and whether a sticky or fixed element pins it to the view.
-type Line = {
-  text: string;
-  y: number;
-  x: number;
-  node: number;
-  pinned: boolean;
-};
+// A line of text: where in the content it is, and in the viewport, and
+// whether a sticky or fixed element pins it to the view.
+type Line = { text: string; y: number; x: number; pinned: boolean };
 type View = {
   // How far the target is scrolled, how tall its view is and how much of
   // that is in the viewport, and how tall all of it is.
@@ -495,21 +488,6 @@ function look(this: Element): View {
     NodeFilter.SHOW_TEXT,
   );
   let last: (Line & { right: number; top: number }) | null = null;
-  // Text nodes' numbers, kept in the extension's own world of the page.
-  const known = globalThis as {
-    openbotsNodes?: WeakMap<Node, number>;
-    openbotsNext?: number;
-  };
-  const nodes = (known.openbotsNodes ??= new WeakMap());
-  const numberOf = (node: Node) => {
-    let number = nodes.get(node);
-    if (number === undefined)
-      nodes.set(
-        node,
-        (number = known.openbotsNext = (known.openbotsNext ?? 0) + 1),
-      );
-    return number;
-  };
   const pins = new Map<Element, boolean>();
   const pinnedAt = (element: Element | null): boolean => {
     if (!element || element === this || element === doc.body) return false;
@@ -556,7 +534,6 @@ function look(this: Element): View {
       continue;
     }
     last = {
-      node: numberOf(node),
       pinned: pinnedAt(parent),
       right: rect.right,
       text: words,
@@ -567,7 +544,7 @@ function look(this: Element): View {
     lines.push(last);
   }
   let cover = 0;
-  for (let y = top; y < (top + bottom) / 2; y += 4) {
+  for (let y = top; y < bottom; y += 4) {
     const hit = doc.elementFromPoint((left + right) / 2, y + 1);
     if (!hit || !pinnedAt(hit)) break;
     cover = y + 4 - top;
@@ -576,13 +553,7 @@ function look(this: Element): View {
     client: page ? win.innerHeight : this.clientHeight,
     cover,
     height: bottom - top,
-    lines: lines.map(({ node, pinned, text, x, y }) => ({
-      node,
-      pinned,
-      text,
-      x,
-      y,
-    })),
+    lines: lines.map(({ pinned, text, x, y }) => ({ pinned, text, x, y })),
     origin,
     scrollHeight: this.scrollHeight,
     top: page ? win.scrollY : this.scrollTop,
@@ -676,43 +647,65 @@ export const scrollCapture = async (
   let view = await settled(3000);
   const start = view.top;
   const seen = new Map<string, number[]>();
-  // The text nodes the step before showed, each with its text.
-  let before = new Set<string>();
   const pinned = new Set<string>();
   const kept: Line[] = [];
   const parts: { data: string; skip: number; height: number }[] = [];
   let covered = -Infinity;
+  // Where the step before showed each text it showed once.
+  let once = new Map<string, number>();
   const record = async (now: View) => {
-    const shown = new Set<string>();
+    const lines = now.lines.filter((line) => !line.pinned);
+    const counts = new Map<string, number>();
+    for (const { text } of lines) counts.set(text, (counts.get(text) ?? 0) + 1);
+    const unique = lines.filter(({ text }) => counts.get(text) === 1);
+    // What loaded above moves what the step before showed: by as far as
+    // most of the texts both showed once moved, from the first of them.
+    // A list that draws its rows anew keeps a text at its row's place.
+    const moves = new Map<number, number[]>();
+    for (const line of unique) {
+      const was = once.get(line.text);
+      const move = was === undefined ? 0 : Math.round(line.y - was);
+      if (Math.abs(move) > 3)
+        moves.set(move, [...(moves.get(move) ?? []), was!]);
+    }
+    const [move, movers] = [...moves].reduce<[number, number[]]>(
+      (most, each) => (each[1].length > most[1].length ? each : most),
+      [0, []],
+    );
+    if (movers.length >= 2) {
+      const from = Math.min(...movers) - 3;
+      for (const places of seen.values())
+        places.forEach((y, index) => {
+          if (y >= from) places[index] = y + move;
+        });
+      for (const line of kept)
+        if (!line.pinned && line.y >= from) line.y += move;
+    }
+    once = new Map(unique.map(({ text, y }) => [text, y]));
     for (const line of now.lines) {
       if (line.pinned) {
         if (!pinned.has(line.text)) kept.push(line);
         pinned.add(line.text);
         continue;
       }
-      // The same text node as the step before showed, though what loaded
-      // above moved it, or the same place again, though a list drew its
-      // row anew. A node out of view since may hold another row now.
-      const node = `${line.node}|${line.text}`;
-      shown.add(node);
       const places = seen.get(line.text) ?? [];
-      if (before.has(node) || places.some((y) => Math.abs(y - line.y) <= 3))
-        continue;
+      if (places.some((y) => Math.abs(y - line.y) <= 3)) continue;
       seen.set(line.text, [...places, line.y]);
       kept.push(line);
     }
-    before = shown;
     // What of the content this step pictures, past what earlier ones did.
     const from = now.top + (now.view.top - now.origin);
     const to = from + now.view.height;
     if (to <= covered + 0.5 || !now.view.width || !now.view.height) return;
     // After the first, what pinned elements hide is not the content.
-    parts.push({
-      data: await capture(tab, now.view),
-      height: now.view.height,
-      skip: parts.length ? Math.max(now.cover, covered - from) : 0,
-    });
+    const skip = parts.length ? Math.max(now.cover, covered - from) : 0;
     covered = to;
+    if (skip < now.view.height)
+      parts.push({
+        data: await capture(tab, now.view),
+        height: now.view.height,
+        skip,
+      });
   };
 
   await record(view);
@@ -721,7 +714,7 @@ export const scrollCapture = async (
   while (steps < maxSteps) {
     const atEnd = view.top + view.client >= view.scrollHeight - 2;
     // What the next view shows below its pinned header overlaps this one.
-    const step = Math.max(40, Math.floor((view.height - view.cover) * 0.9));
+    const step = Math.max(1, Math.floor((view.height - view.cover) * 0.9));
     const { left, top, width, height } = view.view;
     await send(tab, "Input.dispatchMouseEvent", {
       deltaX: 0,

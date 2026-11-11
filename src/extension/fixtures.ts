@@ -32,7 +32,9 @@ const inner = page(
 </script>`,
 );
 
-// Only the rows in view, and a few around them, exist at a time.
+// Only the rows in view, and a few around them, exist at a time: a pool
+// of rows each drawn anew as another member, its text nodes kept, so each
+// row's "Follow" is one node that moves from member to member.
 const list = page(
   "Group members",
   `<div role="dialog" aria-label="Members" style="position:fixed;left:40px;top:60px;width:360px;border:1px solid #ccc;background:#fff">
@@ -43,18 +45,24 @@ const list = page(
 </div>
 <p>Behind the dialog: the group's posts.</p>
 <script>
-  const height = 32, total = ${members};
+  const height = 48, total = ${members}, pool = Math.ceil(480 / height) + 10;
   rows.style.height = total * height + "px";
+  const drawn = Array.from({ length: pool }, () => {
+    const row = document.createElement("div");
+    row.style.cssText = "position:absolute;left:8px;right:8px;height:" + height + "px";
+    row.innerHTML = "<div><span>Member</span> <span style=color:#888>@member</span></div><div style=color:#06c>Follow</div>";
+    rows.append(row);
+    return row;
+  });
   const draw = () => {
     const first = Math.max(0, Math.floor(list.scrollTop / height) - 5);
-    const last = Math.min(total, first + Math.ceil(480 / height) + 10);
-    rows.replaceChildren();
-    for (let index = first; index < last; index++) {
-      const row = document.createElement("div");
+    for (let index = first; index < Math.min(total, first + pool); index++) {
+      const row = drawn[index % pool];
       const n = String(index + 1).padStart(4, "0");
-      row.style.cssText = "position:absolute;left:8px;right:8px;height:" + height + "px;top:" + index * height + "px;display:flex;gap:8px;align-items:center";
-      row.innerHTML = "<span>Member " + n + "</span><span style=color:#888>@member" + n + "</span>";
-      rows.append(row);
+      const [name, handle] = row.querySelectorAll("span");
+      name.firstChild.data = "Member " + n;
+      handle.firstChild.data = "@member" + n;
+      row.style.top = index * height + "px";
     }
   };
   list.addEventListener("scroll", draw);
