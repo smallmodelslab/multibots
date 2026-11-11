@@ -6,7 +6,8 @@
 export const browserHost = "com.wrkrsh.openbots";
 // Chrome shows it as the extension's version. An extension Chrome loaded
 // before OpenBots updated its folder reloads from it when this differs.
-export const browserProtocol = 1;
+// 2: the extension asks the user before it connects.
+export const browserProtocol = 2;
 
 // A tab of a bot's: Chrome's id for it, and what it shows.
 export type BrowserTab = { tab: number; url: string; title: string };

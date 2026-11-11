@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { spawn, type ChildProcess } from "node:child_process";
 import { once } from "node:events";
 import { existsSync } from "node:fs";
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Writable } from "node:stream";
@@ -11,6 +12,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
 import { Browser } from "../main/browser";
+import { browserProtocol } from "../shared/browser";
 import { botTools } from "../main/tools";
 import { feedItems, members, serveFixtures } from "./fixtures";
 
@@ -300,4 +302,17 @@ test("scroll_capture waits for a page that loads more at its end, and what loads
   for (let index = 1; index <= feedItems; index++)
     assert.equal(count(lines, `Post number ${index}`), 1, `Post ${index}`);
   assert.equal(count(lines, "End of feed"), 1);
+});
+
+test("an extension Chrome loaded before OpenBots updated it reloads into this one", async () => {
+  const { socket: path, token } = JSON.parse(
+    await readFile(join(scratch, "home", "browser", "connection.json"), "utf8"),
+  ) as { socket: string; token: string };
+  const old = connect(path);
+  old.write(
+    `${JSON.stringify({ token })}\n${JSON.stringify({ hello: browserProtocol - 1 })}\n`,
+  );
+  const [reply] = (await once(old.setEncoding("utf8"), "data")) as [string];
+  old.destroy();
+  assert.deepEqual(JSON.parse(reply.split("\n")[0]!), { reload: true });
 });

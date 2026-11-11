@@ -317,9 +317,13 @@ chrome.alarms.onAlarm.addListener(({ name }) => {
   if (name === "reconnect") connect();
 });
 chrome.runtime.onStartup.addListener(connect);
-// What it does, and the choice to allow it, first.
+// What it does, and the choice to allow it, first: also for one that
+// updated from before it asked.
 chrome.runtime.onInstalled.addListener(({ reason }) => {
-  if (reason === "install") void chrome.tabs.create({ url: "popup.html" });
+  if (reason === "install" || reason === "update")
+    void loaded.then(() => {
+      if (!allowed) void chrome.tabs.create({ url: "popup.html" });
+    });
 });
 void loaded.then(async () => {
   await save();
