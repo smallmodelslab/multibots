@@ -42,15 +42,17 @@ const serviceConfig = join(
 // cloud and sets nothing else up.
 const installer = "curl -fsSL https://multidesktop.cloud/install.sh | sh";
 
-// The first release whose local socket signals; development builds are 0.0.0.
-const since = [0, 4, 7];
-const signals = (version: string) => {
+// Whether a release is the one given or later; development builds are
+// 0.0.0, and every later.
+const atLeast = (version: string, since: number[]) => {
   const parts = version.split(".").map(Number);
   if (parts.length !== 3 || parts.some(Number.isNaN)) return false;
   if (parts.every((part) => part === 0)) return true;
   const first = parts.findIndex((part, index) => part !== since[index]);
   return first === -1 || parts[first]! > since[first]!;
 };
+// The first release whose local socket signals.
+const signals = (version: string) => atLeast(version, [0, 4, 7]);
 
 // What a program says when it fails, or null when it does not.
 const failureOf = (file: string, args: string[]) =>
@@ -254,6 +256,12 @@ export class Computer {
       signingIn,
       version,
     };
+  }
+
+  // Whether the Multidesktop bots use reads the screen's text and reads a
+  // long list or page whole, as 0.4.8 began to.
+  reads() {
+    return atLeast(this.version ?? "", [0, 4, 8]);
   }
 
   // The user's other computers bots reach, by name.

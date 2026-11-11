@@ -120,6 +120,7 @@ const toolsOf = (bot: string) =>
     onCommand: () => {},
     onRoutines: async () => {},
     others: [],
+    reads: false,
     repls: () => {
       throw new Error("No screen here.");
     },

@@ -1579,6 +1579,7 @@ export class Bots {
                 return (repls ??= computer.repls());
               },
               screen: computer.screen() === "ready",
+              reads: computer.reads(),
               routines: () => bot.routines,
               onCommand: (command) => {
                 bot.commands = [...bot.commands, command].slice(-20);
@@ -1720,7 +1721,7 @@ export class Bots {
       `Your folder is ${this.folder(botId, "files")} here. Your shell starts there, and what you keep there is your library, which the user sees; packages installed in node_modules stay on the server that installed them. You may use the rest of the user's computers as the user would; ask before anything destructive or irreversible outside your folder.`,
       this.options.computer.screen() === "ready" ||
       this.options.computer.others().length
-        ? "The computer tool sees and uses a computer's screen, for what only its apps can do. The user may be working on it: prefer elements' press and setValue, which leave the pointer alone."
+        ? `The computer tool sees and uses a computer's screen, for what only its apps can do. The user may be working on it: prefer elements' press and setValue, which leave the pointer alone.${this.options.computer.reads() ? " Read text an app's elements don't name with text(), and a long list or page with scrollCapture, which keeps track of what it read." : ""}`
         : "",
       this.options.browser.state().connected
         ? "The browser tool uses tabs of your own in the user's Chrome here, signed in where the user is: use it for websites rather than the screen or your shell. Read a page with snapshot and act on its refs; read a long page or list with scroll_capture."

@@ -9,7 +9,13 @@
 // native.ts, which node.ts starts from Node.
 
 export { guest } from "./guest";
-export { appsText, regionText, screenText } from "./description";
+export {
+  appsText,
+  ocrText,
+  regionText,
+  screenText,
+  scrollText,
+} from "./description";
 
 export type Point = { x: number; y: number };
 export type Region = Point & { width: number; height: number };

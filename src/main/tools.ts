@@ -1,4 +1,10 @@
-import { appsText, screenText } from "@wrkrsh/computer-use";
+import {
+  appsText,
+  ocrText,
+  regionText,
+  screenText,
+  scrollText,
+} from "@wrkrsh/computer-use";
 import {
   toolDescriptions,
   whiteboardEditSchema,
@@ -400,6 +406,7 @@ export const botTools = ({
   onCommand,
   onRoutines,
   others,
+  reads,
   repls,
   routines,
   screen,
@@ -413,8 +420,10 @@ export const botTools = ({
   // reaches.
   here: string;
   others: string[];
-  // Whether this server's screen can be used.
+  // Whether this server's screen can be used, and whether its Multidesktop
+  // reads text and scrolls through long lists for the bot.
   screen: boolean;
+  reads: boolean;
   onCommand: (command: string) => void;
   onRoutines: (routines: Routine[]) => Promise<void>;
   // Its REPLs, started at the computer tool's first use.
@@ -461,7 +470,7 @@ export const botTools = ({
       computer: tool({
         description: `Run JavaScript that sees and uses a computer's screen: \`computer\` is the main display of ${screen ? `this server, ${here}` : "the computer you name"}${screen && others.length ? ", or of the computer you name" : ""}, with these methods. Await each.
 ${screenText}
-${appsText}
+${appsText}${reads ? `\n${regionText}\n${ocrText}\n${scrollText}` : ""}
 Top-level await; variables last until your run ends. console.log(value) adds text to the result. The user may be using the screen.`,
         inputSchema: onComputer(
           {
