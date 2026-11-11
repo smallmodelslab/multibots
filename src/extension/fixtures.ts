@@ -17,8 +17,18 @@ const form = page(
   `<label for="who">Name</label> <input id="who" value="someone">
 <button id="greet">Greet</button>
 <p id="said"></p>
+<iframe src="/inner" title="Embedded"></iframe>
 <script>
   greet.onclick = () => { said.textContent = "Hello, " + who.value + "!"; };
+</script>`,
+);
+
+// A form inside the form's page, as embedded ones are.
+const inner = page(
+  "Embedded",
+  `<button id="inside">Inside</button><p id="heard"></p>
+<script>
+  inside.onclick = () => { heard.textContent = "Clicked inside"; };
 </script>`,
 );
 
@@ -53,7 +63,7 @@ const list = page(
 );
 
 // Thirty more items a moment after the end comes into view, until all are
-// there.
+// there; with the second thirty, a banner above pushes the read ones down.
 const feed = page(
   "Feed",
   `<ol id="items"></ol><p id="end" hidden>End of feed</p>
@@ -67,6 +77,12 @@ const feed = page(
       items.append(item);
     }
     if (shown >= ${feedItems}) end.hidden = false;
+    if (shown === 60) {
+      const banner = document.createElement("p");
+      banner.style.height = "170px";
+      banner.textContent = "Sponsored";
+      document.body.prepend(banner);
+    }
   };
   more();
   addEventListener("scroll", () => {
@@ -81,6 +97,7 @@ const feed = page(
 const pages: Record<string, string> = {
   "/feed": feed,
   "/form": form,
+  "/inner": inner,
   "/members": list,
 };
 

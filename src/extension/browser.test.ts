@@ -161,6 +161,16 @@ test("a bot reads a form, fills it in and sees what it did", async () => {
   });
   const done = await use("a", { action: "snapshot", tab });
   assert.match(done.text, /text "Hello, Ada!"/);
+  // What an iframe holds is in the snapshot, and acts by its refs too.
+  await use("a", {
+    action: "click",
+    ref: refOf(done.text, 'button "Inside"'),
+    tab,
+  });
+  assert.match(
+    (await use("a", { action: "snapshot", tab })).text,
+    /text "Clicked inside"/,
+  );
   const shot = await use("a", { action: "screenshot", tab });
   assert.equal(shot.images.length, 1);
   assert.equal(
@@ -218,7 +228,7 @@ test("scroll_capture reads a long virtualized list inside a dialog whole, each r
   assert.ok(saved.filter((name) => name.endsWith(".png")).length > 1);
 });
 
-test("scroll_capture waits for a page that loads more at its end", async () => {
+test("scroll_capture waits for a page that loads more at its end, and what loads above moves nothing twice", async () => {
   const tab = tabOf(
     (await use("a", { action: "open", url: `${fixtures.url}feed` })).text,
   );

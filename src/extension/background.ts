@@ -91,15 +91,21 @@ const own = async (bot: string, tab: number) => {
 
 // The debugger on the tab, for what the bot does in its page.
 const debug = async (tab: number) => {
-  if (attached.has(tab)) return;
-  await chrome.debugger.attach({ tabId: tab }, "1.3");
-  attached.add(tab);
-  // Focus works in a window the user is not looking at.
-  await chrome.debugger.sendCommand(
-    { tabId: tab },
-    "Emulation.setFocusEmulationEnabled",
-    { enabled: true },
-  );
+  if (!attached.has(tab)) {
+    await chrome.debugger.attach({ tabId: tab }, "1.3");
+    attached.add(tab);
+    // Focus works in a window the user is not looking at.
+    await chrome.debugger.sendCommand(
+      { tabId: tab },
+      "Emulation.setFocusEmulationEnabled",
+      { enabled: true },
+    );
+  }
+  // Stopping while it attached found nothing to detach yet.
+  if (stopped) {
+    await release(tab);
+    throw stoppedError();
+  }
 };
 
 const open = async (bot: string, name: string, url: string) => {
@@ -129,11 +135,13 @@ const open = async (bot: string, name: string, url: string) => {
   return describe(tab.id);
 };
 
+const stoppedError = () =>
+  new Error(
+    "The user stopped bots in Chrome. They can let them go on in the OpenBots extension.",
+  );
+
 const run = async (request: BrowserRequest): Promise<unknown> => {
-  if (stopped)
-    throw new Error(
-      "The user stopped bots in Chrome. They can let them go on in the OpenBots extension.",
-    );
+  if (stopped) throw stoppedError();
   const { bot } = request;
   switch (request.action) {
     case "tabs":
