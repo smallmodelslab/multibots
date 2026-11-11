@@ -550,22 +550,40 @@ function look(this: Element): View {
     lines.push(last);
     // A pinned line stays in the view as the content scrolls past it.
     if (!last.pinned) {
-      seen.push({ back: [], node: node as Text, text: words, y: last.y });
+      seen.push({
+        ahead: [],
+        back: [],
+        node: node as Text,
+        text: words,
+        y: last.y,
+      });
       at.push(texts.length - 1);
     }
   }
-  // Each held line's texts back to the nearest the page shows once, its
-  // row's or post's own, within twenty; a line with none is not held.
+  // Each held line's texts back to the nearest before it the page shows
+  // once, and on to the nearest after it, within twenty each way: its
+  // row's or post's own, such as a name and a handle. A line with neither
+  // is not held.
   const counts = new Map<string, number>();
   for (const text of texts) counts.set(text, (counts.get(text) ?? 0) + 1);
   (globalThis as { openbotsSeen?: Held }).openbotsSeen = seen.filter(
     (line, index) => {
       const end = at[index]!;
-      let from = end;
-      while (from >= 0 && end - from < 20 && counts.get(texts[from]!) !== 1)
+      let from = end - 1;
+      while (from >= 0 && end - from <= 20 && counts.get(texts[from]!) !== 1)
         from--;
-      line.back = texts.slice(from, end);
-      return from >= 0 && end - from < 20;
+      let to = end + 1;
+      while (
+        to < texts.length &&
+        to - end <= 20 &&
+        counts.get(texts[to]!) !== 1
+      )
+        to++;
+      const behind = from >= 0 && end - from <= 20;
+      const after = to < texts.length && to - end <= 20;
+      line.back = behind ? texts.slice(from, end) : [];
+      line.ahead = after ? texts.slice(end + 1, to + 1) : [];
+      return behind || after;
     },
   );
   let cover = 0;
@@ -599,10 +617,17 @@ const partHeight = 2000;
 
 // Text nodes of lines, by their text and place in the content then. They
 // stay in the extension's own world of the page between calls. The texts
-// before each back to one the page showed once, its row's or post's own
-// such as a name, tell a node a list reused for another row, with its
-// "Like" or "Follow" kept, from one that stayed.
-type Held = { node: Text; text: string; back: string[]; y: number }[];
+// around each out to ones the page showed once, its row's or post's own
+// such as a name and a handle, tell a node a list reused for another
+// row, with its "Like", "Follow" or even its name kept, from one that
+// stayed.
+type Held = {
+  node: Text;
+  text: string;
+  back: string[];
+  ahead: string[];
+  y: number;
+}[];
 
 // Keeps the lines the last look saw, for moved() after the next step.
 function hold(this: Element) {
@@ -612,7 +637,7 @@ function hold(this: Element) {
 
 // How far what loaded above, or was measured anew, moved the content just
 // above `below` since hold(): as far as the nearest held lines above it
-// that still show the same text after the same texts moved; or nothing
+// that still show the same text among the same texts moved; or nothing
 // when none do, as a list that draws its rows anew replaced or reused
 // them.
 function moved(this: Element, below: number) {
@@ -628,30 +653,36 @@ function moved(this: Element, below: number) {
   );
   const wordsOf = (node: Node) =>
     (node as Text).data.replace(/\s+/g, " ").trim();
-  // The texts before a node, as look() reads the page, nearest last.
-  const behind = (node: Node, count: number) => {
+  // The texts before or after a node, as look() reads the page, in order.
+  const around = (
+    node: Node,
+    count: number,
+    step: "previousNode" | "nextNode",
+  ) => {
     const found: string[] = [];
     walker.currentNode = node;
     for (
-      let next = walker.previousNode();
+      let next = walker[step]();
       next && found.length < count;
-      next = walker.previousNode()
+      next = walker[step]()
     )
       if (
         wordsOf(next) &&
         !next.parentElement?.closest("script, style, noscript, template")
       )
-        found.unshift(wordsOf(next));
-    return found;
+        found.push(wordsOf(next));
+    return step === "previousNode" ? found.reverse() : found;
   };
   const moves = ((globalThis as { openbotsHeld?: Held }).openbotsHeld ?? [])
     .filter(({ y }) => y < below)
     .sort((a, b) => b.y - a.y)
-    .flatMap(({ back, node, text, y }) => {
+    .flatMap(({ ahead, back, node, text, y }) => {
       if (
         !node.isConnected ||
         wordsOf(node) !== text ||
-        behind(node, back.length).join("\n") !== back.join("\n")
+        around(node, back.length, "previousNode").join("\n") !==
+          back.join("\n") ||
+        around(node, ahead.length, "nextNode").join("\n") !== ahead.join("\n")
       )
         return [];
       range.selectNodeContents(node);
