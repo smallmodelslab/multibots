@@ -53,6 +53,7 @@ import {
   type Routine,
   type Upload,
 } from "../shared/types";
+import type { capture, captureError } from "./analytics";
 import type { Chatgpt } from "./chatgpt";
 import type { Browser } from "./browser";
 import type { Computer, Repls } from "./computer";
@@ -321,6 +322,8 @@ export class Bots {
       onRunning: () => void;
       // What failed changing a bot in the background, such as a save.
       onError: (botId: string, error: unknown) => void;
+      // Records how replies and voice chats go.
+      analytics: { capture: typeof capture; captureError: typeof captureError };
       renderBoard: (
         elements: readonly BoardElement[],
         files: readonly BoardFile[],
@@ -899,10 +902,15 @@ export class Bots {
             void this.options
               .ask({ botId, text, type: "bot.send", uploads: [] })
               .catch(() => {}),
-          onError: (message: string) =>
+          onError: (message: string) => {
+            this.options.analytics.captureError(
+              "voice chat",
+              new Error(message),
+            );
             void this.say(botId, "error", `Voice chat: ${message}`).catch(
               (error: unknown) => this.options.onError(botId, error),
-            ),
+            );
+          },
           // It ended there: the window hears it from the bot, and hangs up.
           onEnd: () => {
             if (bot.call !== call) return;
@@ -1650,11 +1658,14 @@ export class Bots {
           text ? { at: Date.now(), id: randomUUID(), role: "bot", text } : null,
           fenced,
         );
+        this.options.analytics.capture("bot replied", { succeeded: true });
       } catch (error) {
         // It failed in the open. A stop clears what it read itself; a quit,
         // or another server taking the bot over, leaves it, to be read
         // again.
-        if (!abort.signal.aborted)
+        if (!abort.signal.aborted) {
+          this.options.analytics.capture("bot replied", { succeeded: false });
+          this.options.analytics.captureError("bot reply", error);
           await this.finish(
             botId,
             bot,
@@ -1666,6 +1677,7 @@ export class Bots {
             },
             fenced,
           );
+        }
       } finally {
         bot.abort = null;
         repls?.close();

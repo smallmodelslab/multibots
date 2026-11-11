@@ -1,3 +1,4 @@
+import type { SerializedError } from "@wrkrsh/client-log";
 import type { Channel, UpdateState } from "@wrkrsh/electron-update/state";
 import type { Sender } from "@wrkrsh/webhooks";
 import type { BoardElement, BoardFile } from "@wrkrsh/whiteboard/scene";
@@ -353,6 +354,8 @@ export type AppState = {
   update: UpdateState;
   // The channel updates follow.
   channel: Channel;
+  // Whether this computer tells us which features are used and what fails.
+  analytics: boolean;
 };
 
 export type Bridge = {
@@ -408,4 +411,9 @@ export type Bridge = {
   onChange: (listener: (change: Change) => void) => () => void;
   // The window has drawn the app: the JavaScript running works.
   ready: () => void;
+  setAnalytics: (on: boolean) => Promise<void>;
+  // The feature flags on, by id, which analytics and log records name.
+  setFlags: (flags: string[]) => void;
+  // What the window failed at that nothing caught.
+  reportError: (error: SerializedError) => void;
 };

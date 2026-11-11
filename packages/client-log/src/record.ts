@@ -45,6 +45,8 @@ export type ClientLogContext = {
   version: string;
   /** Random per launch. */
   session: string;
+  /** The feature flags on, by id, in an app that has them. */
+  flags?: readonly string[];
 };
 
 export type ClientLogRecord = {
@@ -78,6 +80,7 @@ const RESERVED_KEYS = new Set([
   "source",
   "version",
   "session",
+  "flags",
 ]);
 const MAX_MSG_CHARS = 200;
 const MAX_STRING_CHARS = 400;
@@ -254,6 +257,7 @@ export function createLogRecord(
     source: context.source,
     version: context.version,
     session: context.session,
+    ...(context.flags ? { flags: [...context.flags] } : {}),
     ...sanitizeLogFields(fields),
   };
 }

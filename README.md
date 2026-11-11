@@ -236,7 +236,7 @@ command line with `bun run avatar:gif --hue 215 --hat cap --glasses round --out 
 Use Node 24 and Bun 1.4.4.
 
 `packages/` holds copies of the wrkrsh packages OpenBots shares with other
-apps: client-log, composer, computer-use, electron-update, glow, pencil,
+apps: client-log, composer, computer-use, electron-update, flags, glow, pencil,
 webhooks, whiteboard and wizard. They are kept as they are there, so formatting and lint leave them
 alone; types still check them.
 
@@ -269,8 +269,14 @@ package beside the app: the bot from `src/features/avatars` wakes up, greets
 the visitor and says what it does as they scroll. `bun run dev` there serves
 it. Its download buttons are wrkrsh.com's links to the current installers
 (`wrkrsh.com/download/openbots/<platform>`), and a Cloudflare Worker
-(`site/worker.ts`) serves the build and proxies PostHog. The monorepo's CI
-deploys it on every merge.
+(`site/worker.ts`) serves the build and proxies PostHog, for the site and for
+the app. The monorepo's CI deploys it on every merge.
+
+Released builds tell PostHog which features are used, whether they worked,
+and what failed (`src/main/analytics.ts`), unless the user turns it off under
+Privacy in Settings. Features in progress ship behind flags
+(`src/features/flags.ts`), set under Flags in Settings; every analytics event
+and log record names the flags on.
 
 `bun run package` builds an unsigned installer for this computer into `dist/`.
 Signed installers and JavaScript updates are released from the wrkrsh

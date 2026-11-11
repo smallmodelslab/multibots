@@ -15,6 +15,7 @@ import { hostname, userInfo } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import type { SerializedError } from "@wrkrsh/client-log";
 import type { BoardElement, BoardFile } from "@wrkrsh/whiteboard/scene";
 
 import type {
@@ -29,6 +30,16 @@ import type {
   OwnModelKind,
 } from "../shared/types";
 import appIconPath from "../../build/icon.png?asset";
+import {
+  analyticsOn,
+  capture,
+  captureError,
+  setAnalytics,
+  setFlags,
+  startAnalytics,
+  stopAnalytics,
+  tracked,
+} from "./analytics";
 import { Bots, mergeConversations } from "./bots";
 import { Browser } from "./browser";
 import { Chatgpt } from "./chatgpt";
@@ -234,12 +245,21 @@ const reads = new Set<Command["type"]>([
   "whiteboard.image",
 ]);
 
+// What a window asks often, which analytics leaves out: what only reads, and
+// the whiteboard saving as the user draws.
+const untracked = new Set<Command["type"]>([
+  ...reads,
+  "bots.list",
+  "whiteboard.save",
+]);
+
 const start = async () => {
   // Only the user reads their bots: another user of this computer could
   // otherwise read every conversation and file.
   await mkdir(home, { recursive: true });
   await chmod(home, 0o700);
   const hostId = await computerId();
+  await startAnalytics(home, hostId);
   const name = computerName();
   const user = userName();
   const botsDir = join(home, "bots");
@@ -431,6 +451,7 @@ const start = async () => {
       },
       onError: (botId, error) =>
         logError("bots", "Changing a bot failed.", { botId, error }),
+      analytics: { capture, captureError },
       onRunning: hostChanged,
       own,
       plugins,
@@ -525,6 +546,7 @@ const start = async () => {
     tailscale: peers.tailscale,
     update: updates().state(),
     channel: updates().channel(),
+    analytics: analyticsOn(),
     user,
   });
   const pushState = async () => broadcast("openbots:state", state());
@@ -541,56 +563,63 @@ const start = async () => {
     );
   if (await readServerMode()) await startServer();
 
+  // What the user asks of this computer, recorded by name and outcome.
+  const act = <A extends unknown[]>(
+    name: string,
+    run: (...args: A) => unknown,
+  ) =>
+    ipcMain.handle(`openbots:${name}`, (_event, ...args: A) =>
+      tracked(name, () => run(...args)),
+    );
   ipcMain.handle("openbots:state", () => state());
   // The window has drawn the app, also after a reload: the release works.
   ipcMain.on("openbots:ready", () => updates().ready());
-  ipcMain.handle("openbots:call", (_event, command: Command) => route(command));
-  ipcMain.handle("openbots:server", (_event, on: boolean) => setServer(on));
-  ipcMain.handle("openbots:update-check", () => updates().check());
-  ipcMain.handle("openbots:update-install", () => updates().install());
-  ipcMain.handle("openbots:update-channel", (_event, channel: Channel) => {
+  ipcMain.on("openbots:flags", (_event, flags: string[]) => setFlags(flags));
+  ipcMain.on("openbots:error", (_event, error: SerializedError) =>
+    logError("window", "The window hit an error.", { error }),
+  );
+  ipcMain.handle("openbots:analytics", async (_event, on: boolean) => {
+    await setAnalytics(on);
+    void pushState();
+  });
+  ipcMain.handle("openbots:call", (_event, command: Command) =>
+    untracked.has(command.type)
+      ? route(command)
+      : tracked(command.type, () => route(command)),
+  );
+  act("server", (on: boolean) => setServer(on));
+  act("update-check", () => updates().check());
+  act("update-install", () => updates().install());
+  act("update-channel", (channel: Channel) => {
     // Followed at once; the check it starts may download for a while.
     const checked = updates().setChannel(channel);
     void pushState();
     return checked;
   });
-  ipcMain.handle("openbots:sign-in", () => chatgpt.signIn());
-  ipcMain.handle("openbots:sign-out", () => chatgpt.signOut());
-  ipcMain.handle("openbots:pair", (_event, code: string | null) =>
-    peers.pair(code),
-  );
+  act("sign-in", () => chatgpt.signIn());
+  act("sign-out", () => chatgpt.signOut());
+  act("pair", (code: string | null) => peers.pair(code));
   ipcMain.handle(
     "openbots:served-models",
     (_event, address: string, key: string) => own.served(address, key),
   );
-  ipcMain.handle(
-    "openbots:connect-model",
-    (_event, kind: OwnModelKind, input: OwnModelInput) =>
-      own.connect(kind, input),
+  act("connect-model", (kind: OwnModelKind, input: OwnModelInput) =>
+    own.connect(kind, input),
   );
-  ipcMain.handle("openbots:disconnect-model", (_event, id: string) =>
-    own.disconnect(id),
+  act("disconnect-model", (id: string) => own.disconnect(id));
+  act("order-models", (list: ModelList, order: string[]) =>
+    own.order(list, order),
   );
-  ipcMain.handle(
-    "openbots:order-models",
-    (_event, list: ModelList, order: string[]) => own.order(list, order),
-  );
-  ipcMain.handle("openbots:composio-key", (_event, key: string) =>
-    plugins.setKey(key),
-  );
+  act("composio-key", (key: string) => plugins.setKey(key));
   ipcMain.handle(
     "openbots:plugins",
     (_event, query: Parameters<Bridge["plugins"]>[0]) => plugins.plugins(query),
   );
-  ipcMain.handle("openbots:connect-plugin", (_event, slug: string) =>
-    plugins.connect(slug),
-  );
-  ipcMain.handle("openbots:disconnect-plugin", (_event, slug: string) =>
-    plugins.disconnect(slug),
-  );
-  ipcMain.handle("openbots:allow-screen", () => computer?.allow());
-  ipcMain.handle("openbots:install-multidesktop", () => computer?.install());
-  ipcMain.handle("openbots:set-up-chrome", async () => {
+  act("connect-plugin", (slug: string) => plugins.connect(slug));
+  act("disconnect-plugin", (slug: string) => plugins.disconnect(slug));
+  act("allow-screen", () => computer?.allow());
+  act("install-multidesktop", () => computer?.install());
+  act("set-up-chrome", async () => {
     const folder = await browser.setUp();
     shell.showItemInFolder(join(folder, "manifest.json"));
     spawn(
@@ -603,11 +632,11 @@ const start = async () => {
       .on("error", () => {})
       .unref();
   });
-  ipcMain.handle("openbots:sign-in-multidesktop", () => computer?.signIn());
+  act("sign-in-multidesktop", () => computer?.signIn());
   ipcMain.handle("openbots:grok-bots", () =>
     localGrokBots(app.getPath("appData")),
   );
-  ipcMain.handle("openbots:open-folder", async (_event, botId: string) => {
+  act("open-folder", async (botId: string) => {
     const folder = join(botsDir, botId, "files");
     await mkdir(folder, { recursive: true });
     return shell.openPath(folder);
@@ -617,19 +646,16 @@ const start = async () => {
   // starts again.
   const opened = join(home, "opened");
   await rm(opened, { force: true, recursive: true });
-  ipcMain.handle(
-    "openbots:open-file",
-    async (_event, botId: string, path: string) => {
-      if (bots) return shell.openPath(join(botsDir, botId, "files", path));
-      const data = (await route({ botId, path, type: "file.read" })) as string;
-      const copy = resolve(opened, botId, path);
-      if (!copy.startsWith(opened + sep))
-        throw new Error("That file is outside the bot's folder.");
-      await mkdir(dirname(copy), { recursive: true });
-      await writeFile(copy, Buffer.from(data, "base64"));
-      return shell.openPath(copy);
-    },
-  );
+  act("open-file", async (botId: string, path: string) => {
+    if (bots) return shell.openPath(join(botsDir, botId, "files", path));
+    const data = (await route({ botId, path, type: "file.read" })) as string;
+    const copy = resolve(opened, botId, path);
+    if (!copy.startsWith(opened + sep))
+      throw new Error("That file is outside the bot's folder.");
+    await mkdir(dirname(copy), { recursive: true });
+    await writeFile(copy, Buffer.from(data, "base64"));
+    return shell.openPath(copy);
+  });
 
   // Stops every bot's run, with what its shell started, the webhooks, the
   // peers and the desktop.
@@ -638,6 +664,7 @@ const start = async () => {
     peers.close();
     computer?.close();
     void browser.close();
+    void stopAnalytics();
   };
   app.on("before-quit", shutDown);
   setMenu();

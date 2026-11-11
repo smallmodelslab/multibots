@@ -10,9 +10,12 @@ import {
 import { updates } from "@wrkrsh/electron-update";
 import { app } from "electron";
 
+import { activeFlags, captureError } from "./analytics";
+
 // An error the app recovers from, in OpenBots' log, the launcher's
 // openbots.jsonl in the platform's log folder, in its session
-// (docs/diagnostics.md in the monorepo). Fields name things, never secrets.
+// (docs/diagnostics.md in the monorepo), and in analytics. Fields name
+// things, never secrets.
 export const logError = (
   scope: string,
   msg: string,
@@ -21,7 +24,7 @@ export const logError = (
   const { session, version } = updates();
   const line = formatLogLine(
     createLogRecord(
-      { session, source: "main", version },
+      { flags: activeFlags(), session, source: "main", version },
       ERROR,
       scope,
       msg,
@@ -33,4 +36,5 @@ export const logError = (
   void mkdir(folder, { recursive: true })
     .then(() => appendFile(join(folder, "openbots.jsonl"), line))
     .catch(() => {});
+  captureError(scope, fields?.error ?? new Error(msg), { msg });
 };

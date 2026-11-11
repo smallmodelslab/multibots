@@ -1,7 +1,9 @@
 import type { AppState } from "../../shared/types";
+import { AnalyticsSetting } from "./AnalyticsSetting";
 import { ChannelSetting } from "./ChannelSetting";
 import { ChatgptSetting } from "./ChatgptSetting";
 import { ChromeSetting } from "./ChromeSetting";
+import { FlagSettings } from "./FlagSettings";
 import { ModelOrders } from "./ModelOrder";
 import { MultidesktopSetting } from "./MultidesktopSetting";
 import { OwnModelSettings } from "./OwnModelSetting";
@@ -21,7 +23,8 @@ const tailscaleNotes = {
 // voice chats run on: its ChatGPT sign-in and the models the user hosts,
 // either or both, and the order each capability tries them in; and the
 // Multidesktop through which its bots use its screen and the user's other
-// computers; then the channel updates follow.
+// computers; then the channel updates follow, the flags of features in
+// progress, and whether this computer tells us how OpenBots is used.
 export const Settings = ({ state }: { state: AppState }) => {
   const self = state.hosts[0]!;
   return (
@@ -85,6 +88,10 @@ export const Settings = ({ state }: { state: AppState }) => {
           ) : null}
           <SettingsSection title="Updates">
             <ChannelSetting channel={state.channel} />
+          </SettingsSection>
+          <FlagSettings />
+          <SettingsSection title="Privacy">
+            <AnalyticsSetting on={state.analytics} />
           </SettingsSection>
         </div>
       </div>

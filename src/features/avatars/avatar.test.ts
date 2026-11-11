@@ -137,6 +137,7 @@ test("a bot's chosen color and accessories survive saving and restarting", async
       ask: async () => null,
       onChange: () => {},
       onError: () => {},
+      analytics: { capture: () => {}, captureError: () => {} },
       onRunning: () => {},
       renderBoard: async () => "",
     });

@@ -6,6 +6,7 @@ import { Details } from "@/features/bots/Details";
 import { markSeen, type Pane, Sidebar } from "@/features/bots/Sidebar";
 import { followVoiceChat } from "@/features/bots/voiceChat";
 import { useAppState, useBots } from "@/features/data";
+import { followChannel } from "@/features/flags";
 import { Plugins } from "@/features/plugins/Plugins";
 import { Settings } from "@/features/settings/Settings";
 import {
@@ -43,6 +44,10 @@ export const App = () => {
   );
 
   useEffect(() => followPointerLight(document), []);
+  const channel = state?.channel;
+  useEffect(() => {
+    if (channel) followChannel(channel);
+  }, [channel]);
   const drawn = Boolean(state);
   useEffect(() => {
     if (drawn) window.openbots.ready();
