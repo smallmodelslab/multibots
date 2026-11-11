@@ -19,7 +19,6 @@ import { hostname, userInfo } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { SerializedError } from "@wrkrsh/client-log";
 import type { BoardElement, BoardFile } from "@wrkrsh/whiteboard/scene";
 
 import type {
@@ -582,7 +581,7 @@ const start = async () => {
   // The window has drawn the app, also after a reload: the release works.
   ipcMain.on("openbots:ready", () => updates().ready());
   ipcMain.on("openbots:flags", (_event, flags: string[]) => setFlags(flags));
-  ipcMain.on("openbots:error", (_event, error: SerializedError) =>
+  ipcMain.on("openbots:error", (_event, error: unknown) =>
     logError("window", "The window hit an error.", { error }),
   );
   ipcMain.handle("openbots:analytics", async (_event, on: boolean) => {

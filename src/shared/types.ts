@@ -1,4 +1,3 @@
-import type { SerializedError } from "@wrkrsh/client-log";
 import type { Channel, UpdateState } from "@wrkrsh/electron-update/state";
 import type { Sender } from "@wrkrsh/webhooks";
 import type { BoardElement, BoardFile } from "@wrkrsh/whiteboard/scene";
@@ -414,6 +413,6 @@ export type Bridge = {
   setAnalytics: (on: boolean) => Promise<void>;
   // The feature flags on, by id, which analytics and log records name.
   setFlags: (flags: string[]) => void;
-  // What the window failed at that nothing caught.
-  reportError: (error: SerializedError) => void;
+  // What the window failed at that nothing caught, serialized.
+  reportError: (error: unknown) => void;
 };
