@@ -488,6 +488,8 @@ function look(this: Element): View {
     NodeFilter.SHOW_TEXT,
   );
   let last: (Line & { right: number; top: number }) | null = null;
+  // The text node each line starts in, kept for the step after (hold).
+  const seen: Held = [];
   const pins = new Map<Element, boolean>();
   const pinnedAt = (element: Element | null): boolean => {
     if (!element || element === this || element === doc.body) return false;
@@ -542,7 +544,9 @@ function look(this: Element): View {
       y: rect.top - origin + (page ? win.scrollY : this.scrollTop),
     };
     lines.push(last);
+    seen.push({ node: node as Text, text: words, y: last.y });
   }
+  (globalThis as { openbotsSeen?: Held }).openbotsSeen = seen;
   let cover = 0;
   for (let y = top; y < bottom; y += 4) {
     const hit = doc.elementFromPoint((left + right) / 2, y + 1);
@@ -572,115 +576,48 @@ function scrollBy(this: Element, pixels: number) {
 // How much one image of a capture shows at most, in CSS pixels.
 const partHeight = 2000;
 
-// Which of a view's lines, in order down the content, the view before
-// showed too. Two lines one after the other whose texts each view shows
-// once as a pair, both moved alike, anchor how far lines moved there, as
-// what loads above or is measured anew moves them; a lone "See more" is a
-// different post's in each view, but not with the post's own line before
-// it. The longest run of anchors in order counts, the one that moves
-// least where runs tie. Any line is the same as one the view before
-// showed only where it moved as far as the anchors beside it did, or with
-// none, not at all. Then the most pairs of the same text in the same
-// order win, and where pairings tie, the one that moves lines least.
-const shown = (before: View, lines: Line[]) => {
-  const old = before.lines
-    .filter((line) => !line.pinned)
-    .sort((a, b) => a.y - b.y || a.x - b.x);
-  const pairs = (list: Line[]) => {
-    const each = new Map<string, number[]>();
-    list.slice(0, -1).forEach((line, index) => {
-      const key = `${line.text}\n${list[index + 1]!.text}`;
-      each.set(key, [...(each.get(key) ?? []), index]);
-    });
-    return each;
-  };
-  const inNew = pairs(lines);
-  const found: { i: number; j: number; move: number }[] = [];
-  for (const [key, [i, ...more]] of pairs(old)) {
-    const at = inNew.get(key);
-    if (more.length || at?.length !== 1) continue;
-    const j = at[0]!;
-    const move = lines[j]!.y - old[i!]!.y;
-    if (Math.abs(lines[j + 1]!.y - old[i! + 1]!.y - move) <= 4)
-      found.push({ i: i!, j, move });
-  }
-  found.sort((a, b) => a.i - b.i);
-  // runs[a]: the best run in order ending at anchor a, and how far it moves.
-  const runs = found.map((anchor, index) => ({
-    moved: Math.abs(anchor.move),
-    run: [index],
-  }));
-  for (let a = 0; a < found.length; a++)
-    for (let b = 0; b < a; b++) {
-      if (found[b]!.j >= found[a]!.j) continue;
-      const run = [...runs[b]!.run, a];
-      const moved = runs[b]!.moved + Math.abs(found[a]!.move);
-      if (
-        run.length > runs[a]!.run.length ||
-        (run.length === runs[a]!.run.length && moved < runs[a]!.moved)
-      )
-        runs[a] = { moved, run };
-    }
-  const anchors =
-    runs
-      .reduce<(typeof runs)[number] | null>(
-        (best, each) =>
-          !best ||
-          each.run.length > best.run.length ||
-          (each.run.length === best.run.length && each.moved < best.moved)
-            ? each
-            : best,
-        null,
-      )
-      ?.run.map((index) => found[index]!) ?? [];
-  // How far the anchors just above and below a new line moved.
-  const near = (j: number) => {
-    const above = anchors.findLast((anchor) => anchor.j <= j);
-    const below = anchors.find((anchor) => anchor.j + 1 >= j);
-    const moves = [above, below].flatMap((anchor) =>
-      anchor ? [anchor.move] : [],
-    );
-    return moves.length ? moves : [0];
-  };
-  const pair = (i: number, j: number) => {
-    if (old[i]!.text !== lines[j]!.text) return null;
-    const move = lines[j]!.y - old[i]!.y;
-    return near(j).some((each) => Math.abs(each - move) <= 4)
-      ? 1e6 - Math.abs(move)
-      : null;
-  };
-  // score[i][j]: the best pairing of old lines from i and these from j.
-  const score = Array.from(
-    { length: old.length + 1 },
-    () => new Float64Array(lines.length + 1),
-  );
-  for (let i = old.length - 1; i >= 0; i--)
-    for (let j = lines.length - 1; j >= 0; j--) {
-      const paired = pair(i, j);
-      score[i]![j] = Math.max(
-        score[i + 1]![j]!,
-        score[i]![j + 1]!,
-        paired === null ? 0 : score[i + 1]![j + 1]! + paired,
-      );
-    }
-  const known = new Set<number>();
-  for (let i = 0, j = 0; i < old.length && j < lines.length;) {
-    const paired = pair(i, j);
-    if (paired !== null && score[i]![j] === score[i + 1]![j + 1]! + paired) {
-      known.add(j);
-      i++;
-      j++;
-    } else if (score[i]![j] === score[i + 1]![j]) i++;
-    else j++;
-  }
-  return known;
-};
+// Text nodes of lines, by their text and place in the content then. They
+// stay in the extension's own world of the page between calls.
+type Held = { node: Text; text: string; y: number }[];
+
+// Keeps the lines the last look saw, for moved() after the next step.
+function hold(this: Element) {
+  const kept = globalThis as { openbotsSeen?: Held; openbotsHeld?: Held };
+  kept.openbotsHeld = kept.openbotsSeen;
+}
+
+// How far what loaded above, or was measured anew, moved the content just
+// above `below` since hold(): as far as the nearest held lines above it
+// that still show the same text moved, or nothing when none do, as a list
+// that draws its rows anew replaced or reused them.
+function moved(this: Element, below: number) {
+  const doc = this.ownerDocument;
+  const win = doc.defaultView!;
+  const page = this === doc.scrollingElement;
+  const origin = page ? 0 : this.getBoundingClientRect().top + this.clientTop;
+  const top = page ? win.scrollY : this.scrollTop;
+  const range = doc.createRange();
+  const moves = ((globalThis as { openbotsHeld?: Held }).openbotsHeld ?? [])
+    .filter(({ y }) => y < below)
+    .sort((a, b) => b.y - a.y)
+    .flatMap(({ node, text, y }) => {
+      if (!node.isConnected || node.data.replace(/\s+/g, " ").trim() !== text)
+        return [];
+      range.selectNodeContents(node);
+      const rect = range.getBoundingClientRect();
+      return rect.height ? [rect.top - origin + top - y] : [];
+    })
+    .slice(0, 3)
+    .sort((a, b) => a - b);
+  return moves[Math.floor(moves.length / 2)] ?? 0;
+}
 
 // Scrolls the target from its top step by step, to its end or the step
 // limit, waiting at each for what loads or is drawn as it scrolls, and
-// keeps each line of text the first time it shows: what the view before
-// showed too is not new, and one a sticky or fixed element pins to the
-// view shows once.
+// keeps each line of text the first time it shows: past where the views
+// before reached in the content, moved as far as what loaded above or was
+// measured anew moved the lines there, and one a sticky or fixed element
+// pins to the view once.
 // Pictures of each step, with what an earlier one showed cut off, make
 // one tall image, cut into parts when that is too tall to read.
 export const scrollCapture = async (
@@ -753,20 +690,19 @@ export const scrollCapture = async (
   const pinned = new Set<string>();
   const kept: Line[] = [];
   const parts: { data: string; skip: number; height: number }[] = [];
+  // How far down the content the views so far reached.
   let covered = -Infinity;
-  let previous: View | null = null;
   const record = async (now: View) => {
-    const lines = now.lines
-      .filter((line) => !line.pinned)
-      .sort((a, b) => a.y - b.y || a.x - b.x);
-    const known = previous ? shown(previous, lines) : new Set<number>();
-    previous = now;
     for (const line of now.lines)
       if (line.pinned && !pinned.has(line.text)) {
         pinned.add(line.text);
         kept.push(line);
       }
-    kept.push(...lines.filter((_, index) => !known.has(index)));
+    kept.push(
+      ...now.lines
+        .filter((line) => !line.pinned && line.y >= covered - 0.5)
+        .sort((a, b) => a.y - b.y || a.x - b.x),
+    );
     // What of the content this step pictures, past what earlier ones did.
     const from = now.top + (now.view.top - now.origin);
     const to = from + now.view.height;
@@ -788,8 +724,8 @@ export const scrollCapture = async (
   while (steps < maxSteps) {
     const atEnd = view.top + view.client >= view.scrollHeight - 2;
     // What the next view shows below its pinned header overlaps this one.
-    // Views share a quarter, so they share a pair of lines to anchor on.
-    const step = Math.max(1, Math.floor((view.height - view.cover) * 0.75));
+    const step = Math.max(1, Math.floor((view.height - view.cover) * 0.9));
+    await callOn(tab, element, hold);
     // At once, not smoothly, so the view it lands on is the step's.
     await callOn(tab, element, scrollBy, [step]);
     let next: View;
@@ -805,6 +741,7 @@ export const scrollCapture = async (
       next = await settled(3000);
       if (signature(next) === signature(view)) break;
     }
+    covered += await callOn<number>(tab, element, moved, [covered]);
     await record(next);
     view = next;
     steps++;
