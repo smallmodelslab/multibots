@@ -245,6 +245,8 @@ function onScroll() {
     if (away < distance) [nearest, distance] = [index, away];
   });
   if (nearest !== active) activate(nearest);
+  const place = buttons.getBoundingClientRect();
+  if (place.top < 0 || place.bottom > innerHeight) shown = 0;
   shown *= Number(getComputedStyle(buttons).opacity);
   corner.style.opacity = String(1 - shown);
   corner.inert = shown > 0.5;
