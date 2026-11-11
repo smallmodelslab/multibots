@@ -573,71 +573,81 @@ function scrollBy(this: Element, pixels: number) {
 const partHeight = 2000;
 
 // Which of a view's lines, in order down the content, the view before
-// showed too. Only a line the view before showed where the new view could
-// still show it may be the same, and texts each view shows once anchor
-// how far lines moved there, as what loads above or is measured anew moves
-// them. A text either view shows more than once, a row's "Follow" say, is
-// the same line only where it moved as far as the anchors beside it did,
-// or with none, not at all. Then the most pairs of the same text in the
-// same order win, and where pairings tie, the one that moves lines least.
-const shown = (before: View, now: View, lines: Line[]) => {
+// showed too. Two lines one after the other whose texts each view shows
+// once as a pair, both moved alike, anchor how far lines moved there, as
+// what loads above or is measured anew moves them; a lone "See more" is a
+// different post's in each view, but not with the post's own line before
+// it. The longest run of anchors in order counts, the one that moves
+// least where runs tie. Any line is the same as one the view before
+// showed only where it moved as far as the anchors beside it did, or with
+// none, not at all. Then the most pairs of the same text in the same
+// order win, and where pairings tie, the one that moves lines least.
+const shown = (before: View, lines: Line[]) => {
   const old = before.lines
     .filter((line) => !line.pinned)
     .sort((a, b) => a.y - b.y || a.x - b.x);
-  // Above the new view's top, or its first line where the top cuts one,
-  // less what loading above may have pushed down, the view before showed
-  // what has gone.
-  const top =
-    Math.min(
-      now.top + (now.view.top - now.origin),
-      ...lines.map(({ y }) => y),
-    ) -
-    Math.max(0, now.scrollHeight - before.scrollHeight) -
-    4;
-  const counts = (list: Line[]) => {
-    const each = new Map<string, number>();
-    for (const { text } of list) each.set(text, (each.get(text) ?? 0) + 1);
+  const pairs = (list: Line[]) => {
+    const each = new Map<string, number[]>();
+    list.slice(0, -1).forEach((line, index) => {
+      const key = `${line.text}\n${list[index + 1]!.text}`;
+      each.set(key, [...(each.get(key) ?? []), index]);
+    });
     return each;
   };
-  const inOld = counts(old);
-  const inNew = counts(lines);
-  const once = (text: string) => inOld.get(text) === 1 && inNew.get(text) === 1;
-  // The anchors, the longest run of them in order in both views.
-  const found = old.flatMap((line) =>
-    once(line.text) && line.y >= top
-      ? [lines.findIndex(({ text }) => text === line.text)].map((j) => ({
-          j,
-          move: lines[j]!.y - line.y,
-        }))
-      : [],
-  );
-  const runs = found.map((_, index) => [index]);
+  const inNew = pairs(lines);
+  const found: { i: number; j: number; move: number }[] = [];
+  for (const [key, [i, ...more]] of pairs(old)) {
+    const at = inNew.get(key);
+    if (more.length || at?.length !== 1) continue;
+    const j = at[0]!;
+    const move = lines[j]!.y - old[i!]!.y;
+    if (Math.abs(lines[j + 1]!.y - old[i! + 1]!.y - move) <= 4)
+      found.push({ i: i!, j, move });
+  }
+  found.sort((a, b) => a.i - b.i);
+  // runs[a]: the best run in order ending at anchor a, and how far it moves.
+  const runs = found.map((anchor, index) => ({
+    moved: Math.abs(anchor.move),
+    run: [index],
+  }));
   for (let a = 0; a < found.length; a++)
-    for (let b = 0; b < a; b++)
-      if (found[b]!.j < found[a]!.j && runs[b]!.length + 1 > runs[a]!.length)
-        runs[a] = [...runs[b]!, a];
-  const anchors = runs
-    .reduce<number[]>(
-      (most, run) => (run.length > most.length ? run : most),
-      [],
-    )
-    .map((index) => found[index]!);
+    for (let b = 0; b < a; b++) {
+      if (found[b]!.j >= found[a]!.j) continue;
+      const run = [...runs[b]!.run, a];
+      const moved = runs[b]!.moved + Math.abs(found[a]!.move);
+      if (
+        run.length > runs[a]!.run.length ||
+        (run.length === runs[a]!.run.length && moved < runs[a]!.moved)
+      )
+        runs[a] = { moved, run };
+    }
+  const anchors =
+    runs
+      .reduce<(typeof runs)[number] | null>(
+        (best, each) =>
+          !best ||
+          each.run.length > best.run.length ||
+          (each.run.length === best.run.length && each.moved < best.moved)
+            ? each
+            : best,
+        null,
+      )
+      ?.run.map((index) => found[index]!) ?? [];
   // How far the anchors just above and below a new line moved.
   const near = (j: number) => {
     const above = anchors.findLast((anchor) => anchor.j <= j);
-    const below = anchors.find((anchor) => anchor.j >= j);
+    const below = anchors.find((anchor) => anchor.j + 1 >= j);
     const moves = [above, below].flatMap((anchor) =>
       anchor ? [anchor.move] : [],
     );
     return moves.length ? moves : [0];
   };
   const pair = (i: number, j: number) => {
-    const line = old[i]!;
-    if (line.text !== lines[j]!.text || line.y < top) return null;
-    const move = lines[j]!.y - line.y;
-    if (!once(line.text) && !near(j).some((each) => Math.abs(each - move) <= 4))
-      return null;
-    return 1e6 - Math.abs(move);
+    if (old[i]!.text !== lines[j]!.text) return null;
+    const move = lines[j]!.y - old[i]!.y;
+    return near(j).some((each) => Math.abs(each - move) <= 4)
+      ? 1e6 - Math.abs(move)
+      : null;
   };
   // score[i][j]: the best pairing of old lines from i and these from j.
   const score = Array.from(
@@ -749,7 +759,7 @@ export const scrollCapture = async (
     const lines = now.lines
       .filter((line) => !line.pinned)
       .sort((a, b) => a.y - b.y || a.x - b.x);
-    const known = previous ? shown(previous, now, lines) : new Set<number>();
+    const known = previous ? shown(previous, lines) : new Set<number>();
     previous = now;
     for (const line of now.lines)
       if (line.pinned && !pinned.has(line.text)) {
@@ -778,7 +788,8 @@ export const scrollCapture = async (
   while (steps < maxSteps) {
     const atEnd = view.top + view.client >= view.scrollHeight - 2;
     // What the next view shows below its pinned header overlaps this one.
-    const step = Math.max(1, Math.floor((view.height - view.cover) * 0.9));
+    // Views share a quarter, so they share a pair of lines to anchor on.
+    const step = Math.max(1, Math.floor((view.height - view.cover) * 0.75));
     // At once, not smoothly, so the view it lands on is the step's.
     await callOn(tab, element, scrollBy, [step]);
     let next: View;
