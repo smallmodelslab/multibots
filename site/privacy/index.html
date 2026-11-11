@@ -43,8 +43,8 @@
       <article>
         <h1>Privacy</h1>
         <p>
-          OpenBots runs on your own computers, with no account with us. This
-          is what stays on them, and what leaves them.
+          OpenBots runs on your own computers, with no account with us. This is
+          what stays on them, and what leaves them.
         </p>
 
         <h2 id="computers">On your computers</h2>
@@ -57,10 +57,18 @@
         <h2 id="elsewhere">What leaves them</h2>
         <ul>
           <li>
-            A bot sends what it works on, including what it reads in your
-            browser, to the model you chose for it: ChatGPT, through your own
-            account, or a model you host. That provider's own privacy policy
-            applies.
+            A bot sends what it works on to the model you chose for it: ChatGPT,
+            through your own account, or a model you host. That includes your
+            messages, the files it reads and what it reads in your browser:
+            pages' text, addresses, titles and pictures. That provider's own
+            privacy policy applies.
+          </li>
+          <li>
+            In a voice chat, your voice and the bot's spoken replies go to the
+            voice you chose in Settings: ChatGPT's voice, or transcription and
+            speech servers you host. It can be another provider than the bot's
+            model, and when the first fails, OpenBots tries the next in your
+            order.
           </li>
           <li>
             Apps you connect under Plugins are reached through Composio, with
@@ -72,21 +80,28 @@
           </li>
           <li>
             A routine you start from a webhook receives its calls through our
-            relay at hooks.wrkrsh.com, which passes them on to your computers.
+            relay at hooks.wrkrsh.com. The relay holds each call until your
+            computers take it, for seven days at most, and the webhook's
+            settings and signing secrets until you delete the routine, or 30
+            days after nothing listens to it.
           </li>
           <li>
             OpenBots checks downloads.wrkrsh.com for updates. When it hits a
             critical error, it reports the error to us, naming what failed,
             never your messages or keys.
           </li>
-          <li>openbots.ca counts visits to its pages.</li>
+          <li>
+            openbots.ca measures visits and download clicks with PostHog, which
+            receives your IP address and an identifier kept in your browser. It
+            records no text you see or type, and no sessions.
+          </li>
         </ul>
 
         <h2 id="chrome">The Chrome extension</h2>
         <p>
           The OpenBots extension lets your bots use tabs of their own in your
           Chrome. It talks only to OpenBots on the same computer, through
-          Chrome's native messaging, and never to a server.
+          Chrome's native messaging, and never to a server itself.
         </p>
         <ul>
           <li>
@@ -95,16 +110,26 @@
             reach.
           </li>
           <li>
-            What it reads there, the page's text, its outline and pictures of
-            it, goes to OpenBots on your computer for the bot that asked, and
-            from there to that bot's model as above.
+            What it reads there, the page's text, address, title, outline and
+            pictures of it, goes to OpenBots on your computer for the bot that
+            asked, and from there to that bot's model as above.
           </li>
           <li>
             It keeps which tabs belong to which bot, and whether you stopped
             bots, in Chrome's own storage on your computer.
           </li>
-          <li>It collects nothing else, and nothing is sold or shared.</li>
+          <li>
+            It collects nothing else. Nothing it reads is sold, or used for
+            anything but the bot's work.
+          </li>
         </ul>
+        <p>
+          The use of information received from the extension adheres to the
+          <a
+            href="https://developer.chrome.com/docs/webstore/program-policies/policies"
+            >Chrome Web Store User Data Policy</a
+          >, including the Limited Use requirements.
+        </p>
 
         <h2 id="questions">Questions</h2>
         <p>

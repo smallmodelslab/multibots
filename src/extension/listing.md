@@ -27,8 +27,9 @@ package is `OPENBOTS_VERSION=<version> bun run extension:store` after
   >
   > The extension needs the OpenBots app on the same computer
   > (https://openbots.ca). Turn it on in OpenBots' settings, under Browser. It
-  > talks only to OpenBots, through Chrome's native messaging, and never to a
-  > server.
+  > talks only to OpenBots, through Chrome's native messaging, never to a
+  > server itself; what bots read goes to the model you chose for them, as
+  > https://openbots.ca/privacy/ explains.
 
 - **Icon:** `out/extension/icon.png` (128×128)
 - **Screenshots (1280×800):** a bot reading Hacker News and a 1,000-member
@@ -58,10 +59,14 @@ package is `OPENBOTS_VERSION=<version> bun run extension:store` after
 - **Host permissions:** none.
 - **Remote code:** No. All code ships in the package; the extension never
   runs code it is sent.
-- **Data usage:** Website content, from the bots' own tabs only, goes to the
-  OpenBots app on the same computer for the bot that asked. Certify: not sold
-  to third parties, not used or transferred for purposes unrelated to the
-  single purpose, not used to determine creditworthiness or for lending.
+- **Data usage:** Website content (pages' text, outline and pictures) and
+  web history (the addresses and titles of the bots' own tabs), from the
+  bots' tabs only. They go to the OpenBots app on the same computer for the
+  bot that asked, and from there to the model provider the user chose for
+  that bot: ChatGPT through the user's own account, or a model they host.
+  Certify: not sold to third parties, not used or transferred for purposes
+  unrelated to the single purpose, not used to determine creditworthiness or
+  for lending. The privacy policy states the Limited Use commitment.
 - **Privacy policy:** https://openbots.ca/privacy/
 
 ## Distribution

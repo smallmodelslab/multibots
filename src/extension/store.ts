@@ -8,8 +8,15 @@ import { fileURLToPath } from "node:url";
 // version. `bun run build` first.
 
 const path = (name: string) => fileURLToPath(new URL(name, import.meta.url));
-const version = process.env.OPENBOTS_VERSION;
-if (!version || !/^\d+(\.\d+){0,3}$/.test(version))
+// Chrome takes one to four parts, each 0 to 65535 without leading zeros,
+// not all of them zero.
+const version = process.env.OPENBOTS_VERSION ?? "";
+const parts = version.split(".");
+if (
+  parts.length > 4 ||
+  parts.some((part) => !/^(0|[1-9]\d{0,4})$/.test(part) || +part > 65535) ||
+  parts.every((part) => part === "0")
+)
   throw new Error("Set OPENBOTS_VERSION to the version to upload, as 0.2.2.");
 const staged = path("../../dist/extension");
 await rm(staged, { force: true, recursive: true });
