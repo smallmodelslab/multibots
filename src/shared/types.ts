@@ -12,7 +12,7 @@ import type { Accessories } from "../features/avatars/appearance";
 // has no screen for them.
 export type Screen = "ready" | "blocked" | null;
 
-// An Multibots client: this computer, or another of the user's on their
+// A Multibots client: this computer, or another of the user's on their
 // tailnet. A server keeps a copy of every bot and runs them; a computer with
 // server mode off only shows them, as the phone does.
 export type Host = {

@@ -36,11 +36,11 @@ export const App = () => {
   useEffect(() => followVoiceChat(bots), [bots]);
   const layout = useSidebarLayout();
   const [chosen, setChosen] = useState<Chosen | null>(() =>
-    remembered("multibots.chosen", null),
+    remembered("openbots.chosen", null),
   );
   const [pane, setPane] = useState<Pane | null>(null);
   const [details, setDetails] = useState(() =>
-    remembered("multibots.details", true),
+    remembered("openbots.details", true),
   );
 
   useEffect(() => followPointerLight(document), []);
@@ -53,11 +53,11 @@ export const App = () => {
     if (drawn) window.multibots.ready();
   }, [drawn]);
   useEffect(
-    () => localStorage.setItem("multibots.chosen", JSON.stringify(chosen)),
+    () => localStorage.setItem("openbots.chosen", JSON.stringify(chosen)),
     [chosen],
   );
   useEffect(
-    () => localStorage.setItem("multibots.details", JSON.stringify(details)),
+    () => localStorage.setItem("openbots.details", JSON.stringify(details)),
     [details],
   );
 

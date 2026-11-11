@@ -190,7 +190,8 @@ const rendezvous = (botId: string, servers: string[]) =>
 
 // An image the user sent stands in the context as its path in the bot's
 // folder, read in only for the newest few the model sees.
-const imageMark = "multibots-file:";
+// Stored in saved model contexts, including conversations from before the rename.
+const imageMark = "openbots-file:";
 const imageTypes = new Set([
   "image/png",
   "image/jpeg",

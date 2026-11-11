@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const widthKey = "multibots.sidebarWidth";
+const widthKey = "openbots.sidebarWidth";
 const defaultWidth = 280;
 const clampWidth = (width: number) =>
   Math.round(Math.min(420, Math.max(200, width)));

@@ -289,19 +289,19 @@ export const Conversation = ({
   const user = useAppState()?.user ?? "You";
   const authorOf: AuthorOf = (role) => (role === "user" ? user : bot.name);
   const [text, setTextState] = useState(
-    () => sessionStorage.getItem(`multibots.draft.${id}`) ?? "",
+    () => sessionStorage.getItem(`openbots.draft.${id}`) ?? "",
   );
   const setText = (next: string) => {
-    keep(`multibots.draft.${id}`, next);
+    keep(`openbots.draft.${id}`, next);
     setTextState(next);
   };
   // Replying to a message, or editing one of the user's own, puts the caret
   // in the composer.
   const [draft, setDraftState] = useState<Draft>(() =>
-    JSON.parse(sessionStorage.getItem(`multibots.replying.${id}`) ?? "null"),
+    JSON.parse(sessionStorage.getItem(`openbots.replying.${id}`) ?? "null"),
   );
   const setDraft = (next: Draft) => {
-    keep(`multibots.replying.${id}`, next ? JSON.stringify(next) : "");
+    keep(`openbots.replying.${id}`, next ? JSON.stringify(next) : "");
     setDraftState(next);
   };
   const textarea = useRef<HTMLTextAreaElement>(null);

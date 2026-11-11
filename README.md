@@ -178,7 +178,7 @@ detail:
   session, kept across launches: they search for the tools a task needs, run
   them, and hand the user a link to connect an app that is not connected
   yet. Every computer given the same key shares its connections, since its
-  Composio project has the one user `multibots`.
+  Composio project has the one user `openbots`.
 - **Grok Bot's bots** come over in the new-bot wizard (`src/main/grokBot.ts`):
   one of those Grok Bot's app keeps on this computer, with its name,
   instructions and colour, or one from a Grok Bot template recipe, a JSON
