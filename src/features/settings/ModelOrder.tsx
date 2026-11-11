@@ -41,9 +41,33 @@ const voiceArranged: Arrange = (before, after, id) => {
   return first ? ["chatgpt", ...rest] : [...rest, "chatgpt"];
 };
 
+// An order shown while it is saved: set at once, so a change made before
+// the last one is saved builds on it (`latest`).
+const usePendingOrder = (
+  saved: string[],
+  persist: (next: string[]) => Promise<void>,
+) => {
+  const pending = useRef<string[] | null>(null);
+  const [, setShown] = useState<string[] | null>(null);
+  return {
+    latest: () => pending.current ?? saved,
+    order: pending.current ?? saved,
+    save: (next: string[]) => {
+      pending.current = next;
+      setShown(next);
+      void persist(next)
+        .catch((error: unknown) => toastError(messageOf(error)))
+        .finally(() => {
+          if (pending.current !== next) return;
+          pending.current = null;
+          setShown(null);
+        });
+    },
+  };
+};
+
 // A capability's sources in the order they are tried: each dragged into its
-// place, or moved with the arrow keys from its handle. The new order shows
-// at once, while it is saved.
+// place, or moved with the arrow keys from its handle.
 const SourceOrder = ({
   arrange = (_, after) => after,
   label,
@@ -52,12 +76,12 @@ const SourceOrder = ({
 }: {
   arrange?: Arrange;
   label: string;
-  save: (ids: string[]) => Promise<void>;
+  save: (ids: string[]) => void;
   sources: Source[];
 }) => {
-  // The order shown while one is dragged (`id`, from `start`) or saved.
+  // The order shown while one is dragged (`id`, from `start`).
   const [moving, setMoving] = useState<{
-    id: string | null;
+    id: string;
     start: string[];
     order: string[];
   } | null>(null);
@@ -66,13 +90,8 @@ const SourceOrder = ({
     byId.has(id),
   );
   const store = (next: string[]) => {
-    const saving = { id: null, order: next, start: next };
-    setMoving(saving);
-    void save(next)
-      .catch((error: unknown) => toastError(messageOf(error)))
-      .finally(() =>
-        setMoving((current) => (current === saving ? null : current)),
-      );
+    setMoving(null);
+    save(next);
   };
   return (
     <ol aria-label={`${label} order`} className="source-order">
@@ -153,7 +172,7 @@ const Capability = ({
   // What to set up while none of its sources can run.
   empty: string;
   label: string;
-  save: (ids: string[]) => Promise<void>;
+  save: (ids: string[]) => void;
   sources: Source[];
 }) => (
   <div className="setting">
@@ -183,7 +202,7 @@ const other = { speech: "transcription", transcription: "speech" } as const;
 // voice chat runs on ChatGPT's voice, which hears and speaks in one call, or
 // on the user's transcription and speech models together, so ChatGPT keeps
 // one place in both lists: first, or after them. Both lists change the one
-// voice order, which shows at once while it is saved.
+// voice order. Each order shows at once while it is saved.
 export const ModelOrders = ({
   chatgpt,
   ownModels: { bots, voice },
@@ -191,16 +210,20 @@ export const ModelOrders = ({
   chatgpt: ChatgptState;
   ownModels: OwnModelsState;
 }) => {
-  // The voice order being saved: set at once, so a second change made before
-  // the first is saved builds on it, and shown until the save is done.
-  const saving = useRef<string[] | null>(null);
-  const [, setShown] = useState<string[] | null>(null);
+  const idOf = (entry: OwnModel | "chatgpt") =>
+    entry === "chatgpt" ? entry : entry.id;
+  const chat = usePendingOrder(bots.map(idOf), (next) =>
+    bridge.orderModels("bots", next),
+  );
+  const voices = usePendingOrder(voice.map(idOf), (next) =>
+    bridge.orderModels("voice", next),
+  );
   const byId = new Map(
-    voice.map((entry) => [entry === "chatgpt" ? entry : entry.id, entry]),
+    [...bots, ...voice].map((entry) => [idOf(entry), entry]),
   );
   const orderOf = (ids: string[]) =>
     ids.map((id) => byId.get(id)).filter((entry) => entry !== undefined);
-  const voiceOrder = orderOf(saving.current ?? [...byId.keys()]);
+  const voiceOrder = orderOf(voices.order);
   const ownVoice = voiceOrder.filter((entry) => entry !== "chatgpt");
   const fromChatgpt = (detail: string): Source => ({
     detail: chatgpt.signedIn ? detail : "Not signed in, skipped",
@@ -233,26 +256,20 @@ export const ModelOrders = ({
   const saveVoice = (kind: Voice) => (ids: string[]) => {
     const reordered = ids.filter((id) => id !== "chatgpt");
     let at = 0;
-    const own = orderOf(saving.current ?? [...byId.keys()])
+    const own = orderOf(voices.latest())
       .filter((entry) => entry !== "chatgpt")
       .map((model) => (model.kind === kind ? reordered[at++]! : model.id));
-    const next =
-      ids[0] === "chatgpt" ? ["chatgpt", ...own] : [...own, "chatgpt"];
-    saving.current = next;
-    setShown(next);
-    return bridge.orderModels("voice", next).finally(() => {
-      if (saving.current !== next) return;
-      saving.current = null;
-      setShown(null);
-    });
+    voices.save(
+      ids[0] === "chatgpt" ? ["chatgpt", ...own] : [...own, "chatgpt"],
+    );
   };
   return (
     <>
       <Capability
         empty="Sign in to ChatGPT or add a chat model."
         label="Chat"
-        save={(ids) => bridge.orderModels("bots", ids)}
-        sources={bots.map((entry) =>
+        save={chat.save}
+        sources={orderOf(chat.order).map((entry) =>
           entry === "chatgpt"
             ? fromChatgpt(chatgpt.email ?? "Signed in")
             : fromOwn(entry),
