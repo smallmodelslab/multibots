@@ -502,6 +502,10 @@ function look(this: Element): View {
     }
     return known;
   };
+  // The text before each, in the page's order, and the held line waiting
+  // for the text after it.
+  let before = "";
+  let waiting: Held[number] | null = null;
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     const words = (node as Text).data.replace(/\s+/g, " ").trim();
     const parent = node.parentElement;
@@ -511,6 +515,10 @@ function look(this: Element): View {
       parent.closest("script, style, noscript, template")
     )
       continue;
+    if (waiting) waiting.after = words;
+    waiting = null;
+    const previous = before;
+    before = words;
     range.selectNodeContents(node);
     const rect = range.getBoundingClientRect();
     if (
@@ -544,7 +552,17 @@ function look(this: Element): View {
       y: rect.top - origin + (page ? win.scrollY : this.scrollTop),
     };
     lines.push(last);
-    seen.push({ node: node as Text, text: words, y: last.y });
+    // A pinned line stays in the view as the content scrolls past it.
+    if (!last.pinned)
+      seen.push(
+        (waiting = {
+          after: "",
+          before: previous,
+          node: node as Text,
+          text: words,
+          y: last.y,
+        }),
+      );
   }
   (globalThis as { openbotsSeen?: Held }).openbotsSeen = seen;
   let cover = 0;
@@ -578,7 +596,16 @@ const partHeight = 2000;
 
 // Text nodes of lines, by their text and place in the content then. They
 // stay in the extension's own world of the page between calls.
-type Held = { node: Text; text: string; y: number }[];
+// The texts just before and after each, in the page's order, tell a node
+// a list reused for another row, a row's "Follow" say, from one that
+// stayed.
+type Held = {
+  node: Text;
+  text: string;
+  before: string;
+  after: string;
+  y: number;
+}[];
 
 // Keeps the lines the last look saw, for moved() after the next step.
 function hold(this: Element) {
@@ -588,8 +615,9 @@ function hold(this: Element) {
 
 // How far what loaded above, or was measured anew, moved the content just
 // above `below` since hold(): as far as the nearest held lines above it
-// that still show the same text moved, or nothing when none do, as a list
-// that draws its rows anew replaced or reused them.
+// that still show the same text, between the same texts, moved; or
+// nothing when none do, as a list that draws its rows anew replaced or
+// reused them.
 function moved(this: Element, below: number) {
   const doc = this.ownerDocument;
   const win = doc.defaultView!;
@@ -597,11 +625,33 @@ function moved(this: Element, below: number) {
   const origin = page ? 0 : this.getBoundingClientRect().top + this.clientTop;
   const top = page ? win.scrollY : this.scrollTop;
   const range = doc.createRange();
+  const walker = doc.createTreeWalker(
+    page ? doc.body : this,
+    NodeFilter.SHOW_TEXT,
+  );
+  const wordsOf = (node: Node) =>
+    (node as Text).data.replace(/\s+/g, " ").trim();
+  // The text next to a node, as look() reads the page.
+  const beside = (node: Node, step: "previousNode" | "nextNode") => {
+    walker.currentNode = node;
+    for (let next = walker[step](); next; next = walker[step]())
+      if (
+        wordsOf(next) &&
+        !next.parentElement?.closest("script, style, noscript, template")
+      )
+        return wordsOf(next);
+    return "";
+  };
   const moves = ((globalThis as { openbotsHeld?: Held }).openbotsHeld ?? [])
     .filter(({ y }) => y < below)
     .sort((a, b) => b.y - a.y)
-    .flatMap(({ node, text, y }) => {
-      if (!node.isConnected || node.data.replace(/\s+/g, " ").trim() !== text)
+    .flatMap(({ after, before, node, text, y }) => {
+      if (
+        !node.isConnected ||
+        wordsOf(node) !== text ||
+        beside(node, "previousNode") !== before ||
+        beside(node, "nextNode") !== after
+      )
         return [];
       range.selectNodeContents(node);
       const rect = range.getBoundingClientRect();

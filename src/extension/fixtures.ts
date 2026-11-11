@@ -33,8 +33,9 @@ const inner = page(
 );
 
 // Only the rows in view, and a few around them, exist at a time: a pool
-// of rows each drawn anew as another member, its text nodes kept, so each
-// row's "Follow" is one node that moves from member to member.
+// of rows handed out in order from the first drawn, so each scroll draws
+// every row anew as another member, its text nodes kept, and a row's
+// "Follow" is one node that moves from member to member.
 const list = page(
   "Group members",
   `<div role="dialog" aria-label="Members" style="position:fixed;left:40px;top:60px;width:360px;border:1px solid #ccc;background:#fff">
@@ -56,8 +57,9 @@ const list = page(
   });
   const draw = () => {
     const first = Math.max(0, Math.floor(list.scrollTop / height) - 5);
+    drawn.forEach((row, at) => { row.hidden = first + at >= total; });
     for (let index = first; index < Math.min(total, first + pool); index++) {
-      const row = drawn[index % pool];
+      const row = drawn[index - first];
       const n = String(index + 1).padStart(4, "0");
       const [name, handle] = row.querySelectorAll("span");
       name.firstChild.data = "Member " + n;
