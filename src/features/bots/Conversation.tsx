@@ -477,7 +477,7 @@ export const Conversation = ({
           className="mx-auto flex max-w-[760px] flex-col gap-2.5 px-6 pt-(--head-room) pb-6 select-text"
           ref={content}
         >
-          {detail && !entries.length ? (
+          {detail && !entries.length && !detail.recap ? (
             <div className="pt-24 text-center text-muted-foreground">
               Say hello to {bot.name}.
             </div>

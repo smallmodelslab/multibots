@@ -1764,7 +1764,7 @@ export class Bots {
       call?.kind === "own"
         ? `The user is in a voice chat with you, and your reply is read aloud: answer in a few short spoken sentences, without Markdown, lists, links or code.${saved.voice.language ? ` Answer in ${saved.voice.language}.` : ""}`
         : "Your reply is a chat message to the user: plain, short and direct, in Markdown when it helps.",
-      `The user sees the recap you write with write_recap at the end of your conversation, after your replies too. Write one when you start on something that takes more than a few steps, and write it again as that moves on and when you reply, so it always says what you have in progress.${recap ? ` Your recap now: ${JSON.stringify(recap)}` : ""}`,
+      `The user sees the recap you write with write_recap at the end of your conversation, after your replies too. Write one when you start on something that takes more than a few steps, and again whenever what you have in progress changes, so it always says what that is.${recap ? ` Your recap now: ${JSON.stringify(recap)}` : ""}`,
       `Routines wake you on a schedule, or when their webhook is called. Set one with set_routine when the user wants something done later or regularly, or whenever something elsewhere that can call a webhook happens. The user opens a webhook routine among your details to copy its URL and pick who calls it; tell them which to pick: ${senderChoices} You never see a webhook's secrets. Times are in ${timeZone}; it is now ${new Date().toString()}.`,
       `Your routines: ${JSON.stringify(routines.map(({ id, title, instructions, schedule, enabled }) => ({ enabled, id, instructions, schedule, title })))}`,
     ]
