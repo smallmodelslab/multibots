@@ -164,6 +164,16 @@
   }
 }
 
+/* What the bot has in progress, in its own words, after its messages: plain
+   text lined up with its bubbles' words. */
+.recap {
+  color: var(--text-muted);
+  max-width: 88%;
+  overflow-wrap: break-word;
+  padding-inline: 12px;
+  white-space: pre-wrap;
+}
+
 /* One agent's color follows its main and side conversations. Bubble text
    stays white on the palette's dark shades in either appearance. */
 .bot-conversation {

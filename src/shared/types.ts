@@ -127,6 +127,9 @@ export type Webhook = {
 export type BotDetail = {
   bot: Bot;
   messages: Message[];
+  // What the bot wrote last of what it has in progress, shown after its
+  // messages.
+  recap: string | null;
   routines: Routine[];
   // Its webhook routines' webhooks, by routine, for the user to copy: never
   // in what the bot sees.

@@ -404,6 +404,7 @@ export const botTools = ({
   folder,
   here,
   onCommand,
+  onRecap,
   onRoutines,
   others,
   reads,
@@ -425,6 +426,7 @@ export const botTools = ({
   screen: boolean;
   reads: boolean;
   onCommand: (command: string) => void;
+  onRecap: (recap: string) => Promise<void>;
   onRoutines: (routines: Routine[]) => Promise<void>;
   // Its REPLs, started at the computer tool's first use.
   repls: () => Repls;
@@ -503,6 +505,15 @@ Top-level await; variables last until your run ends. console.log(value) adds tex
       }),
     }),
     ...(browser && { browser: browserTool(browser, folder, here) }),
+    write_recap: tool({
+      description:
+        "Write the recap of what you have in progress that the user sees at the end of your conversation, in place of the one before: a few plain sentences, without Markdown.",
+      inputSchema: z.object({ text: z.string().trim().min(1).max(1000) }),
+      execute: async ({ text }) => {
+        await onRecap(text);
+        return "The user sees it.";
+      },
+    }),
     set_routine: tool({
       description:
         "Create a routine that wakes you on a schedule, or when its webhook is called, with its instructions, or replace one by its id.",

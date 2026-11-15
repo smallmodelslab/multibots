@@ -108,8 +108,19 @@ type RunState = {
 };
 
 // Its conversation, with the ids of the messages deleted from it, so a
-// copy of it from a server that was away brings none of them back.
-type Conversation = { messages: Message[]; deleted: string[] };
+// copy of it from a server that was away brings none of them back, and the
+// recap the bot wrote last of what it has in progress, shown after them.
+type Conversation = {
+  messages: Message[];
+  deleted: string[];
+  recap: string | null;
+};
+
+// Released versions kept the messages alone, then without a recap.
+const conversationOf = (saved: Partial<Conversation> | Message[]) =>
+  Array.isArray(saved)
+    ? { deleted: [], messages: saved, recap: null }
+    : { deleted: [], messages: [], recap: null, ...saved };
 
 // The servers online, this one too if it is one, with how many bots each
 // holds.
@@ -155,13 +166,8 @@ const readJson = async <T>(path: string, fallback: T): Promise<T> => {
 // the older has that neither deleted, each where it came; null when the
 // newer has them all.
 export const mergeConversations = (older: string, newer: string) => {
-  // Released versions kept the messages alone.
-  const read = (text: string) => {
-    const saved = JSON.parse(text) as Conversation | Message[];
-    return Array.isArray(saved) ? { deleted: [], messages: saved } : saved;
-  };
-  const a = read(older);
-  const b = read(newer);
+  const a = conversationOf(JSON.parse(older));
+  const b = conversationOf(JSON.parse(newer));
   const gone = new Set([...a.deleted, ...b.deleted]);
   const kept = new Set(b.messages.map(({ id }) => id));
   const missing = a.messages.filter(({ id }) => !kept.has(id) && !gone.has(id));
@@ -174,6 +180,7 @@ export const mergeConversations = (older: string, newer: string) => {
       ...b.messages.filter(({ id }) => !gone.has(id)),
       ...missing,
     ].sort((x, y) => x.at - y.at),
+    recap: b.recap,
   } satisfies Conversation);
 };
 
@@ -373,12 +380,12 @@ export class Bots {
   }
 
   private async readConversation(botId: string): Promise<Conversation> {
-    // Released versions kept the messages alone.
-    const saved = await readJson<Conversation | Message[]>(
-      this.folder(botId, files.conversation),
-      [],
+    return conversationOf(
+      await readJson<Partial<Conversation> | Message[]>(
+        this.folder(botId, files.conversation),
+        [],
+      ),
     );
-    return Array.isArray(saved) ? { deleted: [], messages: saved } : saved;
   }
 
   private async readRun(botId: string): Promise<RunState> {
@@ -624,6 +631,7 @@ export class Bots {
       taken: {},
       term: 0,
       messages: [],
+      recap: null,
       routines: [],
       saved: made,
       webhooks: {},
@@ -714,6 +722,7 @@ export class Bots {
           commands: bot.commands,
           files: await this.files(command.botId),
           messages: bot.messages,
+          recap: bot.recap,
           routines: bot.routines,
           webhooks: Object.fromEntries(
             bot.routines.flatMap((routine) => {
@@ -1115,10 +1124,14 @@ export class Bots {
     return message;
   }
 
-  private async saveConversation(botId: string, { deleted, messages }: Record) {
+  private async saveConversation(
+    botId: string,
+    { deleted, messages, recap }: Record,
+  ) {
     await this.write(botId, files.conversation, {
       deleted,
       messages,
+      recap,
     } satisfies Conversation);
     this.options.onChange(botId);
   }
@@ -1594,6 +1607,10 @@ export class Bots {
                 bot.commands = [...bot.commands, command].slice(-20);
                 setWorking(`Running ${command.split("\n")[0]}`);
               },
+              onRecap: (recap) => {
+                bot.recap = recap;
+                return this.saveConversation(botId, bot);
+              },
               onRoutines: (routines) => {
                 bot.routines = routines;
                 return this.saveRoutines(botId, bot);
@@ -1725,7 +1742,7 @@ export class Bots {
 
   private instructions(
     botId: string,
-    { call, saved, routines }: Record,
+    { call, recap, routines, saved }: Record,
     model: string,
     plugins: string,
   ) {
@@ -1747,6 +1764,7 @@ export class Bots {
       call?.kind === "own"
         ? `The user is in a voice chat with you, and your reply is read aloud: answer in a few short spoken sentences, without Markdown, lists, links or code.${saved.voice.language ? ` Answer in ${saved.voice.language}.` : ""}`
         : "Your reply is a chat message to the user: plain, short and direct, in Markdown when it helps.",
+      `The user sees the recap you write with write_recap at the end of your conversation, after your replies too. Write one when you start on something that takes more than a few steps, and write it again as that moves on and when you reply, so it always says what you have in progress.${recap ? ` Your recap now: ${JSON.stringify(recap)}` : ""}`,
       `Routines wake you on a schedule, or when their webhook is called. Set one with set_routine when the user wants something done later or regularly, or whenever something elsewhere that can call a webhook happens. The user opens a webhook routine among your details to copy its URL and pick who calls it; tell them which to pick: ${senderChoices} You never see a webhook's secrets. Times are in ${timeZone}; it is now ${new Date().toString()}.`,
       `Your routines: ${JSON.stringify(routines.map(({ id, title, instructions, schedule, enabled }) => ({ enabled, id, instructions, schedule, title })))}`,
     ]

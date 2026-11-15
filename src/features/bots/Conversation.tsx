@@ -523,6 +523,7 @@ export const Conversation = ({
               </Hint>
             </div>
           ) : null}
+          {detail?.recap ? <p className="recap">{detail.recap}</p> : null}
         </div>
       </div>
       {offline ? (

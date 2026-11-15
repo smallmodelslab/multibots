@@ -167,6 +167,7 @@ const toolsOf = (bot: string) =>
     folder,
     here: "this computer",
     onCommand: () => {},
+    onRecap: async () => {},
     onRoutines: async () => {},
     others: [],
     reads: false,

@@ -71,7 +71,9 @@ detail:
   `history/`, `routines.json`, its webhooks, its whiteboard, and `files/`,
   the bot's folder. Its shell starts there and what it keeps there is its
   library. Files sent with a message land in `files/attachments/`; the model
-  sees the newest four images and reaches the rest by path.
+  sees the newest four images and reaches the rest by path. `messages.json`
+  also keeps the recap the bot last wrote with `write_recap` of what it has
+  in progress, shown as plain text after its newest message.
 - **Servers** (`src/main/replica.ts`) each keep every bot's folder. One server
   writes a bot at a time and sends each file it changes to the others at
   once, with its version: when it was written, and by which server. The one

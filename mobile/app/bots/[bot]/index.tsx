@@ -97,9 +97,22 @@ export default function Conversation() {
         keyboardDismissMode="interactive"
         keyExtractor={(item) => item.message.id}
         ListHeaderComponent={
-          bot?.working ? (
-            <View style={{ paddingTop: 12 }}>
-              <Typing working={bot.working} />
+          bot?.working || detail?.recap ? (
+            <View style={{ gap: 6, paddingTop: 12 }}>
+              {bot?.working ? <Typing working={bot.working} /> : null}
+              {detail?.recap ? (
+                <Text
+                  selectable
+                  style={{
+                    color: colors.secondary,
+                    fontSize: 15,
+                    lineHeight: 20,
+                    paddingHorizontal: 30,
+                  }}
+                >
+                  {detail.recap}
+                </Text>
+              ) : null}
             </View>
           ) : undefined
         }
