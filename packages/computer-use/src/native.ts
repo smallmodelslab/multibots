@@ -382,23 +382,30 @@ public static class ComputerUse {
   }
 
   // What the clipboard held, copied out before the text replaces it, goes
-  // back once the app has had time to read the text.
+  // back once the app has had time to read the text. Formats Windows only
+  // derives from others answer nothing and come back with them; a clipboard
+  // that answers nothing at all would be lost.
   static void Paste(string text) {
     System.Windows.Forms.DataObject held = null;
     OnClipboard(() => {
       var current = System.Windows.Forms.Clipboard.GetDataObject();
-      if (current != null) {
+      var formats = current == null ? new string[0] : current.GetFormats(false);
+      if (formats.Length > 0) {
         held = new System.Windows.Forms.DataObject();
-        foreach (var format in current.GetFormats(false)) {
+        foreach (var format in formats) {
           try { var data = current.GetData(format, false); if (data != null) held.SetData(format, false, data); } catch (Exception) { }
         }
+        if (held.GetFormats().Length == 0) throw new Exception("Pasting would lose what the clipboard holds; type() the text instead.");
       }
       System.Windows.Forms.Clipboard.SetDataObject(new System.Windows.Forms.DataObject(System.Windows.Forms.DataFormats.UnicodeText, text), true);
     });
     try {
-      Keyboard(0x11, 0, 0); Keyboard(0x56, 0, 0); Keyboard(0x56, 0, 0x0002);
+      try {
+        Keyboard(0x11, 0, 0); Keyboard(0x56, 0, 0); Keyboard(0x56, 0, 0x0002);
+      } finally {
+        Keyboard(0x11, 0, 0x0002);
+      }
     } finally {
-      Keyboard(0x11, 0, 0x0002);
       Thread.Sleep(500);
       OnClipboard(() => {
         if (held != null && held.GetFormats().Length > 0) System.Windows.Forms.Clipboard.SetDataObject(held, true);
@@ -436,6 +443,9 @@ public static class ComputerUse {
     // The needle starts with its prefix and ends with its suffix.
     if (prefix.Length > 0) range.MoveEndpointByRange(TextPatternRangeEndpoint.Start, range.FindText(prefix, false, false), TextPatternRangeEndpoint.End);
     if (suffix.Length > 0) range.MoveEndpointByRange(TextPatternRangeEndpoint.End, range.FindText(suffix, true, false), TextPatternRangeEndpoint.Start);
+    // FindText may match text that compares equal to it without being it.
+    if (range.GetText(-1) != wanted)
+      throw new Exception("\"" + wanted + "\" cannot be told apart from text like it in " + what + "; click() and drag() over it instead.");
     var caret = (string)Field(selection, "caret");
     if (caret == "before") range.MoveEndpointByRange(TextPatternRangeEndpoint.End, range, TextPatternRangeEndpoint.Start);
     if (caret == "after") range.MoveEndpointByRange(TextPatternRangeEndpoint.Start, range, TextPatternRangeEndpoint.End);
@@ -878,8 +888,10 @@ def locate(selection, text, what):
     return start, len(wanted)
 
 # Text through X's clipboard, which xclip holds. xclip holds one kind of
-# content, so what the clipboard held goes back as text or an image, once
-# the app has had time to read the text; anything else, it would lose.
+# content, so what the clipboard held goes back as its text or its image,
+# once the app has had time to read the text: formatting an app offers
+# beside the text comes back plain. A clipboard with neither, such as
+# copied files, would be lost, so it is refused.
 def paste(request):
     if not shutil.which("xclip"):
         raise Exception("Pasting needs xclip, which this machine lacks; type() the text instead.")
@@ -887,9 +899,9 @@ def paste(request):
     def put(kind, data):
         subprocess.run(clipboard + ["-t", kind, "-i"], input=data, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=5)
     offered = subprocess.run(clipboard + ["-o", "-t", "TARGETS"], capture_output=True, text=True, timeout=5)
-    kinds = offered.stdout.split() if offered.returncode == 0 else []
+    kinds = set(offered.stdout.split() if offered.returncode == 0 else []) - {"TARGETS", "TIMESTAMP", "MULTIPLE", "SAVE_TARGETS"}
     kind = next((kind for kind in ("UTF8_STRING", "image/png") if kind in kinds), None)
-    if kind is None and set(kinds) - {"TARGETS", "TIMESTAMP", "MULTIPLE", "SAVE_TARGETS"}:
+    if kind is None and kinds:
         raise Exception("Pasting would lose what the clipboard holds; type() the text instead.")
     held = kind and subprocess.run(clipboard + ["-o", "-t", kind], capture_output=True, check=True, timeout=5).stdout
     put("UTF8_STRING", request["text"].encode())

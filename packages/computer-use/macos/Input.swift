@@ -107,16 +107,21 @@ enum Input {
     }
   }
 
-  // Text through the general pasteboard: what it held, copied out before it
-  // is cleared, goes back once the app has had time to read the text.
-  static func paste(_ text: String) {
+  // Text through the general pasteboard: what it held, copied out before
+  // it is cleared, goes back once the app has had time to read the text.
+  // Types the pasteboard only derives from others answer nothing and come
+  // back with them; an item that answers nothing at all would be lost.
+  static func paste(_ text: String) throws {
     posting.lock()
     defer { posting.unlock() }
     let board = NSPasteboard.general
-    let held = (board.pasteboardItems ?? []).map { item in
+    let held = try (board.pasteboardItems ?? []).map { item in
       let copy = NSPasteboardItem()
       for type in item.types {
         if let data = item.data(forType: type) { copy.setData(data, forType: type) }
+      }
+      guard !copy.types.isEmpty else {
+        throw Failure("Pasting would lose what the clipboard holds; type() the text instead.")
       }
       return copy
     }
@@ -125,7 +130,9 @@ enum Input {
     for (name, down) in [("cmd", true), ("v", true), ("v", false), ("cmd", false)] { key(name, down) }
     pause(0.5)
     board.clearContents()
-    board.writeObjects(held)
+    guard held.isEmpty || board.writeObjects(held) else {
+      throw Failure("The text went in, but the clipboard could not be put back.")
+    }
   }
 
   private static func key(_ name: String, _ down: Bool) {

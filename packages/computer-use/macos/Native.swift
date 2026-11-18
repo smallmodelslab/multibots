@@ -85,7 +85,7 @@ enum Native {
       return [:]
     case "paste":
       guard let text = request.text else { throw Failure("paste takes text.") }
-      Input.paste(text)
+      try Input.paste(text)
       return [:]
     case "apps":
       return ["apps": Accessibility.apps()]

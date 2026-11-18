@@ -180,5 +180,7 @@ export const askLinux = <T = Record<string, unknown>>(
           );
       },
     );
+    // A script that stops before reading it all fails through the callback.
+    child.stdin?.on("error", () => undefined);
     child.stdin?.end(JSON.stringify(request));
   });
