@@ -3,7 +3,7 @@
 // Multibots asks only for what a bot does in its own tabs; the extension
 // carries each out with code of its own, and never runs code it was sent.
 
-export const browserHost = "com.wrkrsh.openbots";
+export const browserHost = "ai.smallmodelslab.multibots";
 // Chrome shows it as the extension's version. An extension Chrome loaded
 // before Multibots updated its folder reloads from it when this differs.
 // 2: the extension asks the user before it connects.

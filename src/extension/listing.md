@@ -35,6 +35,8 @@ package is `MULTIBOTS_VERSION=<version> bun run extension:store` after
 - **Screenshots (1280×800):** a bot reading Hacker News and a 1,000-member
   list; Multibots' settings with the extension's popup.
 - **Small promo tile (440×280):** the Multibots mark and name.
+- **Publisher:** smallmodelslab, contact max@smallmodelslab.ai (Settings;
+  shown publicly, verified 2026-11-18)
 - **Homepage:** https://multibots.ca
 - **Support:** https://github.com/smallmodelslab/multibots/issues
 

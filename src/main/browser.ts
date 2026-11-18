@@ -125,6 +125,8 @@ export class Browser {
     );
     for (const hosts of this.hosts) {
       await mkdir(hosts, { recursive: true });
+      // The host's name before Multibots was smallmodelslab's.
+      await rm(join(hosts, "com.wrkrsh.openbots.json"), { force: true });
       await writeFile(
         join(hosts, `${browserHost}.json`),
         JSON.stringify({
