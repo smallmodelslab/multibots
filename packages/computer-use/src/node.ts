@@ -159,9 +159,9 @@ export const askLinux = <T = Record<string, unknown>>(
   request: Record<string, unknown>,
 ) =>
   new Promise<T>((resolve, reject) => {
-    execFile(
+    const child = execFile(
       "python3",
-      [scriptFile("py", linuxAccessibility), JSON.stringify(request)],
+      [scriptFile("py", linuxAccessibility)],
       { maxBuffer: 64 * 1024 * 1024, timeout: requestTimeoutMs },
       (error, stdout) => {
         let reply: { ok?: boolean; error?: string } | undefined;
@@ -180,4 +180,5 @@ export const askLinux = <T = Record<string, unknown>>(
           );
       },
     );
+    child.stdin?.end(JSON.stringify(request));
   });

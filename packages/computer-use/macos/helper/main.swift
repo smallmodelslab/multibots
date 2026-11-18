@@ -8,7 +8,7 @@ import ApplicationServices
 
 Native.serve({ request, _ in
   // Reading text in an image needs no permission.
-  guard request.type == "text" || AXIsProcessTrusted(), request.type != "input" || CGPreflightPostEventAccess() else {
+  guard request.type == "text" || AXIsProcessTrusted(), !["input", "paste"].contains(request.type) || CGPreflightPostEventAccess() else {
     throw Failure(
       "The app that started the computer-use helper is not allowed Accessibility; allow it in System Settings → Privacy & Security → Accessibility."
     )

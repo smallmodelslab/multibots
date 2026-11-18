@@ -13,6 +13,8 @@ import Foundation
 //                                → presses, focuses, fills, selects text in
 //                                  or otherwise acts on an element
 //   input steps                  → posts the steps (Input.swift)
+//   paste text                   → puts text in through the pasteboard, then
+//                                  puts the pasteboard back (Input.swift)
 //   open target                  → opens a URL, a file or an application by
 //                                  name
 //   text png                     → lines: the text in a base64 PNG, each line
@@ -35,6 +37,7 @@ struct Request: Decodable {
   let value: String?
   let selection: Selection?
   let target: String?
+  let text: String?
   let png: String?
 
   // Text to select, between prefix and suffix, or the cursor's place before
@@ -79,6 +82,10 @@ enum Native {
     switch request.type {
     case "input":
       try Input.run(request.steps ?? [])
+      return [:]
+    case "paste":
+      guard let text = request.text else { throw Failure("paste takes text.") }
+      Input.paste(text)
       return [:]
     case "apps":
       return ["apps": Accessibility.apps()]

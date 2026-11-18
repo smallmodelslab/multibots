@@ -1,8 +1,7 @@
 // The native side of computer use that runs as scripts, the same for every
 // product: the Windows helper and the Linux accessibility script. They answer
 // the requests the macOS helper does (macos/Native.swift): apps, tree, act,
-// open and, on Windows, input; the Linux script also pastes, as input there
-// goes through xdotool. multidesktop's bridge includes this file as text, so
+// open, paste and, on Windows, input. multidesktop's bridge includes this file as text, so
 // each script is a String.raw without backticks or a dollar sign before a
 // brace.
 
@@ -19,8 +18,6 @@ export type InputStep =
     }
   | { type: "key"; key: string; down: boolean }
   | { type: "text"; text: string }
-  // Text through the clipboard, which is then put back as it was.
-  | { type: "paste"; text: string }
   // Lines up (positive) or down, and columns left (positive) or right.
   | { type: "scroll"; columns: number; lines: number };
 
@@ -106,6 +103,9 @@ public static class ComputerUse {
       case "act":
         Act((string)request["ref"], (string)request["action"], (string)Field(request, "role"), (string)Field(request, "name"), (string)Field(request, "value"), (Dictionary<string, object>)Field(request, "selection"));
         break;
+      case "paste":
+        Paste((string)request["text"]);
+        break;
       case "open":
         // The shell's own open, which finds an application by name; no
         // command line parses the target.
@@ -168,9 +168,6 @@ public static class ComputerUse {
         break;
       case "text":
         foreach (char c in (string)step["text"]) { Keyboard(0, c, 0x0004); Keyboard(0, c, 0x0004 | 0x0002); }
-        break;
-      case "paste":
-        Paste((string)step["text"]);
         break;
       case "scroll": {
         var lines = Convert.ToInt32(step["lines"]);
@@ -398,12 +395,16 @@ public static class ComputerUse {
       }
       System.Windows.Forms.Clipboard.SetDataObject(new System.Windows.Forms.DataObject(System.Windows.Forms.DataFormats.UnicodeText, text), true);
     });
-    Keyboard(0x11, 0, 0); Keyboard(0x56, 0, 0); Keyboard(0x56, 0, 0x0002); Keyboard(0x11, 0, 0x0002);
-    Thread.Sleep(500);
-    OnClipboard(() => {
-      if (held != null && held.GetFormats().Length > 0) System.Windows.Forms.Clipboard.SetDataObject(held, true);
-      else System.Windows.Forms.Clipboard.Clear();
-    });
+    try {
+      Keyboard(0x11, 0, 0); Keyboard(0x56, 0, 0); Keyboard(0x56, 0, 0x0002);
+    } finally {
+      Keyboard(0x11, 0, 0x0002);
+      Thread.Sleep(500);
+      OnClipboard(() => {
+        if (held != null && held.GetFormats().Length > 0) System.Windows.Forms.Clipboard.SetDataObject(held, true);
+        else System.Windows.Forms.Clipboard.Clear();
+      });
+    }
   }
 
   // The clipboard answers only threads of a single-threaded apartment.
@@ -416,24 +417,29 @@ public static class ComputerUse {
     if (failure != null) throw failure;
   }
 
-  // Where the selection goes in text: the text's one place between its
-  // prefix and suffix, as a start and a length, which is 0 for the cursor
-  // before or after it.
-  static int[] Locate(Dictionary<string, object> selection, string text, string what) {
+  // The selection's range in a text: the text's one place between its
+  // prefix and suffix, found by the provider, which counts characters its
+  // own way, or the cursor's place before or after it.
+  static TextPatternRange Locate(Dictionary<string, object> selection, TextPatternRange document, string what) {
     var wanted = (string)selection["text"];
     var prefix = (string)Field(selection, "prefix") ?? "";
-    var needle = prefix + wanted + ((string)Field(selection, "suffix") ?? "");
-    var places = new List<int>();
-    for (var at = text.IndexOf(needle, StringComparison.Ordinal); at >= 0; at = text.IndexOf(needle, at + 1, StringComparison.Ordinal)) places.Add(at);
-    if (places.Count == 0)
+    var suffix = (string)Field(selection, "suffix") ?? "";
+    var needle = prefix + wanted + suffix;
+    var text = document.GetText(-1);
+    var count = 0;
+    for (var at = text.IndexOf(needle, StringComparison.Ordinal); at >= 0; at = text.IndexOf(needle, at + 1, StringComparison.Ordinal)) count++;
+    var range = count == 1 ? document.FindText(needle, false, false) : null;
+    if (count > 1)
+      throw new Exception("\"" + wanted + "\" is in " + what + " " + count + " times; give prefix or suffix, the text right before or after it, to say which.");
+    if (range == null)
       throw new Exception("\"" + wanted + "\" is not in " + what + (needle == wanted ? "" : " between that prefix and suffix") + ".");
-    if (places.Count > 1)
-      throw new Exception("\"" + wanted + "\" is in " + what + " " + places.Count + " times; give prefix or suffix, the text right before or after it, to say which.");
-    var start = places[0] + prefix.Length;
+    // The needle starts with its prefix and ends with its suffix.
+    if (prefix.Length > 0) range.MoveEndpointByRange(TextPatternRangeEndpoint.Start, range.FindText(prefix, false, false), TextPatternRangeEndpoint.End);
+    if (suffix.Length > 0) range.MoveEndpointByRange(TextPatternRangeEndpoint.End, range.FindText(suffix, true, false), TextPatternRangeEndpoint.Start);
     var caret = (string)Field(selection, "caret");
-    if (caret == "before") return new[] { start, 0 };
-    if (caret == "after") return new[] { start + wanted.Length, 0 };
-    return new[] { start, wanted.Length };
+    if (caret == "before") range.MoveEndpointByRange(TextPatternRangeEndpoint.End, range, TextPatternRangeEndpoint.Start);
+    if (caret == "after") range.MoveEndpointByRange(TextPatternRangeEndpoint.Start, range, TextPatternRangeEndpoint.End);
+    return range;
   }
 
   static void Act(string reference, string action, string role, string name, string value, Dictionary<string, object> selection) {
@@ -480,13 +486,8 @@ public static class ComputerUse {
         if (selection == null) throw new Exception("select names the text to select.");
         if (!element.TryGetCurrentPattern(TextPattern.Pattern, out pattern))
           throw new Exception("The " + found + " " + reference + " has no text to select; click() and drag() over it instead.");
-        var document = ((TextPattern)pattern).DocumentRange;
-        var place = Locate(selection, document.GetText(-1), "the " + found + " " + reference);
+        var range = Locate(selection, ((TextPattern)pattern).DocumentRange, "the " + found + " " + reference);
         element.SetFocus();
-        var range = document.Clone();
-        range.MoveEndpointByRange(TextPatternRangeEndpoint.End, range, TextPatternRangeEndpoint.Start);
-        range.Move(TextUnit.Character, place[0]);
-        range.MoveEndpointByUnit(TextPatternRangeEndpoint.End, TextUnit.Character, place[1]);
         range.Select();
         break;
       }
@@ -547,8 +548,8 @@ export const xKeysym = (key: string) => {
 };
 
 // Linux's applications as AT-SPI, the accessibility bus, sees them: a Python
-// program run for each request, given it as JSON in its argument or on
-// stdin. An element's ref is "<pid>/<path>", the child indices from its
+// program run for each request, given it as JSON on stdin, where any text
+// fits. An element's ref is "<pid>/<path>", the child indices from its
 // application down; acting on one checks its role and name first. Frames are
 // screen pixels. Applications started before accessibility was switched on
 // (linuxAccessibilitySetup) do not show their elements.
@@ -838,14 +839,16 @@ def act(request):
             raise Exception("The %s %s has no text to select; click() and drag() over it instead." % (found, ref))
         start, length = locate(request["selection"], Atspi.Text.get_text(text, 0, Atspi.Text.get_character_count(text)), "the %s %s" % (found, ref))
         component = node.get_component_iface()
-        if component is not None:
-            Atspi.Component.grab_focus(component)
+        if component is None or not Atspi.Component.grab_focus(component):
+            raise Exception("The %s %s cannot be focused." % (found, ref))
         if length == 0:
-            Atspi.Text.set_caret_offset(text, start)
+            done = Atspi.Text.set_caret_offset(text, start)
         elif Atspi.Text.get_n_selections(text) > 0:
-            Atspi.Text.set_selection(text, 0, start, start + length)
+            done = Atspi.Text.set_selection(text, 0, start, start + length)
         else:
-            Atspi.Text.add_selection(text, start, start + length)
+            done = Atspi.Text.add_selection(text, start, start + length)
+        if not done:
+            raise Exception("The %s %s does not let its text be selected; click() and drag() over it instead." % (found, ref))
         return {}
     if action in names:
         Atspi.Action.do_action(doer, names.index(action))
@@ -874,18 +877,30 @@ def locate(selection, text, what):
         return start + len(wanted), 0
     return start, len(wanted)
 
-# Text through X's clipboard, which xclip holds; what it held before goes
-# back once the app has had time to read the text.
+# Text through X's clipboard, which xclip holds. xclip holds one kind of
+# content, so what the clipboard held goes back as text or an image, once
+# the app has had time to read the text; anything else, it would lose.
 def paste(request):
     if not shutil.which("xclip"):
         raise Exception("Pasting needs xclip, which this machine lacks; type() the text instead.")
     clipboard = ["xclip", "-selection", "clipboard"]
-    held = subprocess.run(clipboard + ["-o"], capture_output=True, timeout=5)
-    subprocess.run(clipboard + ["-i"], input=request["text"].encode(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=5)
-    subprocess.run(["xdotool", "key", "--clearmodifiers", "ctrl+v"], check=True, timeout=5)
-    time.sleep(0.5)
-    if held.returncode == 0:
-        subprocess.run(clipboard + ["-i"], input=held.stdout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+    def put(kind, data):
+        subprocess.run(clipboard + ["-t", kind, "-i"], input=data, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=5)
+    offered = subprocess.run(clipboard + ["-o", "-t", "TARGETS"], capture_output=True, text=True, timeout=5)
+    kinds = offered.stdout.split() if offered.returncode == 0 else []
+    kind = next((kind for kind in ("UTF8_STRING", "image/png") if kind in kinds), None)
+    if kind is None and set(kinds) - {"TARGETS", "TIMESTAMP", "MULTIPLE", "SAVE_TARGETS"}:
+        raise Exception("Pasting would lose what the clipboard holds; type() the text instead.")
+    held = kind and subprocess.run(clipboard + ["-o", "-t", kind], capture_output=True, check=True, timeout=5).stdout
+    put("UTF8_STRING", request["text"].encode())
+    try:
+        subprocess.run(["xdotool", "key", "--clearmodifiers", "ctrl+v"], check=True, timeout=5)
+    finally:
+        time.sleep(0.5)
+        try:
+            put(kind or "UTF8_STRING", held or b"")
+        except Exception:
+            raise Exception("The text went in, but the clipboard could not be put back.")
     return {}
 
 # Commands run outside the desktop session; AT-SPI is found through its bus.
@@ -903,7 +918,7 @@ def join_session():
             pass
 
 def main():
-    request = json.load(sys.stdin) if len(sys.argv) == 1 else json.loads(sys.argv[1])
+    request = json.load(sys.stdin)
     # Private form requests are read from root-only files before joining
     # the desktop as its user; AT-SPI's registry is per user, not root's.
     if os.getuid() == 0 and os.environ.get("SUDO_USER"):

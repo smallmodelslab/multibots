@@ -183,7 +183,8 @@ enum Accessibility {
         throw Failure("The \(found) \(ref) has no text to select; click() and drag() over it instead.")
       }
       var range = try locate(selection, in: text, "the \(found) \(ref)")
-      _ = AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+      try check(
+        AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue), "focus \(ref)")
       try check(
         AXUIElementSetAttributeValue(
           element, kAXSelectedTextRangeAttribute as CFString, AXValueCreate(.cfRange, &range)!),
