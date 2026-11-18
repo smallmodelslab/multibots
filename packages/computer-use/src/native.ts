@@ -1,7 +1,8 @@
 // The native side of computer use that runs as scripts, the same for every
 // product: the Windows helper and the Linux accessibility script. They answer
 // the requests the macOS helper does (macos/Native.swift): apps, tree, act,
-// open and, on Windows, input. multidesktop's bridge includes this file as text, so
+// open and, on Windows, input; the Linux script also pastes, as input there
+// goes through xdotool. multidesktop's bridge includes this file as text, so
 // each script is a String.raw without backticks or a dollar sign before a
 // brace.
 
@@ -18,6 +19,8 @@ export type InputStep =
     }
   | { type: "key"; key: string; down: boolean }
   | { type: "text"; text: string }
+  // Text through the clipboard, which is then put back as it was.
+  | { type: "paste"; text: string }
   // Lines up (positive) or down, and columns left (positive) or right.
   | { type: "scroll"; columns: number; lines: number };
 
@@ -29,7 +32,7 @@ export type InputStep =
 export const windowsHelper = String.raw`$ErrorActionPreference = 'Stop'
 [Console]::InputEncoding = New-Object System.Text.UTF8Encoding $false
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
-$names = 'UIAutomationClient', 'UIAutomationTypes', 'WindowsBase', 'System.Web.Extensions'
+$names = 'UIAutomationClient', 'UIAutomationTypes', 'WindowsBase', 'System.Web.Extensions', 'System.Windows.Forms'
 Add-Type -AssemblyName $names
 $references = [AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $names -contains $_.GetName().Name } | ForEach-Object { $_.Location }
 Add-Type -ReferencedAssemblies $references -TypeDefinition @'
@@ -45,6 +48,7 @@ using System.Threading;
 using System.Web.Script.Serialization;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Automation.Text;
 
 public static class ComputerUse {
   [StructLayout(LayoutKind.Sequential)] struct MOUSEINPUT { public int dx; public int dy; public uint mouseData; public uint dwFlags; public uint time; public IntPtr dwExtraInfo; }
@@ -100,7 +104,7 @@ public static class ComputerUse {
       case "tree":
         return Tree(Field(request, "app"), Convert.ToInt32(request["limit"]));
       case "act":
-        Act((string)request["ref"], (string)request["action"], (string)Field(request, "role"), (string)Field(request, "name"), (string)Field(request, "value"));
+        Act((string)request["ref"], (string)request["action"], (string)Field(request, "role"), (string)Field(request, "name"), (string)Field(request, "value"), (Dictionary<string, object>)Field(request, "selection"));
         break;
       case "open":
         // The shell's own open, which finds an application by name; no
@@ -164,6 +168,9 @@ public static class ComputerUse {
         break;
       case "text":
         foreach (char c in (string)step["text"]) { Keyboard(0, c, 0x0004); Keyboard(0, c, 0x0004 | 0x0002); }
+        break;
+      case "paste":
+        Paste((string)step["text"]);
         break;
       case "scroll": {
         var lines = Convert.ToInt32(step["lines"]);
@@ -377,7 +384,59 @@ public static class ComputerUse {
     if (thread.Join(3000) && failure != null) throw failure;
   }
 
-  static void Act(string reference, string action, string role, string name, string value) {
+  // What the clipboard held, copied out before the text replaces it, goes
+  // back once the app has had time to read the text.
+  static void Paste(string text) {
+    System.Windows.Forms.DataObject held = null;
+    OnClipboard(() => {
+      var current = System.Windows.Forms.Clipboard.GetDataObject();
+      if (current != null) {
+        held = new System.Windows.Forms.DataObject();
+        foreach (var format in current.GetFormats(false)) {
+          try { var data = current.GetData(format, false); if (data != null) held.SetData(format, false, data); } catch (Exception) { }
+        }
+      }
+      System.Windows.Forms.Clipboard.SetDataObject(new System.Windows.Forms.DataObject(System.Windows.Forms.DataFormats.UnicodeText, text), true);
+    });
+    Keyboard(0x11, 0, 0); Keyboard(0x56, 0, 0); Keyboard(0x56, 0, 0x0002); Keyboard(0x11, 0, 0x0002);
+    Thread.Sleep(500);
+    OnClipboard(() => {
+      if (held != null && held.GetFormats().Length > 0) System.Windows.Forms.Clipboard.SetDataObject(held, true);
+      else System.Windows.Forms.Clipboard.Clear();
+    });
+  }
+
+  // The clipboard answers only threads of a single-threaded apartment.
+  static void OnClipboard(Action action) {
+    Exception failure = null;
+    var thread = new Thread(() => { try { action(); } catch (Exception error) { failure = error; } });
+    thread.SetApartmentState(ApartmentState.STA);
+    thread.Start();
+    thread.Join();
+    if (failure != null) throw failure;
+  }
+
+  // Where the selection goes in text: the text's one place between its
+  // prefix and suffix, as a start and a length, which is 0 for the cursor
+  // before or after it.
+  static int[] Locate(Dictionary<string, object> selection, string text, string what) {
+    var wanted = (string)selection["text"];
+    var prefix = (string)Field(selection, "prefix") ?? "";
+    var needle = prefix + wanted + ((string)Field(selection, "suffix") ?? "");
+    var places = new List<int>();
+    for (var at = text.IndexOf(needle, StringComparison.Ordinal); at >= 0; at = text.IndexOf(needle, at + 1, StringComparison.Ordinal)) places.Add(at);
+    if (places.Count == 0)
+      throw new Exception("\"" + wanted + "\" is not in " + what + (needle == wanted ? "" : " between that prefix and suffix") + ".");
+    if (places.Count > 1)
+      throw new Exception("\"" + wanted + "\" is in " + what + " " + places.Count + " times; give prefix or suffix, the text right before or after it, to say which.");
+    var start = places[0] + prefix.Length;
+    var caret = (string)Field(selection, "caret");
+    if (caret == "before") return new[] { start, 0 };
+    if (caret == "after") return new[] { start + wanted.Length, 0 };
+    return new[] { start, wanted.Length };
+  }
+
+  static void Act(string reference, string action, string role, string name, string value, Dictionary<string, object> selection) {
     var element = Resolve(reference);
     var type = element.Current.ControlType;
     var found = Role(element, false);
@@ -415,6 +474,20 @@ public static class ComputerUse {
           throw new Exception("The " + found + " " + reference + " cannot " + action + ".");
         var expandable = (ExpandCollapsePattern)pattern;
         Briefly(() => { if (action == "expand") expandable.Expand(); else expandable.Collapse(); });
+        break;
+      }
+      case "select": {
+        if (selection == null) throw new Exception("select names the text to select.");
+        if (!element.TryGetCurrentPattern(TextPattern.Pattern, out pattern))
+          throw new Exception("The " + found + " " + reference + " has no text to select; click() and drag() over it instead.");
+        var document = ((TextPattern)pattern).DocumentRange;
+        var place = Locate(selection, document.GetText(-1), "the " + found + " " + reference);
+        element.SetFocus();
+        var range = document.Clone();
+        range.MoveEndpointByRange(TextPatternRangeEndpoint.End, range, TextPatternRangeEndpoint.Start);
+        range.Move(TextUnit.Character, place[0]);
+        range.MoveEndpointByUnit(TextPatternRangeEndpoint.End, TextUnit.Character, place[1]);
+        range.Select();
         break;
       }
       case "close":
@@ -480,7 +553,7 @@ export const xKeysym = (key: string) => {
 // screen pixels. Applications started before accessibility was switched on
 // (linuxAccessibilitySetup) do not show their elements.
 export const linuxAccessibility = String.raw`
-import json, os, subprocess, sys, warnings
+import json, os, shutil, subprocess, sys, time, warnings
 
 warnings.filterwarnings("ignore")
 
@@ -648,6 +721,17 @@ def describe(Atspi, node, ref, depth):
         entry["value"] = "%g" % Atspi.Value.get_current_value(numeric)
     if role in ("checkbox", "radio", "switch", "menuitem", "button") and states.contains(Atspi.StateType.CHECKABLE):
         entry["checked"] = states.contains(Atspi.StateType.CHECKED)
+    # A tab is checked when chosen, as macOS reports it.
+    if role == "tab":
+        entry["checked"] = states.contains(Atspi.StateType.SELECTED)
+    # Where a link goes, as a browser exposes it; empty for one going nowhere.
+    if role == "link":
+        try:
+            link = node.get_hyperlink()
+            if link is not None:
+                entry["url"] = clip(link.get_uri(0) or "")
+        except Exception:
+            pass
     if not states.contains(Atspi.StateType.SENSITIVE):
         entry["enabled"] = False
     if states.contains(Atspi.StateType.FOCUSED):
@@ -748,11 +832,61 @@ def act(request):
             Atspi.Value.set_current_value(numeric, float(request.get("value") or 0))
             return {}
         raise Exception("The %s %s does not take a value; focus() or click() it and type()." % (found, ref))
+    if action == "select":
+        text = node.get_text_iface()
+        if text is None:
+            raise Exception("The %s %s has no text to select; click() and drag() over it instead." % (found, ref))
+        start, length = locate(request["selection"], Atspi.Text.get_text(text, 0, Atspi.Text.get_character_count(text)), "the %s %s" % (found, ref))
+        component = node.get_component_iface()
+        if component is not None:
+            Atspi.Component.grab_focus(component)
+        if length == 0:
+            Atspi.Text.set_caret_offset(text, start)
+        elif Atspi.Text.get_n_selections(text) > 0:
+            Atspi.Text.set_selection(text, 0, start, start + length)
+        else:
+            Atspi.Text.add_selection(text, start, start + length)
+        return {}
     if action in names:
         Atspi.Action.do_action(doer, names.index(action))
         return {}
     offered = [name for name in names if name and name not in ORDINARY]
     raise Exception("The %s %s cannot %s%s." % (found, ref, action, "; it can " + ", ".join(offered) if offered else ""))
+
+# Where the selection goes in text: the text's one place between its prefix
+# and suffix, as a start and a length, which is 0 for the cursor before or
+# after it. Offsets count characters, as AT-SPI does.
+def locate(selection, text, what):
+    wanted, prefix = selection["text"], selection.get("prefix") or ""
+    needle = prefix + wanted + (selection.get("suffix") or "")
+    places, at = [], text.find(needle)
+    while at >= 0:
+        places.append(at)
+        at = text.find(needle, at + 1)
+    if not places:
+        raise Exception('"%s" is not in %s%s.' % (wanted, what, "" if needle == wanted else " between that prefix and suffix"))
+    if len(places) > 1:
+        raise Exception('"%s" is in %s %d times; give prefix or suffix, the text right before or after it, to say which.' % (wanted, what, len(places)))
+    start = places[0] + len(prefix)
+    if selection.get("caret") == "before":
+        return start, 0
+    if selection.get("caret") == "after":
+        return start + len(wanted), 0
+    return start, len(wanted)
+
+# Text through X's clipboard, which xclip holds; what it held before goes
+# back once the app has had time to read the text.
+def paste(request):
+    if not shutil.which("xclip"):
+        raise Exception("Pasting needs xclip, which this machine lacks; type() the text instead.")
+    clipboard = ["xclip", "-selection", "clipboard"]
+    held = subprocess.run(clipboard + ["-o"], capture_output=True, timeout=5)
+    subprocess.run(clipboard + ["-i"], input=request["text"].encode(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=5)
+    subprocess.run(["xdotool", "key", "--clearmodifiers", "ctrl+v"], check=True, timeout=5)
+    time.sleep(0.5)
+    if held.returncode == 0:
+        subprocess.run(clipboard + ["-i"], input=held.stdout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+    return {}
 
 # Commands run outside the desktop session; AT-SPI is found through its bus.
 def join_session():
@@ -781,7 +915,7 @@ def main():
         os.setuid(user.pw_uid)
         os.environ["HOME"] = user.pw_dir
     join_session()
-    handlers = {"apps": lambda _: apps(), "tree": tree, "act": act, "open": open_target}
+    handlers = {"apps": lambda _: apps(), "tree": tree, "act": act, "open": open_target, "paste": paste}
     try:
         answer = handlers[request["type"]](request)
         answer["ok"] = True
@@ -792,16 +926,22 @@ def main():
 main()
 `;
 
-// Run once on a machine before its applications start: AT-SPI's libraries and
-// bus, and accessibility switched on for the toolkits that check for it.
+// AT-SPI's libraries and bus, and xclip for pasting, which a machine whose
+// desktop user has no sudo installs as root before linuxAccessibilitySetup
+// runs.
+export const linuxAccessibilityPackages = "python3-gi gir1.2-atspi-2.0 at-spi2-core xclip";
+
+// Run once on a machine before its applications start, as its desktop's
+// user: the packages above through sudo when they are missing, and
+// accessibility switched on for the toolkits that check for it.
 export const linuxAccessibilitySetup = String.raw`
 set -e
 test -f /tmp/computer-use-accessibility-ready && exit 0
-if ! python3 -c 'import gi; gi.require_version("Atspi", "2.0")' 2>/dev/null; then
+if ! python3 -c 'import gi; gi.require_version("Atspi", "2.0")' 2>/dev/null || ! command -v xclip >/dev/null; then
   # An install cut off earlier leaves dpkg to finish first.
   sudo DEBIAN_FRONTEND=noninteractive dpkg --configure -a >/dev/null 2>&1 || true
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends python3-gi gir1.2-atspi-2.0 at-spi2-core >/dev/null 2>&1 \
-    || { sudo apt-get update -q >/dev/null 2>&1 && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends python3-gi gir1.2-atspi-2.0 at-spi2-core >/dev/null; }
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends ${linuxAccessibilityPackages} >/dev/null 2>&1 \
+    || { sudo apt-get update -q >/dev/null 2>&1 && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends ${linuxAccessibilityPackages} >/dev/null; }
 fi
 session=$(pgrep -u "$(id -u)" -n xfce4-session || true)
 if [ -n "$session" ]; then

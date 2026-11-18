@@ -126,8 +126,9 @@ enum Accessibility {
     ]
   }
 
-  static func act(ref: String, action: String, role: String?, name: String?, value: String?) throws
-  {
+  static func act(
+    ref: String, action: String, role: String?, name: String?, value: String?, selection: Request.Selection?
+  ) throws {
     let element = try resolve(ref)
     let values = attributes(element)
     let described = describe(values)
@@ -175,6 +176,18 @@ enum Accessibility {
       try check(
         AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, (value ?? "") as CFString),
         "set the value of \(ref)")
+    case "select":
+      guard let selection else { throw Failure("select names the text to select.") }
+      guard let text = copy(element, kAXValueAttribute) as? String, settable(element, kAXSelectedTextRangeAttribute)
+      else {
+        throw Failure("The \(found) \(ref) has no text to select; click() and drag() over it instead.")
+      }
+      var range = try locate(selection, in: text, "the \(found) \(ref)")
+      _ = AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+      try check(
+        AXUIElementSetAttributeValue(
+          element, kAXSelectedTextRangeAttribute as CFString, AXValueCreate(.cfRange, &range)!),
+        "select text in \(ref)")
     default:
       let actions = actionNames(element)
       guard let named = actions.first(where: { $0.hasPrefix("AX") && actionName($0) == action }) else {
@@ -185,6 +198,35 @@ enum Accessibility {
         )
       }
       try check(AXUIElementPerformAction(element, named as CFString), "\(action) \(ref)")
+    }
+  }
+
+  // Where the selection goes in text, in the UTF-16 units AX counts in: the
+  // text's one place between its prefix and suffix, or the cursor's before
+  // or after it.
+  private static func locate(_ selection: Request.Selection, in text: String, _ what: String) throws -> CFRange {
+    let whole = text as NSString
+    let prefix = selection.prefix ?? ""
+    let needle = prefix + selection.text + (selection.suffix ?? "")
+    var places: [Int] = []
+    var rest = NSRange(location: 0, length: whole.length)
+    while case let found = whole.range(of: needle, options: .literal, range: rest), found.location != NSNotFound {
+      places.append(found.location)
+      rest = NSRange(location: found.location + 1, length: whole.length - found.location - 1)
+    }
+    guard places.count == 1 else {
+      throw Failure(
+        places.isEmpty
+          ? "\"\(selection.text)\" is not in \(what)\(needle == selection.text ? "" : " between that prefix and suffix")."
+          : "\"\(selection.text)\" is in \(what) \(places.count) times; give prefix or suffix, the text right before or after it, to say which."
+      )
+    }
+    let start = places[0] + (prefix as NSString).length
+    let length = (selection.text as NSString).length
+    switch selection.caret {
+    case "before": return CFRange(location: start, length: 0)
+    case "after": return CFRange(location: start + length, length: 0)
+    default: return CFRange(location: start, length: length)
     }
   }
 

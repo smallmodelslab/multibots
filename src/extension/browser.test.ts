@@ -171,6 +171,7 @@ const toolsOf = (bot: string) =>
     onRoutines: async () => {},
     others: [],
     reads: false,
+    edits: false,
     repls: () => {
       throw new Error("No screen here.");
     },

@@ -9,12 +9,15 @@ import Foundation
 //   apps                         → apps: running apps and their windows
 //   tree app? menus limit        → app, elements, truncated: an app's
 //                                  accessibility tree (Accessibility.swift)
-//   act ref action role? name? value?
-//                                → presses, focuses, fills or otherwise acts
-//                                  on an element
+//   act ref action role? name? value? selection?
+//                                → presses, focuses, fills, selects text in
+//                                  or otherwise acts on an element
 //   input steps                  → posts the steps (Input.swift)
 //   open target                  → opens a URL, a file or an application by
 //                                  name
+//   text png                     → lines: the text in a base64 PNG, each line
+//                                  with its frame in the image's pixels
+//                                  (TextRecognition.swift)
 //
 // Multiwork Computer Use answers these and more of its own; the helper in
 // helper/ answers just these, for the process that starts it.
@@ -30,7 +33,18 @@ struct Request: Decodable {
   let role: String?
   let name: String?
   let value: String?
+  let selection: Selection?
   let target: String?
+  let png: String?
+
+  // Text to select, between prefix and suffix, or the cursor's place before
+  // or after it (caret).
+  struct Selection: Decodable {
+    let text: String
+    let prefix: String?
+    let suffix: String?
+    let caret: String?
+  }
 
   // An app by pid or by name.
   struct App: Decodable {
@@ -76,12 +90,16 @@ enum Native {
         throw Failure("An element action names its ref and action.")
       }
       try Accessibility.act(
-        ref: ref, action: action, role: request.role, name: request.name, value: request.value)
+        ref: ref, action: action, role: request.role, name: request.name, value: request.value,
+        selection: request.selection)
       return [:]
     case "open":
       guard let target = request.target else { throw Failure("open names a URL, a path or an application.") }
       try open(target)
       return [:]
+    case "text":
+      guard let png = request.png else { throw Failure("text takes an image, a base64 PNG.") }
+      return ["lines": try TextRecognition.lines(png: png)]
     default:
       throw Failure("Unknown request \"\(request.type)\".")
     }

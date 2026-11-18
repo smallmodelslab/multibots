@@ -4,6 +4,7 @@ import {
   type ChildProcessWithoutNullStreams,
 } from "node:child_process";
 import { createHash } from "node:crypto";
+import { once } from "node:events";
 import { existsSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -111,6 +112,16 @@ export class Helper {
       });
       child.stdin.write(`${JSON.stringify({ ...fields, id, type })}\n`);
     });
+  }
+
+  // Now, midway through what it was asked, once it has exited; the next
+  // request starts it again.
+  async end() {
+    const child = this.running?.child;
+    if (!child) return;
+    const exited = once(child, "exit");
+    child.kill();
+    await exited;
   }
 
   // For good: the helper finishes what it was asked and quits.

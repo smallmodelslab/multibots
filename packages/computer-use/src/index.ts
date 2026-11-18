@@ -12,9 +12,13 @@ export { guest } from "./guest";
 export {
   appsText,
   ocrText,
+  pasteText,
+  policyText,
   regionText,
   screenText,
   scrollText,
+  selectionText,
+  usageText,
 } from "./description";
 
 export type Point = { x: number; y: number };
@@ -48,7 +52,43 @@ export type UiElement = {
   settable?: true;
   // What it can do besides being pressed and focused, for perform().
   actions?: string[];
+  // Where a link goes, on platforms whose helper reports it.
+  url?: string;
 } & Region;
+
+// Text to select in an editable element, told apart from the same text
+// elsewhere in it by the text right before and after it; with caret, the
+// cursor goes before or after it instead.
+export type Selection = {
+  text: string;
+  prefix: string;
+  suffix: string;
+  caret?: "before" | "after";
+};
+
+// An action on an element, as hosts pass it to their native helper: role
+// and name are checked first, so an interface that changed since the
+// element was found is not acted on somewhere else. value is setValue's,
+// selection select's.
+export type ActOptions = {
+  role: string;
+  name: string;
+  value: string | null;
+  selection?: Selection;
+};
+export type ActRequest = { ref: string; action: string } & ActOptions;
+
+// A line of text on the screen, framed in screen pixels.
+export type TextLine = { text: string } & Region;
+// What scrollCapture read: each line once, in order, how far it scrolled in
+// screen pixels, how many scrolls moved it, and the region it scrolled.
+export type ScrollCapture = {
+  text: string[];
+  scrolled: number;
+  steps: number;
+  reachedEnd: boolean;
+  region: Region;
+};
 
 export type UiWindow = { title: string } & Region;
 export type UiApp = {
@@ -76,6 +116,8 @@ export type ComputerHost = {
   // Lines; positive dy scrolls down, positive dx right.
   scroll(at: Point, dx: number, dy: number): Promise<void>;
   type(text: string): Promise<void>;
+  // Text put in through the clipboard, which is then put back as it was.
+  paste(text: string): Promise<void>;
   // Keys pressed together, named as guest.ts names them.
   key(keys: string[]): Promise<void>;
   // A URL, a file path, or an application by name.
@@ -88,14 +130,18 @@ export type ComputerHost = {
     app: string | number | null;
     menus: boolean;
   }): Promise<UiTree>;
-  // press, focus, setValue or one of the element's actions. role and name
-  // are checked first, so an interface that changed since the element was
-  // found is not acted on somewhere else.
-  act(
-    ref: string,
-    action: string,
-    options: { role: string; name: string; value: string | null },
-  ): Promise<void>;
+  // press, focus, setValue, select or one of the element's actions.
+  act(ref: string, action: string, options: ActOptions): Promise<void>;
+  // The lines of text on the screen or in a region, top to bottom. Only hosts
+  // that read text answer it, and tell agents of it with ocrText.
+  text?(region: Region | null): Promise<TextLine[]>;
+  // Scrolls the region, or what moves at the point, down to its end or a
+  // limit, attaching an image of what it showed, or tiles of it. Only hosts
+  // that scroll-capture answer it, and tell agents of it with scrollText.
+  scrollCapture?(
+    target: { region: Region } | { point: Point },
+    options: { maxSteps: number; timeout: number; wait: number; tiles: boolean },
+  ): Promise<ScrollCapture>;
   // What the guest last asked to remember for the agent using the
   // computer, or null.
   recall(): Promise<unknown>;

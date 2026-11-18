@@ -21,6 +21,7 @@ import {
   readBoardFile,
   writeBoardFile,
 } from "@wrkrsh/whiteboard/files";
+import { policyText } from "@wrkrsh/computer-use";
 import {
   applyEdit,
   describeBoard,
@@ -1602,6 +1603,7 @@ export class Bots {
               },
               screen: computer.screen() === "ready",
               reads: computer.reads(),
+              edits: computer.edits(),
               routines: () => bot.routines,
               onCommand: (command) => {
                 bot.commands = [...bot.commands, command].slice(-20);
@@ -1759,6 +1761,11 @@ export class Bots {
         : "",
       this.options.browser.state().connected
         ? "The browser tool uses tabs of your own in the user's Chrome here, signed in where the user is: use it for websites rather than the screen or your shell. Read a page with snapshot and act on its refs; read a long page or list with scroll_capture."
+        : "",
+      this.options.computer.screen() === "ready" ||
+      this.options.computer.others().length ||
+      this.options.browser.state().connected
+        ? policyText
         : "",
       plugins,
       call?.kind === "own"

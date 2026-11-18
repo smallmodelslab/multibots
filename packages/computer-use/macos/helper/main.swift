@@ -7,7 +7,8 @@ import ApplicationServices
 // ProcessControl Host.
 
 Native.serve({ request, _ in
-  guard AXIsProcessTrusted(), request.type != "input" || CGPreflightPostEventAccess() else {
+  // Reading text in an image needs no permission.
+  guard request.type == "text" || AXIsProcessTrusted(), request.type != "input" || CGPreflightPostEventAccess() else {
     throw Failure(
       "The app that started the computer-use helper is not allowed Accessibility; allow it in System Settings → Privacy & Security → Accessibility."
     )

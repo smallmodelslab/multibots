@@ -264,6 +264,11 @@ export class Computer {
     return atLeast(this.version ?? "", [0, 4, 8]);
   }
 
+  // Whether it pastes and selects text in apps' elements, as 0.4.10 began to.
+  edits() {
+    return atLeast(this.version ?? "", [0, 4, 10]);
+  }
+
   // The user's other computers bots reach, by name.
   others() {
     return this.computers ?? [];

@@ -1,9 +1,12 @@
 import {
   appsText,
   ocrText,
+  pasteText,
   regionText,
   screenText,
   scrollText,
+  selectionText,
+  usageText,
 } from "@wrkrsh/computer-use";
 import {
   toolDescriptions,
@@ -408,6 +411,7 @@ export const botTools = ({
   onRoutines,
   others,
   reads,
+  edits,
   repls,
   routines,
   screen,
@@ -422,9 +426,11 @@ export const botTools = ({
   here: string;
   others: string[];
   // Whether this server's screen can be used, and whether its Multidesktop
-  // reads text and scrolls through long lists for the bot.
+  // reads text and scrolls through long lists for the bot, and pastes and
+  // selects text.
   screen: boolean;
   reads: boolean;
+  edits: boolean;
   onCommand: (command: string) => void;
   onRecap: (recap: string) => Promise<void>;
   onRoutines: (routines: Routine[]) => Promise<void>;
@@ -471,9 +477,10 @@ export const botTools = ({
     ...((screen || others.length > 0) && {
       computer: tool({
         description: `Run JavaScript that sees and uses a computer's screen: \`computer\` is the main display of ${screen ? `this server, ${here}` : "the computer you name"}${screen && others.length ? ", or of the computer you name" : ""}, with these methods. Await each.
-${screenText}
-${appsText}${reads ? `\n${regionText}\n${ocrText}\n${scrollText}` : ""}
-Top-level await; variables last until your run ends. console.log(value) adds text to the result. The user may be using the screen.`,
+${screenText}${edits ? `\n${pasteText}` : ""}
+${appsText}${edits ? `\n${selectionText}` : ""}${reads ? `\n${regionText}\n${ocrText}\n${scrollText}` : ""}
+Top-level await; variables last until your run ends. console.log(value) adds text to the result. The user may be using the screen.
+${usageText}`,
         inputSchema: onComputer(
           {
             code: z.string().min(1),

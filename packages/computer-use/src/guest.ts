@@ -265,11 +265,19 @@ export const guest = String.raw`(call) => {
     }
   };
 
-  const act = async (target, action, value) => {
+  // An element is acted on as input left it, as it is looked at.
+  const act = async (target, action, value, selection) => {
     const element = await elementOf(target);
+    await look();
     await recall();
     memory.current = pidOf(element);
-    await input("act", element.ref, action, { role: element.role, name: element.name, value: value ?? null });
+    await input("act", element.ref, action, { role: element.role, name: element.name, value: value ?? null, selection });
+  };
+  const selectText = async (target, text, options) => {
+    const { prefix = "", suffix = "", caret } = options ?? {};
+    if (typeof text !== "string" || !text) throw new TypeError("selectText takes an element and the text in it: selectText(12, 'hello').");
+    if (caret !== undefined && caret !== "before" && caret !== "after") throw new TypeError("caret is before or after.");
+    await act(target, "select", null, { text, prefix: String(prefix), suffix: String(suffix), caret });
   };
 
   // ---- Outlines ----
@@ -466,13 +474,35 @@ export const guest = String.raw`(call) => {
     if (!names.length) throw new TypeError("key takes keys: key('enter'), key('cmd+shift+t').");
     await input("key", names);
   };
+  // A region {x, y, width, height}, or an element's frame, or null for the
+  // whole screen.
+  const regionOf = async (region) => {
+    if (region === undefined || region === null) return null;
+    const area = typeof region === "number" || typeof region?.ref === "string" ? await elementOf(region) : region;
+    return { x: number(area?.x, "x"), y: number(area?.y, "y"), width: number(area?.width, "width"), height: number(area?.height, "height") };
+  };
   const screenshot = async (region) => {
     await look();
-    if (region === undefined || region === null) return await call("screenshot", null);
-    const area = typeof region === "number" || typeof region?.ref === "string" ? await elementOf(region) : region;
-    return await call("screenshot", {
-      x: number(area.x, "x"), y: number(area.y, "y"), width: number(area.width, "width"), height: number(area.height, "height"),
-    });
+    return await call("screenshot", await regionOf(region));
+  };
+  const text = async (region) => {
+    await look();
+    return await call("text", await regionOf(region));
+  };
+  // Scrolls a region, an element's frame, or what moves at a point, to its
+  // end; the host keeps track of what it has read.
+  const scrollCapture = async (target, options) => {
+    const region = typeof target?.width === "number" || typeof target === "number" || typeof target?.ref === "string";
+    const at = region ? { region: await regionOf(target) } : { point: await pointOf(target, "scrollCapture") };
+    const { maxSteps = 100, timeout = 25000, wait = 2000, tiles = false } = options ?? {};
+    const limits = { maxSteps: number(maxSteps, "maxSteps"), timeout: number(timeout, "timeout"), wait: number(wait, "wait"), tiles: Boolean(tiles) };
+    await look();
+    try {
+      return await call("scrollCapture", at, limits);
+    } finally {
+      actedAt = Date.now();
+      acted = true;
+    }
   };
 
   // Operations run one after another in the order the code starts them,
@@ -486,12 +516,15 @@ export const guest = String.raw`(call) => {
   };
   const api = {
     screenshot,
+    text,
+    scrollCapture,
     click,
     doubleClick,
     move,
     drag,
     scroll,
     type: async (text) => await input("type", String(text)),
+    paste: async (text) => await input("paste", String(text)),
     key,
     open: async (target) => await input("open", String(target)),
     wait: async (ms) => await call("wait", number(ms, "wait")),
@@ -506,6 +539,7 @@ export const guest = String.raw`(call) => {
     focus: (target) => act(target, "focus"),
     setValue: (target, value) => act(target, "setValue", String(value)),
     perform: (target, action) => act(target, String(action)),
+    selectText,
   };
   return {
     api: Object.freeze(Object.fromEntries(Object.entries(api).map(([name, operation]) => [name, ordered(operation)]))),

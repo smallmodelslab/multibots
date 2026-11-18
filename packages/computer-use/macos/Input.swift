@@ -1,5 +1,5 @@
+import AppKit
 import CoreGraphics
-import Foundation
 
 // Mouse and keyboard input as CoreGraphics events. Points are global display
 // points, the space hosts map screenshot pixels into; key names arrive as the
@@ -9,6 +9,8 @@ enum Step: Decodable {
   case button(Button, down: Bool, clicks: Int64)
   case key(String, down: Bool)
   case text(String)
+  // Text through the pasteboard, which is then put back as it was.
+  case paste(String)
   // Lines up (positive) or down, and columns left (positive) or right.
   case scroll(lines: Int32, columns: Int32)
 
@@ -35,6 +37,8 @@ enum Step: Decodable {
       self = .key(try values.decode(String.self, forKey: .key), down: try values.decode(Bool.self, forKey: .down))
     case "text":
       self = .text(try values.decode(String.self, forKey: .text))
+    case "paste":
+      self = .paste(try values.decode(String.self, forKey: .text))
     case "scroll":
       self = .scroll(
         lines: try values.decode(Int32.self, forKey: .lines),
@@ -63,6 +67,15 @@ enum Input {
     defer { posting.unlock() }
     var location = CGEvent(source: nil)?.location ?? .zero
     let post = { (event: CGEvent?) in event?.post(tap: .cghidEventTap) }
+    let key = { (name: String, down: Bool) in
+      if let flag = modifierFlags[name] {
+        if down { flags.insert(flag) } else { flags.remove(flag) }
+      }
+      let event = CGEvent(keyboardEventSource: nil, virtualKey: keyCodes[name]!, keyDown: down)
+      event?.flags = flags
+      post(event)
+      pause(0.01)
+    }
 
     for step in steps {
       switch step {
@@ -84,14 +97,7 @@ enum Input {
         held = down ? button : nil
         pause(0.03)
       case let .key(name, down):
-        let code = keyCodes[name]!
-        if let flag = modifierFlags[name] {
-          if down { flags.insert(flag) } else { flags.remove(flag) }
-        }
-        let event = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down)
-        event?.flags = flags
-        post(event)
-        pause(0.01)
+        key(name, down)
       case let .text(text):
         // One event per character, carrying the character itself, so any
         // keyboard layout types it and emoji survive.
@@ -104,6 +110,26 @@ enum Input {
           }
           pause(0.004)
         }
+      case let .paste(text):
+        // What the pasteboard held, copied out before it is cleared, goes
+        // back once the app has had time to read the text.
+        let board = NSPasteboard.general
+        let held = (board.pasteboardItems ?? []).map { item in
+          let copy = NSPasteboardItem()
+          for type in item.types {
+            if let data = item.data(forType: type) { copy.setData(data, forType: type) }
+          }
+          return copy
+        }
+        board.clearContents()
+        board.setString(text, forType: .string)
+        key("cmd", true)
+        key("v", true)
+        key("v", false)
+        key("cmd", false)
+        pause(0.5)
+        board.clearContents()
+        board.writeObjects(held)
       case let .scroll(lines, columns):
         post(
           CGEvent(
