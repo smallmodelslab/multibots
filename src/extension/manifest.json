@@ -3,7 +3,7 @@
   "name": "Multibots",
   "description": "Lets your Multibots bots use tabs of their own in your Chrome.",
   "minimum_chrome_version": "125",
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzCowVxrx2EQnT4+3chtOKuDCGgl2ojAGYO7Sg2ZYNzdPFqKcYV5PXiu0y2cR+KQ9T+4FpPE7IAHrInMNN8QSYknDU6bCWgEZR61mrdRCH2SA2N2bmIln/EzUUtTd0KrWI/NXGYRm39G3IAtnyDkpbdOUi6Kwnm1Lr27b5Y2+A/8C4jByhaObRkKaD5Xe3zi/Ms1/07HnuGaVInNAf+qMkOjphCo8tLhdeoc3SKeKqIr8YMwy/9ci8vlhcRtmkUIK67CqyR1Ma1f7NIIru4ontgeDbcZRNpHxDSMNdH7qgQXfSdw+xxPLy3iYht7HaEclY5+YbHfniUv5ifo19l0w2QIDAQAB",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAooeSmhxzaBZyMOlut9I0fqN5GQR+JAaca+8elP1UjSnOy4wELRZ3T4zJHHEJZEhdUMI8qyDOgbX23nerP9f0/Y40LndEbyfHZKO05BN1oUGWbBXKSlJvDwzASG1LoQdCZMxn6bIos8ZpYELF0VRJ+jBM4Jh8h91s8HeuG4Vn4SPjCFGWyH8d1GcETRaX7ji0dFKZ/NCzXWxyyozP6mntArH+wM0CaVVtuBAm7vVTQS9KSjgTIyz2DBV481xRWnqkW4O6wWVJky7S1AFou1tq4WCZ/vxIo/IcJnpN8VLXl7mE9VQfdMSmD1AE4wxWDxijdzF1jCEg3B2XT8MEv2iEWQIDAQAB",
   "permissions": [
     "alarms",
     "debugger",
