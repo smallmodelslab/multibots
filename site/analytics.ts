@@ -29,12 +29,14 @@ if (location.hostname === "multibots.ca") {
       const options = { transport: "sendBeacon" } as const;
       if (link?.dataset.download)
         posthog.capture(
-          "desktop download clicked",
-          { platform: link.dataset.download },
+          "download clicked",
+          { os: link.dataset.download },
           options,
         );
       else if (link?.hostname === "github.com")
         posthog.capture("github link clicked", { href: link.href }, options);
+      else if (link?.getAttribute("href") === "/docs/")
+        posthog.capture("docs link clicked", {}, options);
     };
     document.addEventListener("click", clicked);
     document.addEventListener("auxclick", clicked);

@@ -31,7 +31,11 @@ let on = false;
 // unknown until it first does.
 let flags: string[] | undefined;
 
-export const startAnalytics = async (home: string, computerId: string) => {
+export const startAnalytics = async (
+  home: string,
+  computerId: string,
+  first: boolean,
+) => {
   file = join(home, "analytics.json");
   distinctId = computerId;
   on = await readFile(file, "utf8").then(
@@ -48,6 +52,9 @@ export const startAnalytics = async (home: string, computerId: string) => {
       flushInterval: 0,
       host: "https://multibots.ca/antenna",
     });
+  // At once rather than with `app opened`, so a first launch that ends before
+  // the window starts still counts.
+  if (first) capture("app installed");
 };
 
 export const analyticsOn = () => on;
@@ -62,7 +69,8 @@ export const activeFlags = () => flags;
 const properties = (extra?: Properties) => ({
   product: "multibots",
   surface: "desktop",
-  app_version: updates().version,
+  // Error tracking breaks issues down by the standard `$app_version`.
+  $app_version: updates().version,
   channel: updates().channel(),
   $os: os,
   $process_person_profile: false,

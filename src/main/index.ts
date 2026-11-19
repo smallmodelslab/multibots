@@ -87,17 +87,18 @@ const osName =
     process.platform as string
   ] ?? process.platform;
 
-// This computer's id among the user's, kept across launches.
+// This computer's id among the user's, kept across launches, and whether
+// this launch made it: the computer's first.
 const computerId = async () => {
   const file = join(home, "computer.json");
   const saved = await readFile(file, "utf8").then(
     (text) => JSON.parse(text) as { id: string },
     () => null,
   );
-  if (saved) return saved.id;
+  if (saved) return { id: saved.id, first: false };
   const id = randomUUID();
   await writeFile(file, JSON.stringify({ id }));
-  return id;
+  return { id, first: true };
 };
 
 const windows = new Set<BrowserWindow>();
@@ -254,8 +255,8 @@ const start = async () => {
   // otherwise read every conversation and file.
   await mkdir(home, { recursive: true });
   await chmod(home, 0o700);
-  const hostId = await computerId();
-  await startAnalytics(home, hostId);
+  const { id: hostId, first } = await computerId();
+  await startAnalytics(home, hostId, first);
   const name = computerName();
   const user = userName();
   const botsDir = join(home, "bots");
