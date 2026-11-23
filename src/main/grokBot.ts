@@ -61,7 +61,11 @@ export const localGrokBots = async (appData: string): Promise<GrokRecipe[]> => {
     for (const row of roster.data?.value.rows ?? []) {
       if (row.isGroup || seenHere.has(row.id) || !row.name.trim()) continue;
       seenHere.add(row.id);
-      const same = JSON.stringify([row.name.trim(), row.description.trim()]);
+      const same = JSON.stringify([
+        row.name.trim(),
+        row.description.trim(),
+        row.avatarColor,
+      ]);
       const count = (here.get(same) ?? 0) + 1;
       here.set(same, count);
       if (count <= (shown.get(same) ?? 0)) continue;

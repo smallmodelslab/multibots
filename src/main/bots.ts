@@ -893,12 +893,16 @@ export class Bots {
         return message;
       }
       // What its run took stays read, not read again after a restart.
+      // Waiting for a server with a model, what it would read is let go.
       case "bot.stop": {
         const bot = this.bot(command.botId);
         bot.abort?.abort();
-        if (bot.reading) {
+        const waiting = this.waits(command.botId, bot);
+        if (waiting) bot.inbox = [];
+        if (bot.reading || waiting) {
           bot.reading = null;
           await this.save(command.botId, bot);
+          this.changed(command.botId, bot);
         }
         return null;
       }
@@ -1477,8 +1481,11 @@ export class Bots {
       return (await this.save(botId, bot)).reached;
     // Kept where it is for a server with a model, once it has what it
     // missed.
-    if (this.placement(botId, bot) === "later")
-      return (await this.save(botId, bot)).reached;
+    if (this.placement(botId, bot) === "later") {
+      const { reached } = await this.save(botId, bot);
+      this.changed(botId, bot);
+      return reached;
+    }
     // Not to a server copies of the bot wait to reach, which would not
     // hear it holds it.
     const servers = this.options
@@ -1562,9 +1569,7 @@ export class Bots {
   // What this server is doing with the bot changed, for its windows and the
   // other servers.
   private changed(botId: string, bot: Record) {
-    this.options.onChange(botId, {
-      status: { call: bot.call?.id ?? null, working: bot.working },
-    });
+    this.options.onChange(botId, { status: this.status(botId, bot) });
   }
 
   // Ends what this server was doing with a bot, which another writes now
@@ -1639,7 +1644,7 @@ export class Bots {
           else if (where === "there") {
             await this.place(botId, bot);
             this.options.onRunning();
-          }
+          } else this.changed(botId, bot);
         } else await this.release(botId, bot);
       });
     }

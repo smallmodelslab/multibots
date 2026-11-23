@@ -10,7 +10,7 @@ import {
   rmdir,
   writeFile,
 } from "node:fs/promises";
-import { dirname, join, relative, sep } from "node:path";
+import { basename, dirname, join, relative, sep } from "node:path";
 
 import { unseal, writeSealed } from "./sealed";
 
@@ -368,14 +368,40 @@ export class Replica {
     return (await readOwn(file))?.toString("base64") ?? null;
   }
 
+  // On a file system that doesn't tell letters' case apart, a folder on
+  // the way to a path named only in another case takes the path's case, so
+  // what is here is spelled as it is on the server it came from.
+  private async spell(botId: string, path: string) {
+    const names = path.split("/").slice(0, -1);
+    for (let at = 0; at < names.length; at += 1) {
+      const parent = this.file(botId, names.slice(0, at).join("/"));
+      const name = names[at]!;
+      const here = await readdir(parent).catch(absent);
+      if (!here || here.includes(name)) continue;
+      const other = here.find(
+        (each) => each.toLowerCase() === name.toLowerCase(),
+      );
+      // Only where that case is the same folder, not one of its own.
+      if (other && (await lstat(join(parent, name)).catch(absent)))
+        await rename(join(parent, other), join(parent, name));
+    }
+  }
+
   private async put(botId: string, path: string, data: string | null) {
     const file = this.file(botId, path);
     if (data === null) {
-      // A folder at its path now holds newer files, which stay.
-      if (!(await lstat(file).catch(absent))?.isDirectory())
+      // Only the file of that very name, not one named in another case
+      // that a file system not telling them apart takes for it; a folder
+      // at its path now holds newer files, which stay.
+      const names: string[] = await readdir(dirname(file)).catch(() => []);
+      if (
+        names.includes(basename(file)) &&
+        !(await lstat(file).catch(absent))?.isDirectory()
+      )
         await rm(file, { force: true });
       return;
     }
+    await this.spell(botId, path);
     await mkdir(dirname(file), { recursive: true });
     const bytes = Buffer.from(data, "base64");
     if (sealed(path)) {
