@@ -1455,7 +1455,11 @@ export class Bots {
     // Not running now: what reached the bot is kept for whoever runs it.
     if (this.closed || !this.started)
       return (await this.save(botId, bot)).reached;
-    const servers = this.options.servers();
+    // Not to a server copies of the bot wait to reach, which would not
+    // hear it holds it.
+    const servers = this.options
+      .servers()
+      .filter(({ id }) => !this.options.replica.behindOn(id, botId));
     const ready = servers.filter((server) => server.ready);
     const [least] = (ready.length ? ready : servers).sort(
       (a, b) =>
@@ -1594,7 +1598,7 @@ export class Bots {
           bot.held === this.options.hostId &&
           (bot.reading || bot.inbox.length)
         ) {
-          if (bot.reading || !this.elsewhere(bot)) this.run(botId, bot);
+          if (!this.elsewhere(bot)) this.run(botId, bot);
           else {
             // Given straight to that server, in one write.
             await this.place(botId, bot);
@@ -1619,7 +1623,8 @@ export class Bots {
     // A reply a run before saved shows before another run begins.
     await this.publish(botId, bot, fenced);
     while ((bot.reading || bot.inbox.length) && !fenced() && !this.closed) {
-      if (!bot.reading && this.elsewhere(bot)) break;
+      // What it reads, a batch begun included, which its context carries.
+      if (this.elsewhere(bot)) break;
       const abort = new AbortController();
       bot.abort = abort;
       setWorking("Thinking");

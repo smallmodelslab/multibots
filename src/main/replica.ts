@@ -181,7 +181,8 @@ export class Replica {
     },
   ) {}
 
-  private behindOn(hostId: string, botId: string) {
+  // Whether copies of a bot wait for a server to be handed what it missed.
+  behindOn(hostId: string, botId: string) {
     const bots = this.behind.get(hostId);
     return Boolean(bots && (bots.has("*") || bots.has(botId)));
   }

@@ -44,7 +44,10 @@ const base32 = (encoded: string) => {
 // Grok Bot.
 export const localGrokBots = async (appData: string): Promise<GrokRecipe[]> => {
   const dir = join(appData, "Grok Bot", "sand-client-persistence");
+  // Each bot once, and a bot that says the same in another account once:
+  // in one account, two that say the same are two.
   const seen = new Set<string>();
+  const said = new Map<string, string>();
   const recipes: GrokRecipe[] = [];
   for (const file of await readdir(dir).catch(() => [])) {
     if (!base32(file.replace(/\.blob$/, "")).endsWith(".roster.last-roster"))
@@ -56,10 +59,16 @@ export const localGrokBots = async (appData: string): Promise<GrokRecipe[]> => {
     );
     for (const row of roster.data?.value.rows ?? []) {
       const same = JSON.stringify([row.name.trim(), row.description.trim()]);
-      if (row.isGroup || seen.has(row.id) || seen.has(same) || !row.name.trim())
+      const account = said.get(same);
+      if (
+        row.isGroup ||
+        seen.has(row.id) ||
+        (account !== undefined && account !== file) ||
+        !row.name.trim()
+      )
         continue;
       seen.add(row.id);
-      seen.add(same);
+      said.set(same, file);
       recipes.push(
         grokRecipeSchema.parse({
           profile: {
