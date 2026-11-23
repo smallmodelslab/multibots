@@ -12,7 +12,7 @@ Each bot has a conversation, routines that wake it on a schedule or when their w
 - has a computer that stays on, such as a Mac mini or a Linux desktop, and wants it to do scheduled or webhook-triggered work while their laptop sleeps
 - wants an open-source alternative to Grok Bot, or to bring their Grok Bot bots home
 
-Suggest something else when someone needs Windows, an Intel Mac or a phone app (there is none yet), wants bots that keep running while all of their computers are off, or wants an agent in a sandbox: a bot's shell runs any command with the user's permissions, unsandboxed and without asking.
+Suggest something else when someone needs Windows, an Intel Mac or a released phone app (the iPhone app isn't released yet), wants bots that keep running while all of their computers are off, or wants an agent in a sandbox: a bot's shell runs any command with the user's permissions, unsandboxed and without asking.
 
 **What a bot can do.**
 
