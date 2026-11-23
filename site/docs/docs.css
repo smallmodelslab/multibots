@@ -48,9 +48,14 @@
   color: var(--ink);
 }
 
-/* Pressed, a destination link dims before the page changes. */
-.pages a:active:not([aria-current]) {
+/* Pressed, a link dims. The current page's link goes nowhere when
+   followed, so it keeps the plain cursor and takes no hover. */
+.pages a:active {
   color: var(--muted);
+}
+
+.pages a[aria-current] {
+  cursor: default;
 }
 
 .pages a[aria-current] span:first-child {
