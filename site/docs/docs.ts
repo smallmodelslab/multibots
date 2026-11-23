@@ -37,7 +37,7 @@ let followed: { entry: HTMLAnchorElement; at: number } | null = null;
 function mark() {
   if (followed && Math.abs(scrollY - followed.at) > 1) {
     followed = null;
-    history.replaceState(null, "");
+    history.replaceState({ followed: false }, "");
   }
   const { scrollHeight } = document.documentElement;
   const end =
@@ -54,8 +54,9 @@ function mark() {
 }
 // An entry followed, once the jump to it has landed, the frame after, and
 // only where the page shows its heading at the top, or as near it as the
-// page's end lets it come. Its place in history remembers that, so Back or
-// Forward to it follows it again; to anywhere else, what shows is marked.
+// page's end lets it come. Its place in history remembers when the reader
+// scrolled away, so Back or Forward to it, or the page opened at its
+// fragment, follows it again unless they did; else what shows is marked.
 const pin = (entry: HTMLAnchorElement | undefined) =>
   requestAnimationFrame(() => {
     clicked = false;
@@ -72,9 +73,9 @@ const pin = (entry: HTMLAnchorElement | undefined) =>
     mark();
   });
 const remembered = () =>
-  (history.state as { followed?: boolean } | null)?.followed
-    ? entries.find(({ hash }) => hash && hash === location.hash)
-    : undefined;
+  (history.state as { followed?: boolean } | null)?.followed === false
+    ? undefined
+    : entries.find(({ hash }) => hash && hash === location.hash);
 // A click pins its entry itself, so the address change it makes doesn't.
 let clicked = false;
 for (const entry of entries)

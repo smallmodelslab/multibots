@@ -173,7 +173,8 @@ export class OwnModels {
   // gave it, else the one its server says now, saved when it changes for
   // a time the server doesn't answer, a restart between included.
   async chatModel(model: OwnModel, signal?: AbortSignal) {
-    if (model.window !== null) return ownChatModel(model);
+    // Models saved before a window could be given have none.
+    if (model.window) return ownChatModel(model);
     const said = (await listServedModels(model, signal).catch(() => [])).find(
       ({ id }) => id === model.model,
     )?.contextWindow;

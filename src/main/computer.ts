@@ -405,6 +405,9 @@ export class Computer {
         "--wait",
         "0s",
       ]);
+    // Multibots' own desktop goes on running the release it started with:
+    // ended, so the next look starts the new one.
+    if (!failure && !this.service) this.stop();
     this.installing = false;
     this.onChange();
     await this.poll();

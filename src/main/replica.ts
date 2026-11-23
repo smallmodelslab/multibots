@@ -517,9 +517,12 @@ export class Replica {
       return;
     }
     if (!inFolder(path)) throw new Error("That is not a bot's file.");
-    // Nothing is written through a folder a link took the place of here,
-    // which this server counts as removed.
-    if (await this.linked(botId, path)) return;
+    // Nothing is written through a folder a link took the place of here:
+    // the copy fails, so the server sending it keeps its own.
+    if (await this.linked(botId, path))
+      throw new Error(
+        `A link takes the place of a folder of ${path} on this server.`,
+      );
     // A file here too large to go is its only copy: it stays, and counts
     // as the version sent, which goes beside it, so neither is lost.
     const here = await lstat(this.file(botId, path)).catch(absent);
@@ -705,12 +708,13 @@ export class Replica {
       if (online.has(hostId)) await this.catchUp(hostId);
   }
 
-  // The files of the bots here too large to go to another server, which
-  // stay only here, by their paths on this computer.
+  // The files of the bots here too large to go to another server, their
+  // own as well as their libraries', which stay only here, by their paths
+  // on this computer.
   async large() {
     const found: string[] = [];
     for (const botId of this.ids())
-      for (const [path, info] of await this.walk(botId, scanned))
+      for (const [path, info] of await this.walk(botId, [""]))
         if (info.size > largest) found.push(this.file(botId, path));
     return found;
   }
