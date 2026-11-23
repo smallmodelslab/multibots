@@ -533,16 +533,16 @@ const start = async () => {
     let kept = empty;
     let settled = empty && !peers.servers().length;
     await scanAll();
+    // Bots go to any server online that takes them all; what marks them
+    // deleted, to every one.
     for (let pass = 0; pass < 3 && unread === null && !settled; pass += 1) {
-      let handed = false;
+      let handed = 0;
       for (const { id } of peers.servers())
-        if ((await replica.hand(id).catch(() => null))?.size === 0)
-          handed = true;
-      if (!handed) break;
+        if ((await replica.hand(id).catch(() => null))?.size === 0) handed += 1;
+      if (empty ? handed < peers.servers().length : !handed) break;
       kept = true;
       settled = (await scanAll()) === 0;
     }
-    if (empty) settled = true;
     const left =
       settled && unread === null
         ? await replica.large().catch((error: unknown) => {
@@ -562,7 +562,9 @@ const start = async () => {
             )
           : !settled
             ? new Error(
-                "Your bots' files kept changing as they were handed over. Try again once what their shells started has stopped.",
+                empty
+                  ? "Your other computers didn't all take which bots you deleted. Try again once they can be reached."
+                  : "Your bots' files kept changing as they were handed over. Try again once what their shells started has stopped.",
               )
             : tooLarge(left);
     }

@@ -1571,8 +1571,9 @@ export class Bots {
         ) {
           if (bot.reading || !this.elsewhere(bot)) this.run(botId, bot);
           else {
-            await this.release(botId, bot);
+            // Given straight to that server, in one write.
             await this.place(botId, bot);
+            this.options.onRunning();
           }
         } else await this.release(botId, bot);
       });
