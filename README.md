@@ -292,9 +292,9 @@ it. Its download buttons are wrkrsh.com's links to the current installers
 (`wrkrsh.com/download/multibots/<platform>`), and a Cloudflare Worker
 (`site/worker.ts`) serves the build and proxies PostHog, for the site and for
 the app. Beside the install guide, a few pages each answer one question people
-ask search and answer engines, which also read `site/public/llms.txt` (served
-for `/` to clients that ask for Markdown) and the sitemap the build makes from
-the pages in `site/vite.config.ts`. The monorepo's CI deploys it on every
+ask search and answer engines. `site/public/llms.txt` sums Multibots up for
+the agents that read it, and is served for `/` to clients that ask for
+Markdown; the build makes the sitemap from the pages in `site/vite.config.ts`. The monorepo's CI deploys it on every
 merge.
 
 Released builds tell PostHog which features are used, whether they worked,
