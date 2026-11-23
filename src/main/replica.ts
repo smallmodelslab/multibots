@@ -391,10 +391,11 @@ export class Replica {
   private async spelled(botId: string, path: string) {
     const names = path.split("/");
     for (let at = 0; at < names.length; at += 1) {
-      const here: string[] = await readdir(
+      // A folder that can't be read fails, so the copy comes again.
+      const here = await readdir(
         this.file(botId, names.slice(0, at).join("/")),
-      ).catch(() => []);
-      if (!here.includes(names[at]!)) return false;
+      ).catch(absent);
+      if (!here?.includes(names[at]!)) return false;
     }
     return true;
   }

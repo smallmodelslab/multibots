@@ -111,8 +111,11 @@ const parting = (about: string, others: string[]) => {
 const AboutHint = ({
   about,
   children,
+  note,
 }: {
   about: string;
+  // A line under it that is never cut short, as its colour.
+  note: string;
   children: ReactElement<{
     onBlur?: () => void;
     onFocus?: (event: FocusEvent) => void;
@@ -120,7 +123,7 @@ const AboutHint = ({
 }) => {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
-  if (!about) return children;
+  if (!about && !note) return children;
   return (
     <Tooltip
       onOpenChange={(open) => {
@@ -137,8 +140,13 @@ const AboutHint = ({
             setFocused(event.target.matches(":focus-visible")),
         })}
       />
-      <TooltipContent className="max-h-[60vh] overflow-hidden whitespace-pre-line [overflow-wrap:anywhere]">
-        {about}
+      <TooltipContent className="flex-col items-start">
+        {about ? (
+          <span className="max-h-[55vh] overflow-hidden [overflow-wrap:anywhere]">
+            {about}
+          </span>
+        ) : null}
+        {note ? <span>{note}</span> : null}
       </TooltipContent>
     </Tooltip>
   );
@@ -330,10 +338,7 @@ const Wizard = ({
                 : "";
               const tells = unlike.length ? parting(about, unlike) : "";
               return (
-                <AboutHint
-                  about={[about, colorName].filter(Boolean).join("\n\n")}
-                  key={i}
-                >
+                <AboutHint about={about} key={i} note={colorName}>
                   <label className="wizard-choice glow">
                     <input
                       aria-label={[

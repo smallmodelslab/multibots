@@ -1481,6 +1481,15 @@ export class Bots {
       if (bot.held === this.options.hostId) this.run(botId, bot);
       else await this.place(botId, bot);
     } else if (bot.reply) await this.publish(botId, bot);
+    // Held here with nothing left to do, as after Stop whose letting go
+    // didn't reach every server: let go once none waits for its copies.
+    else if (
+      bot.held === this.options.hostId &&
+      !this.options
+        .servers()
+        .some(({ id }) => this.options.replica.behindOn(id, botId))
+    )
+      await this.release(botId, bot);
   }
 
   // A bot with something to read goes to the server holding the fewest of
