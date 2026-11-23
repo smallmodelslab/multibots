@@ -204,7 +204,9 @@ const sayable = (words: string) => {
     let cut = -1;
     for (const end of head.matchAll(/[.!?]\s/g)) cut = end.index + 1;
     if (cut < speechChars / 2) cut = head.lastIndexOf(" ");
-    if (cut <= 0) cut = speechChars;
+    // Not between the halves of a character outside the BMP.
+    if (cut <= 0)
+      cut = /[\uD800-\uDBFF]$/.test(head) ? speechChars - 1 : speechChars;
     found.push(rest.slice(0, cut).trim());
     rest = rest.slice(cut).trimStart();
   }

@@ -138,8 +138,10 @@ const ConnectForm = ({ onClose }: { onClose: () => void }) => {
         checking,
       )
       .then(
-        () => {
+        (id) => {
+          // Kept after Cancel came too late to stop it: removed again.
           if (attempt.current === checking) onClose();
+          else void bridge.disconnectModel(id);
         },
         (error) => {
           if (attempt.current !== checking) return;

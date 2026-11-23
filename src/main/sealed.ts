@@ -52,6 +52,10 @@ export const writeSealed = (file: string, value: unknown) => {
   });
 };
 
-// Removed after the writes asked for before, so none of them brings it back.
+// Removed after the writes asked for before, so none of them brings it back,
+// with what a write cut short left.
 export const removeSealed = (file: string) =>
-  inTurn(file, () => rm(file, { force: true }));
+  inTurn(file, async () => {
+    await rm(`${file}.tmp`, { force: true });
+    await rm(file, { force: true });
+  });

@@ -487,7 +487,7 @@ export const botTools = ({
       computer: tool({
         description: `Run JavaScript that sees and uses a computer's screen: \`computer\` is the main display of ${screen ? `this server, ${here}` : "the computer you name"}${screen && others.length ? ", or of the computer you name" : ""}, with these methods. Await each.
 ${screenText}${edits ? `\n${pasteText}` : ""}
-${appsText}${edits ? `\n${selectionText}` : ""}${regions ? `\n${regionText}` : ""}${reads ? `\n${ocrText}\n${scrollText}` : ""}
+${appsText}${edits ? `\n${selectionText}` : ""}${regions ? `\n${regionText}` : ""}${reads ? `\n${ocrText}\n${scrollText}${process.platform === "darwin" && !others.length ? "" : "\ntext() and scrollCapture read with macOS's Vision, so they work only on a Mac's screen."}` : ""}
 Top-level await; variables last until your run ends. console.log(value) adds text to the result. The user may be using the screen.
 ${usageText}`,
         inputSchema: onComputer(

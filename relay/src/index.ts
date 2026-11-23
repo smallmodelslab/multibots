@@ -85,11 +85,38 @@ export class Hook extends DurableObject<Env> {
     );
   }
 
+  // The requests held, made before they are first used.
+  private requests() {
+    const { sql } = this.ctx.storage;
+    sql.exec(
+      "CREATE TABLE IF NOT EXISTS requests (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, body TEXT NOT NULL)",
+    );
+    return sql;
+  }
+
   // What has waited past its time is let go.
   private expire() {
-    this.ctx.storage.sql.exec(
+    this.requests().exec(
       "DELETE FROM requests WHERE at < ?",
       Date.now() - holdMs,
+    );
+  }
+
+  // Wakes when the oldest request held is due to go, and when the webhook
+  // has had no listener for 30 days, counted from when its last one left,
+  // or from now while one listens.
+  private async schedule() {
+    const { oldest } = this.requests()
+      .exec<{ oldest: number | null }>("SELECT min(at) AS oldest FROM requests")
+      .one();
+    let since = Date.now();
+    if (!this.ctx.getWebSockets().length) {
+      const left = await this.ctx.storage.get<number>("left");
+      if (left === undefined) await this.ctx.storage.put("left", since);
+      else since = left;
+    }
+    await this.ctx.storage.setAlarm(
+      Math.min(since + idleMs, oldest === null ? Infinity : oldest + holdMs),
     );
   }
 
@@ -108,7 +135,7 @@ export class Hook extends DurableObject<Env> {
     );
     if (checked === "refuse") return { status: 401 };
     if (checked !== "take") return { status: 200, text: checked.answer };
-    const { sql } = this.ctx.storage;
+    const sql = this.requests();
     this.expire();
     const { bytes, held } = sql
       .exec<{ bytes: number; held: number }>(
@@ -128,16 +155,14 @@ export class Hook extends DurableObject<Env> {
       .one();
     const request = JSON.stringify({ at, body, id });
     for (const socket of this.ctx.getWebSockets()) socket.send(request);
+    await this.schedule();
     return { status: 202 };
   }
 
   // A listener, whose secret the Worker checked; it brings the sender and
   // the sender's secret.
   override async fetch(request: Request) {
-    const { sql } = this.ctx.storage;
-    sql.exec(
-      "CREATE TABLE IF NOT EXISTS requests (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, body TEXT NOT NULL)",
-    );
+    const sql = this.requests();
     await this.ctx.storage.put("registered", {
       secret: request.headers.get("x-secret"),
       sender: request.headers.get("x-sender") as Sender,
@@ -151,7 +176,8 @@ export class Hook extends DurableObject<Env> {
       "SELECT id, at, body FROM requests ORDER BY id",
     ))
       server.send(JSON.stringify(held));
-    await this.ctx.storage.setAlarm(Date.now() + idleMs);
+    await this.ctx.storage.delete("left");
+    await this.schedule();
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -166,19 +192,31 @@ export class Hook extends DurableObject<Env> {
   }
 
   // A webhook is kept 30 days from when its listener left.
-  override async webSocketClose() {
-    if (await this.ctx.storage.get("registered"))
-      await this.ctx.storage.setAlarm(Date.now() + idleMs);
+  override async webSocketClose(socket: WebSocket) {
+    if (!(await this.ctx.storage.get("registered"))) return;
+    if (!this.ctx.getWebSockets().some((each) => each !== socket))
+      await this.ctx.storage.put("left", Date.now());
+    await this.schedule();
   }
 
-  override async webSocketError() {
-    await this.webSocketClose();
+  override async webSocketError(socket: WebSocket) {
+    await this.webSocketClose(socket);
   }
 
+  // Lets go of what waited 7 days, and of the whole webhook once nothing
+  // listened to it for 30, as a webhook from before `left` was kept, whose
+  // alarm was set for then.
   override async alarm() {
-    if (this.ctx.getWebSockets().length)
-      await this.ctx.storage.setAlarm(Date.now() + idleMs);
-    else await this.ctx.storage.deleteAll();
+    const left = await this.ctx.storage.get<number>("left");
+    if (
+      !this.ctx.getWebSockets().length &&
+      Date.now() >= (left ?? 0) + idleMs
+    ) {
+      await this.ctx.storage.deleteAll();
+      return;
+    }
+    this.expire();
+    await this.schedule();
   }
 
   async forget() {

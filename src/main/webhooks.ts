@@ -210,22 +210,35 @@ export class Webhooks {
   }
 
   // Hands a request on, and answers it once it is kept, so the relay holds
-  // it until then.
+  // it until then. One that could not be kept is handed on again, each
+  // time a little later, up to five minutes, while its connection lasts:
+  // the relay sends a request again only to a new connection.
   private async take(routineId: string, socket: WebSocket, data: string) {
+    let request: { at: number; body: string; id: number };
     try {
-      const { at, body, id } = JSON.parse(data) as {
-        at: number;
-        body: string;
-        id: number;
-      };
-      await this.options.onRequest(routineId, body, at, id);
-      if (socket.readyState === WebSocket.OPEN)
-        socket.send(JSON.stringify({ ack: id }));
+      request = JSON.parse(data) as typeof request;
     } catch (error) {
-      logError("webhooks", "A webhook request could not be kept.", {
+      logError("webhooks", "The relay sent what isn't a request.", {
         error,
         routineId,
       });
+      return;
     }
+    const { at, body, id } = request;
+    for (let wait = 15_000; ; wait = Math.min(wait * 2, 300_000))
+      try {
+        await this.options.onRequest(routineId, body, at, id);
+        if (socket.readyState === WebSocket.OPEN)
+          socket.send(JSON.stringify({ ack: id }));
+        return;
+      } catch (error) {
+        logError("webhooks", "A webhook request could not be kept.", {
+          error,
+          retryMs: wait,
+          routineId,
+        });
+        await new Promise((done) => setTimeout(done, wait));
+        if (socket.readyState !== WebSocket.OPEN) return;
+      }
   }
 }

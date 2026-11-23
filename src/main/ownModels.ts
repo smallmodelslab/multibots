@@ -94,7 +94,8 @@ export class OwnModels {
 
   // Keeps a server once it answers, and a speech server once it speaks,
   // with the model asked for, else its first, at the end of its list,
-  // unless the window cancels its attempt first.
+  // unless the window cancels its attempt first. Settles with the kept
+  // model's id, for a window that cancelled too late to remove it.
   async connect(kind: OwnModelKind, input: OwnModelInput, attempt: string) {
     const stop = new AbortController();
     this.connecting.set(attempt, stop);
@@ -113,6 +114,7 @@ export class OwnModels {
       stop.signal.throwIfAborted();
       const list = listOf(kind);
       await this.save({ ...this.lists, [list]: [...this.lists[list], model] });
+      return model.id;
     } finally {
       this.connecting.delete(attempt);
     }

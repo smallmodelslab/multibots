@@ -88,6 +88,15 @@ const absent = (error: NodeJS.ErrnoException) => {
   throw error;
 };
 
+// A file's bytes, not through a link put in its place.
+const readOwn = (file: string) =>
+  readFile(file, {
+    flag: constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0),
+  }).catch(absent);
+
+const sameVersion = (a: Version, b: Version) =>
+  a[0] === b[0] && a[1] === b[1] && (a[2] ?? 0) === (b[2] ?? 0);
+
 export class Replica {
   private readonly manifests = new Map<string, Manifest>();
   // Each server's copies, sent in order.
@@ -100,6 +109,8 @@ export class Replica {
   private readonly missed = new Set<string>();
   // The servers this one could not catch up with yet.
   private readonly uncaught = new Set<string>();
+  // The retry under way, which a later one waits for rather than repeats.
+  private retrying: Promise<void> | null = null;
   // This computer let its copies go: nothing changes them any more.
   private cleared = false;
 
@@ -172,9 +183,22 @@ export class Replica {
     return Boolean(entry && !("gone" in entry));
   }
 
+  // Whether a folder on the way to a file in a bot's folder is a link,
+  // which nothing is read through.
+  private async linked(botId: string, path: string) {
+    const names = path.split("/").slice(0, -1);
+    for (let at = 1; at <= names.length; at += 1) {
+      const info = await lstat(
+        this.file(botId, names.slice(0, at).join("/")),
+      ).catch(absent);
+      if (info && !info.isDirectory()) return true;
+    }
+    return false;
+  }
+
   // A file's every path and stats under the bot's folders, by path; one
   // removed while it is looked at is left out, and one that cannot be
-  // read fails the walk.
+  // read fails the walk. Links, to folders too, are not followed.
   private async walk(botId: string, dirs: string[]) {
     const root = this.file(botId);
     const found = new Map<string, Info>();
@@ -196,7 +220,10 @@ export class Replica {
         }
       }
     };
-    for (const dir of dirs) await walk(join(root, dir));
+    for (const dir of dirs) {
+      const info = await lstat(join(root, dir)).catch(absent);
+      if (!dir || info?.isDirectory()) await walk(join(root, dir));
+    }
     return found;
   }
 
@@ -268,21 +295,19 @@ export class Replica {
   private async encode(botId: string, path: string) {
     const file = this.file(botId, path);
     if (sealed(path)) {
-      const saved = await readFile(file).catch(absent);
+      const saved = await readOwn(file);
       return saved
         ? Buffer.from(JSON.stringify(await unseal(saved))).toString("base64")
         : null;
     }
     const info = await lstat(file).catch(absent);
-    if (!info?.isFile() || info.size > largest) return null;
-    // Not through a link it was made since.
-    return (
-      (
-        await readFile(file, {
-          flag: constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0),
-        }).catch(absent)
-      )?.toString("base64") ?? null
-    );
+    if (
+      !info?.isFile() ||
+      info.size > largest ||
+      (await this.linked(botId, path))
+    )
+      return null;
+    return (await readOwn(file))?.toString("base64") ?? null;
   }
 
   private async put(botId: string, path: string, data: string | null) {
@@ -511,15 +536,25 @@ export class Replica {
           if (ours?.[deleted]) return [];
           return (files[deleted] ? [deleted] : Object.keys(files))
             .filter((path) => newer(files[path]!, ours?.[path]?.v))
-            .map((path) => ({ botId, path }));
+            .map((path) => ({ botId, path, v: files[path]! }));
         })
         .sort((a, b) => byFolder(a.path, b.path));
-      for (const { botId, path } of wanted)
+      // A bot whose library did not all come takes none of its own files
+      // this time, nor a file newer than the one listed, which may refer
+      // to library files this pass did not take.
+      const short = new Set<string>();
+      for (const { botId, path, v } of wanted)
         try {
+          if (!path.includes("/") && short.has(botId)) continue;
           const copy = await this.options.fetch(hostId, botId, path);
+          if (copy && !sameVersion(copy.v, v)) {
+            this.uncaught.add(hostId);
+            continue;
+          }
           if (copy) await this.apply(copy);
         } catch (error) {
           failures.push(error);
+          if (path.includes("/")) short.add(botId);
         }
     } catch (error) {
       failures.push(error);
@@ -538,16 +573,26 @@ export class Replica {
       .flatMap(([botId, manifest]) =>
         Object.entries(manifest)
           .filter(([path, entry]) => newer(entry.v, theirs[botId]?.[path]))
-          .map(([path]) => ({ botId, path })),
+          .map(([path, entry]) => ({ botId, path, v: entry.v })),
       )
       .sort((a, b) => byFolder(a.path, b.path));
     const failures: unknown[] = [];
-    for (const { botId, path } of older)
+    // A bot whose library did not all go sends none of its own files this
+    // time, nor a file written since the list was made, which may refer to
+    // library files it leaves out: the next pass sends those first.
+    const short = new Set<string>();
+    for (const { botId, path, v } of older)
       try {
+        if (!path.includes("/") && short.has(botId)) continue;
         const copy = await this.copy(botId, path);
+        if (copy && !sameVersion(copy.v, v)) {
+          this.missed.add(hostId);
+          continue;
+        }
         if (copy) await this.options.send(hostId, copy);
       } catch (error) {
         failures.push(error);
+        if (path.includes("/")) short.add(botId);
       }
     if (failures.length) throw failures[0];
   }
@@ -564,9 +609,16 @@ export class Replica {
   // Tries again what failed: handing each server a copy failed to reach
   // what it missed, again while copies made meanwhile skip it, then sending
   // it copies again; and catching up with those it could not.
-  async retry() {
+  retry() {
+    this.retrying ??= this.retryAll().finally(() => {
+      this.retrying = null;
+    });
+    return this.retrying;
+  }
+
+  private async retryAll() {
     const online = new Set(this.options.servers());
-    for (const hostId of this.behind)
+    for (const hostId of [...this.behind])
       if (online.has(hostId))
         try {
           do {
@@ -577,7 +629,7 @@ export class Replica {
         } catch {
           // Handed again next time.
         }
-    for (const hostId of this.uncaught)
+    for (const hostId of [...this.uncaught])
       if (online.has(hostId)) await this.catchUp(hostId);
   }
 

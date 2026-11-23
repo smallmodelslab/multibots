@@ -204,10 +204,12 @@
   text-align: center;
 }
 
-/* What a Grok Bot bot is for, under its name when another has the same. */
+/* What a Grok Bot bot is for, under its name when another has the same:
+   two lines of it, and all of it on hover. */
 .new-bot-grok-about {
+  display: -webkit-box;
   max-width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }

@@ -49,17 +49,27 @@ function mark() {
   active?.setAttribute("aria-current", "location");
   current = active;
 }
-// The jump lands before the next frame, which notes where it left the page.
+// The entry for the address's fragment, followed once the jump to it has
+// landed, the frame after: when an entry is followed, its fragment is
+// arrived at by Back or Forward, or the page opens at it.
+const follow = () => {
+  const entry = entries.find(({ hash }) => hash && hash === location.hash);
+  if (!entry) return;
+  requestAnimationFrame(() => {
+    followed = { at: scrollY, entry };
+    mark();
+  });
+};
 for (const entry of entries)
   entry.addEventListener("click", (event) => {
     // Not one opened elsewhere, which leaves the page where it is.
     if (event.button || event.metaKey || event.ctrlKey || event.shiftKey)
       return;
-    requestAnimationFrame(() => {
-      followed = { at: scrollY, entry };
-      mark();
-    });
+    // The same fragment again moves no address, so no hashchange tells.
+    if (entry.hash === location.hash) follow();
   });
+addEventListener("hashchange", follow);
+addEventListener("load", follow);
 let queued = false;
 addEventListener(
   "scroll",

@@ -391,12 +391,12 @@ export type Bridge = {
     key: string,
   ) => Promise<{ id: string; contextWindow: number | null }[]>;
   // Checks the server answers before keeping it, unless its attempt is
-  // cancelled first.
+  // cancelled first; settles with the kept model's id.
   connectModel: (
     kind: OwnModelKind,
     input: OwnModelInput,
     attempt: string,
-  ) => Promise<void>;
+  ) => Promise<string>;
   cancelConnectModel: (attempt: string) => Promise<void>;
   disconnectModel: (id: string) => Promise<void>;
   // A list of models in a new order, by id ("chatgpt" for ChatGPT).

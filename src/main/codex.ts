@@ -211,6 +211,9 @@ export const listModels = async (
 type Generated = Awaited<
   ReturnType<NonNullable<LanguageModelMiddleware["wrapGenerate"]>>
 >;
+type Streamed = Parameters<
+  NonNullable<LanguageModelMiddleware["wrapGenerate"]>
+>[0]["doStream"];
 
 // Codex's errors arrive in its stream as { type: "error", error } or a
 // failed response, which the provider passes on only as raw chunks.
@@ -301,97 +304,118 @@ const codexStream: LanguageModelMiddleware = {
       ),
     };
   },
-  wrapGenerate: async ({ doStream }) => {
-    const { stream, request, response } = await doStream();
-    const content: Generated["content"] = [];
-    const open = new Map<
-      string,
-      { providerMetadata?: unknown; text: string }
-    >();
-    const reader = stream.getReader();
-    let warnings: Generated["warnings"] = [];
-    let result: Pick<
-      Generated,
-      "finishReason" | "providerMetadata" | "usage"
-    > | null = null;
+  // The request is called off once nothing has come for idleMs, from when
+  // it is sent: the provider waits for the answer's first event before it
+  // hands the stream over.
+  wrapGenerate: async ({ model, params }) => {
+    const quiet = new AbortController();
     const stalled = new Error(
       `ChatGPT sent nothing for ${idleMs / 60_000} minutes.`,
     );
-    for (;;) {
-      let idle: NodeJS.Timeout | undefined;
-      const { done, value: part } = await Promise.race([
-        reader.read(),
-        new Promise<never>((_, fail) => {
-          idle = setTimeout(() => fail(stalled), idleMs);
+    let idle: NodeJS.Timeout | undefined;
+    const heard = () => {
+      clearTimeout(idle);
+      idle = setTimeout(() => quiet.abort(stalled), idleMs);
+    };
+    heard();
+    try {
+      return await answer(
+        await model.doStream({
+          ...params,
+          abortSignal: params.abortSignal
+            ? AbortSignal.any([params.abortSignal, quiet.signal])
+            : quiet.signal,
         }),
-      ])
-        .catch(async (error: unknown) => {
-          if (error === stalled) await reader.cancel(stalled).catch(() => {});
-          throw error;
-        })
-        .finally(() => clearTimeout(idle));
-      if (done) break;
-      switch (part.type) {
-        case "text-start":
-        case "reasoning-start": {
-          const started = {
-            providerMetadata: part.providerMetadata,
-            text: "",
-            type: part.type === "text-start" ? "text" : "reasoning",
-          } as const;
-          content.push(started);
-          open.set(`${started.type}:${part.id}`, started);
-          break;
-        }
-        case "text-delta":
-        case "reasoning-delta": {
-          const kind = part.type === "text-delta" ? "text" : "reasoning";
-          const target = open.get(`${kind}:${part.id}`);
-          if (target) target.text += part.delta;
-          break;
-        }
-        case "text-end":
-        case "reasoning-end": {
-          const kind = part.type === "text-end" ? "text" : "reasoning";
-          const target = open.get(`${kind}:${part.id}`);
-          // The end carries what the provider needs back (the encrypted
-          // reasoning).
-          if (target && part.providerMetadata)
-            target.providerMetadata = part.providerMetadata;
-          open.delete(`${kind}:${part.id}`);
-          break;
-        }
-        case "tool-call":
-        case "tool-result":
-        case "tool-approval-request":
-        case "file":
-        case "reasoning-file":
-        case "source":
-        case "custom":
-          content.push(part);
-          break;
-        case "stream-start":
-          warnings = part.warnings;
-          break;
-        case "finish":
-          result = {
-            finishReason: part.finishReason,
-            providerMetadata: part.providerMetadata,
-            usage: part.usage,
-          };
-          break;
-        case "raw": {
-          const error = codexError(part.rawValue);
-          if (error) throw error;
-          break;
-        }
-        case "error":
-          throw part.error;
-      }
+        heard,
+      );
+    } catch (error) {
+      throw quiet.signal.aborted && !params.abortSignal?.aborted
+        ? stalled
+        : error;
+    } finally {
+      clearTimeout(idle);
     }
-    if (!result) throw new Error("ChatGPT ended its answer early.");
-    return { ...result, content, request, response, warnings };
   },
+};
+
+// One whole answer, put together from Codex's stream, `heard` told of each
+// part as it comes.
+const answer = async (
+  { stream, request, response }: Awaited<ReturnType<Streamed>>,
+  heard: () => void,
+): Promise<Generated> => {
+  const content: Generated["content"] = [];
+  const open = new Map<string, { providerMetadata?: unknown; text: string }>();
+  const reader = stream.getReader();
+  let warnings: Generated["warnings"] = [];
+  let result: Pick<
+    Generated,
+    "finishReason" | "providerMetadata" | "usage"
+  > | null = null;
+  for (;;) {
+    const { done, value: part } = await reader.read();
+    heard();
+    if (done) break;
+    switch (part.type) {
+      case "text-start":
+      case "reasoning-start": {
+        const started = {
+          providerMetadata: part.providerMetadata,
+          text: "",
+          type: part.type === "text-start" ? "text" : "reasoning",
+        } as const;
+        content.push(started);
+        open.set(`${started.type}:${part.id}`, started);
+        break;
+      }
+      case "text-delta":
+      case "reasoning-delta": {
+        const kind = part.type === "text-delta" ? "text" : "reasoning";
+        const target = open.get(`${kind}:${part.id}`);
+        if (target) target.text += part.delta;
+        break;
+      }
+      case "text-end":
+      case "reasoning-end": {
+        const kind = part.type === "text-end" ? "text" : "reasoning";
+        const target = open.get(`${kind}:${part.id}`);
+        // The end carries what the provider needs back (the encrypted
+        // reasoning).
+        if (target && part.providerMetadata)
+          target.providerMetadata = part.providerMetadata;
+        open.delete(`${kind}:${part.id}`);
+        break;
+      }
+      case "tool-call":
+      case "tool-result":
+      case "tool-approval-request":
+      case "file":
+      case "reasoning-file":
+      case "source":
+      case "custom":
+        content.push(part);
+        break;
+      case "stream-start":
+        warnings = part.warnings;
+        break;
+      case "finish":
+        result = {
+          finishReason: part.finishReason,
+          providerMetadata: part.providerMetadata,
+          usage: part.usage,
+        };
+        break;
+      case "raw": {
+        const error = codexError(part.rawValue);
+        if (error) throw error;
+        break;
+      }
+      case "error":
+        throw part.error;
+    }
+  }
+  if (!result) throw new Error("ChatGPT ended its answer early.");
+  return { ...result, content, request, response, warnings };
 };
 
 // A bot's model: what the bot is told it runs on, how many tokens it

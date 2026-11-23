@@ -1,5 +1,5 @@
 import { Check, Copy } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { ChatgptState } from "../../shared/types";
 import { bridge, messageOf } from "../data";
@@ -70,14 +70,21 @@ export const ChatgptSetting = ({
 }) => {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Each sign-in begun or cancelled, so one cancelled settles unseen.
+  const attempt = useRef(0);
   const waiting = starting || Boolean(chatgpt.pending);
   const signIn = () => {
+    const mine = (attempt.current += 1);
     setError(null);
     setStarting(true);
     bridge
       .signIn()
-      .catch((failure: unknown) => setError(messageOf(failure)))
-      .finally(() => setStarting(false));
+      .catch((failure: unknown) => {
+        if (mine === attempt.current) setError(messageOf(failure));
+      })
+      .finally(() => {
+        if (mine === attempt.current) setStarting(false);
+      });
   };
   return (
     <SettingRow
@@ -85,6 +92,7 @@ export const ChatgptSetting = ({
         chatgpt.signedIn || waiting ? (
           <Button
             onClick={() => {
+              attempt.current += 1;
               setStarting(false);
               void bridge.signOut();
             }}

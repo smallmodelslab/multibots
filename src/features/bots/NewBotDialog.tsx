@@ -264,7 +264,11 @@ const Wizard = ({
               );
               const about = same ? each.profile.description : "";
               return (
-                <label className="wizard-choice glow" key={i}>
+                <label
+                  className="wizard-choice glow"
+                  key={i}
+                  title={about || undefined}
+                >
                   <input
                     aria-label={
                       about

@@ -269,9 +269,11 @@ export class Computer {
   }
 
   // Whether it reads the screen's text and reads a long list or page whole,
-  // as 0.4.8 began to with macOS's Vision, which no other system has.
+  // as 0.4.8 began to with macOS's Vision, which no other system has: on
+  // this server when it is a Mac, and on the user's other computers, which
+  // may be.
   reads() {
-    return mac && newest(this.version ?? "");
+    return newest(this.version ?? "") && (mac || this.others().length > 0);
   }
 
   // Whether it pastes and selects text in apps' elements, as 0.4.10 began to.

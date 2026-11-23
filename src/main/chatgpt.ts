@@ -136,11 +136,15 @@ export class Chatgpt {
 
   // The model bots run on, with one prompt cache per bot.
   async model(cacheKey: string, signal?: AbortSignal) {
-    const tokens = await this.fresh();
     const session = this.session;
+    const signedOut = () => {
+      if (session !== this.session)
+        throw new Error("Sign in to ChatGPT in Settings.");
+    };
+    const tokens = await this.fresh();
+    signedOut();
     const models = this.models ?? (await listModels(tokens, signal));
-    if (session !== this.session)
-      throw new Error("Sign in to ChatGPT in Settings.");
+    signedOut();
     this.models = models;
     const chosen = models.find(({ id }) => id === preferred) ?? models[0];
     if (!chosen) throw new Error("This ChatGPT account offers no models.");
