@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#fafaf8"
+    />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: dark)"
+      content="#121212"
+    />
+    <title>Run AI agents on models you host — Multibots</title>
+    <meta
+      name="description"
+      content="Multibots runs AI agents on any model behind an OpenAI-style API, such as Ollama, vLLM, SGLang or LM Studio, on its own or with ChatGPT."
+    />
+    <link rel="canonical" href="https://multibots.ca/local-models/" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="../../branding/multibots/multibots.svg"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="../../branding/multibots/multibots-dark.svg"
+      media="(prefers-color-scheme: dark)"
+    />
+    <script type="module" src="../docs/docs.ts"></script>
+  </head>
+  <body>
+    <header class="masthead">
+      <a class="brand" href="/">Multibots</a>
+    </header>
+    <div class="docs">
+      <nav class="contents" aria-label="Contents"></nav>
+      <article data-answer>
+        <h1>
+          Can I run an AI agent on models I host, such as Ollama, vLLM or LM
+          Studio?
+        </h1>
+        <p>
+          Yes. Multibots runs its bots on any model served behind an
+          OpenAI-style API, such as Ollama, vLLM, SGLang, LM Studio or
+          llama.cpp's server. In Settings, under Your models, Add model takes
+          the server's address, the model and an optional key. Use your models
+          on their own, with no ChatGPT account, or with ChatGPT in the order
+          you choose.
+        </p>
+
+        <h2 id="connect">Connect a model</h2>
+        <p>
+          The address is the server's OpenAI-style API, ending in /v1: by
+          default http://localhost:11434/v1 for Ollama, http://localhost:1234/v1
+          for LM Studio and http://localhost:8000/v1 for vLLM. Multibots asks
+          the server which models it serves and suggests them.
+        </p>
+        <p>
+          Bots work through tools, so pick a model that supports tool calling.
+          To see the screen, a bot needs a model that takes images.
+        </p>
+        <p>
+          Each server keeps its own list of models and calls them itself, so add
+          a model on every server that should use it, and localhost is whichever
+          server runs the bot.
+        </p>
+
+        <h2 id="order">Use them with ChatGPT</h2>
+        <p>
+          With ChatGPT signed in too, Settings lists under Order what chat,
+          transcription and speech each try, in turn. Each model call goes to
+          the first that answers, and a model further down gets as much of the
+          conversation as fits its own context window. Web search comes with
+          ChatGPT only. See
+          <a href="/chatgpt-subscription/">using your ChatGPT subscription</a>.
+        </p>
+
+        <h2 id="voice">Voice chats</h2>
+        <p>
+          Add a transcription model and a speech model too, such as open speech
+          models served by mlx-audio. Multibots sends what you say between
+          pauses to the first transcription model that answers, and plays the
+          first speech model's reading of what the bot says. To set it all up,
+          follow the <a href="/docs/">install guide</a>.
+        </p>
+      </article>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,7 @@
+# Every crawler, search and AI alike, may read the whole site. /antenna/ is
+# only the analytics proxy.
+User-agent: *
+Allow: /
+Disallow: /antenna/
+
+Sitemap: https://multibots.ca/sitemap.xml

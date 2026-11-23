@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#fafaf8"
+    />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: dark)"
+      content="#121212"
+    />
+    <title>An open-source alternative to Grok Bot — Multibots</title>
+    <meta
+      name="description"
+      content="Multibots and Grok Bot compared: where bots run, models, price, platforms and routines. Multibots is free, open source and runs bots on your own computers."
+    />
+    <link rel="canonical" href="https://multibots.ca/grok-bot-alternative/" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="../../branding/multibots/multibots.svg"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="../../branding/multibots/multibots-dark.svg"
+      media="(prefers-color-scheme: dark)"
+    />
+    <script type="module" src="../docs/docs.ts"></script>
+  </head>
+  <body>
+    <header class="masthead">
+      <a class="brand" href="/">Multibots</a>
+    </header>
+    <div class="docs">
+      <nav class="contents" aria-label="Contents"></nav>
+      <article data-answer>
+        <h1>Is there an open-source alternative to Grok Bot?</h1>
+        <p>
+          Yes: Multibots, free under the AGPL-3.0. Like Grok Bot, it gives each
+          bot a conversation, routines on a schedule or webhook, its files and a
+          computer to work on. Unlike Grok Bot, your bots live on your own Macs
+          and Linux computers and run on your ChatGPT subscription or models you
+          host, where Grok Bot runs them on a cloud computer and needs a Cursor
+          account with a plan that includes it. Multibots can bring your Grok
+          Bot bots over.
+        </p>
+
+        <h2 id="compared">How they differ</h2>
+        <table>
+          <thead>
+            <tr>
+              <td></td>
+              <th scope="col">Multibots</th>
+              <th scope="col">Grok Bot</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Where bots run</th>
+              <td>Your own computers, each keeping a copy of every bot</td>
+              <td>
+                A cloud computer for your account; your own computer only for
+                commands you allow
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">While your computers are off</th>
+              <td>Bots wait until one of your servers is on</td>
+              <td>Bots keep working</td>
+            </tr>
+            <tr>
+              <th scope="row">Models</th>
+              <td>
+                ChatGPT on your plan, models you host, or both in your order
+              </td>
+              <td>Grok Bot picks the model for each task</td>
+            </tr>
+            <tr>
+              <th scope="row">Price</th>
+              <td>Free, with no account with us</td>
+              <td>
+                Included in paid plans such as Premium, US$30 a month, with a
+                Cursor account
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">Source</th>
+              <td>Open source, AGPL-3.0</td>
+              <td>Not open source</td>
+            </tr>
+            <tr>
+              <th scope="row">Desktop</th>
+              <td>Apple silicon Macs and x86-64 Linux</td>
+              <td>macOS, Windows and Linux</td>
+            </tr>
+            <tr>
+              <th scope="row">Phone</th>
+              <td>Not yet</td>
+              <td>iPhone, iPad and Android</td>
+            </tr>
+            <tr>
+              <th scope="row">Routines</th>
+              <td>
+                Once, weekly, every 15 minutes or more, or a webhook signed by
+                GitHub, Stripe, Slack or a key
+              </td>
+              <td>
+                Schedules at least five minutes apart, or a webhook with a key
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">Computer use</th>
+              <td>
+                The shell and screen of its computer, your other computers
+                through Multidesktop, and its own tabs in your Chrome
+              </td>
+              <td>A browser, command line and files on its cloud computer</td>
+            </tr>
+            <tr>
+              <th scope="row">Apps</th>
+              <td>Composio's apps, on your own Composio key</td>
+              <td>Built-in connectors and custom MCP servers</td>
+            </tr>
+            <tr>
+              <th scope="row">Voice</th>
+              <td>Voice chat on ChatGPT's voice or speech models you host</td>
+              <td>
+                Voice chat, voice memos and joining Meet, Zoom or Teams calls
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">Safety</th>
+              <td>The shell runs any command as you, without asking</td>
+              <td>
+                An isolated cloud computer; commands on your own computer ask
+                first by default
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          Grok Bot's side is from
+          <a href="https://docs.x.ai/grok-bot/overview">its documentation</a>
+          and <a href="https://x.ai/bot">x.ai/bot</a>, checked 23 November 2026.
+        </p>
+
+        <h2 id="grok-bot">When Grok Bot fits better</h2>
+        <p>
+          If you want bots that keep working while every computer you own is
+          off, or on Windows or your phone, without keeping a computer of your
+          own for them or minding what a shell can do on it, Grok Bot is the
+          simpler choice.
+        </p>
+
+        <h2 id="multibots">When Multibots fits better</h2>
+        <p>
+          If you want your bots and their files to stay on your computers, run
+          on the ChatGPT plan you already have or on
+          <a href="/local-models/">models you host</a>, and be free software you
+          can read and change, Multibots fits. Start with the
+          <a href="/docs/">install guide</a>.
+        </p>
+
+        <h2 id="bring-over">Bring your Grok Bot bots over</h2>
+        <p>
+          New bot can start from a bot the Grok Bot app keeps on your computer,
+          with its name, instructions and colour, or from a Grok Bot template
+          recipe, a JSON file your Grok bot makes when you ask. A recipe's
+          skills and work log become files in the bot's folder, and on its first
+          run the bot sets up the recipe's routines, paused until you turn them
+          on.
+        </p>
+      </article>
+    </div>
+  </body>
+</html>

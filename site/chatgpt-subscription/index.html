@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#fafaf8"
+    />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: dark)"
+      content="#121212"
+    />
+    <title>Use your ChatGPT subscription for AI agents — Multibots</title>
+    <meta
+      name="description"
+      content="Multibots signs in to ChatGPT the way Codex does, so the AI agents it runs on your own computers use your ChatGPT plan instead of an API key."
+    />
+    <link rel="canonical" href="https://multibots.ca/chatgpt-subscription/" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="../../branding/multibots/multibots.svg"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="../../branding/multibots/multibots-dark.svg"
+      media="(prefers-color-scheme: dark)"
+    />
+    <script type="module" src="../docs/docs.ts"></script>
+  </head>
+  <body>
+    <header class="masthead">
+      <a class="brand" href="/">Multibots</a>
+    </header>
+    <div class="docs">
+      <nav class="contents" aria-label="Contents"></nav>
+      <article data-answer>
+        <h1>
+          Can I use my ChatGPT subscription instead of an API key for an AI
+          agent?
+        </h1>
+        <p>
+          Yes. Multibots signs in to ChatGPT the way OpenAI's Codex does, with a
+          device code, so the bots it runs on your own computers use your
+          ChatGPT plan instead of an OpenAI API key billed per token. Their
+          requests count toward the Codex usage your plan includes, and
+          Multibots itself is free and open source.
+        </p>
+
+        <h2 id="sign-in">Sign in</h2>
+        <p>
+          In Settings, under ChatGPT, choose Sign in. Multibots shows a code:
+          open auth.openai.com/codex/device, sign in to ChatGPT there and enter
+          it, and Multibots finishes by itself.
+        </p>
+        <p>
+          The sign-in stays on the computer that made it, sealed by the system
+          keychain, or on Linux without a keyring in a file only you can read,
+          as Codex keeps it. Each of your servers signs in for itself, since a
+          refresh token works only once. Multibots uses it for its bots alone:
+          their model calls, web searches and voice chats.
+        </p>
+
+        <h2 id="plans">Which plans work</h2>
+        <p>
+          Any ChatGPT plan that includes Codex. OpenAI lists Codex in the Free,
+          Go, Plus, Pro, Business, Edu and Enterprise plans, with usage limits
+          that depend on the plan (<a
+            href="https://learn.chatgpt.com/docs/pricing"
+            >OpenAI's Codex pricing</a
+          >, checked 23 November 2026). Bots share that allowance with the rest
+          of your Codex use.
+        </p>
+        <p>
+          Bots run on GPT-6.1 Terra where your plan offers it, and otherwise on
+          the first model Codex lists for your account.
+        </p>
+
+        <h2 id="runs-out">When your plan runs out</h2>
+        <p>
+          Add <a href="/local-models/">models you host</a>, or any provider with
+          an OpenAI-style API, under Your models, and put them after ChatGPT in
+          Order. Each model call goes to the first that answers, so a run that
+          loses ChatGPT midway carries on with the next. To set it all up,
+          follow the <a href="/docs/">install guide</a>.
+        </p>
+      </article>
+    </div>
+  </body>
+</html>

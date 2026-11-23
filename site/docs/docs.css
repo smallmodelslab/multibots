@@ -149,6 +149,38 @@ code {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }
 
+/* A comparison: rows apart by whitespace and a hairline, the row's name in
+   the muted colour. */
+table {
+  width: 100%;
+  margin: 0 0 1rem;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+th,
+td {
+  padding: 0.6rem 1rem 0.6rem 0;
+  text-align: left;
+  vertical-align: top;
+}
+
+thead th {
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+tbody tr {
+  border-top: 1px solid color-mix(in srgb, var(--ink) 12%, var(--paper));
+}
+
+tbody th {
+  width: 26%;
+  color: var(--muted);
+  font-weight: 500;
+}
+
 /* Too narrow for both side by side, the article takes the page alone. */
 @media (max-width: 62rem) {
   .contents {
@@ -157,6 +189,35 @@ code {
 
   article {
     margin: 0 auto;
+  }
+}
+
+/* Too narrow for three columns, each row's name goes above its cells. */
+@media (max-width: 36rem) {
+  thead td {
+    display: none;
+  }
+
+  tbody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 0.6rem 0;
+  }
+
+  tbody th {
+    grid-column: 1 / -1;
+    width: auto;
+    padding-bottom: 0.2rem;
+  }
+
+  tbody th,
+  tbody td {
+    padding-top: 0;
+  }
+
+  thead tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 }
 
