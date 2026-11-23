@@ -537,7 +537,13 @@ const start = async () => {
       if (!kept) break;
       settled = (await scanAll()) === 0;
     }
-    const left = settled && unread === null ? await replica.large() : [];
+    const left =
+      settled && unread === null
+        ? await replica.large().catch((error: unknown) => {
+            unread = error;
+            return [];
+          })
+        : [];
     if (unread !== null || !settled || left.length) {
       await startServer();
       throw unread !== null

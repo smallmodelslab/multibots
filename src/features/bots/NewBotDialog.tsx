@@ -92,6 +92,19 @@ const Outfits = <Kind extends keyof Accessories>({
   </fieldset>
 );
 
+// Instructions shown from where they part from others', at the start of
+// the word that differs, so two that begin alike still look apart.
+const parting = (about: string, others: string[]) => {
+  let at = 0;
+  for (const other of others) {
+    let same = 0;
+    while (same < about.length && about[same] === other[same]) same += 1;
+    at = Math.max(at, same);
+  }
+  if (at < 40) return about;
+  return `…${about.slice(about.lastIndexOf(" ", at) + 1)}`;
+};
+
 // What a Grok Bot bot is for, all of it in a hint over its card on hover,
 // and while the card's radio has the keyboard's focus, which a hint on the
 // card alone would not see; none when it is not needed.
@@ -124,7 +137,9 @@ const AboutHint = ({
             setFocused(event.target.matches(":focus-visible")),
         })}
       />
-      <TooltipContent>{about}</TooltipContent>
+      <TooltipContent className="max-h-[60vh] overflow-hidden">
+        {about}
+      </TooltipContent>
     </Tooltip>
   );
 };
@@ -298,12 +313,14 @@ const Wizard = ({
             <legend className="sr-only">Grok Bot's bots</legend>
             {grok.map((each, i) => {
               // Bots of the same name, as from two accounts, tell what each
-              // is for.
-              const same = grok.some(
-                (other) =>
-                  other !== each && other.profile.name === each.profile.name,
-              );
-              const about = same ? each.profile.description : "";
+              // is for, from where it parts from the others'.
+              const others = grok
+                .filter(
+                  (other) =>
+                    other !== each && other.profile.name === each.profile.name,
+                )
+                .map(({ profile }) => profile.description);
+              const about = others.length ? each.profile.description : "";
               return (
                 <AboutHint about={about} key={i}>
                   <label className="wizard-choice glow">
@@ -325,7 +342,7 @@ const Wizard = ({
                     </span>
                     {about ? (
                       <span className="wizard-choice-note new-bot-grok-about">
-                        {about}
+                        {parting(about, others)}
                       </span>
                     ) : null}
                   </label>

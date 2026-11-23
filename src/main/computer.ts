@@ -368,27 +368,40 @@ export class Computer {
     );
   }
 
+  private versionIs(version: string | null) {
+    if (version === this.version) return;
+    this.version = version;
+    this.onChange();
+  }
+
+  // The version is the running desktop's, which until Multibots' own
+  // starts again after an update lags the release installed.
   private async check(): Promise<Screen> {
     const service = override
       ? null
       : await this.ask<Status>(serviceConfig, { type: "status" }).catch(
           () => null,
         );
-    const version = service?.version ?? (await installedVersion());
     this.service = Boolean(service);
-    if (version !== this.version) {
-      this.version = version;
-      this.onChange();
-    }
-    if (!signals(version ?? "")) return null;
     if (service) {
+      this.versionIs(service.version);
+      if (!signals(service.version)) return null;
       this.stop();
       this.config = serviceConfig;
       return screenOf(service);
     }
+    const installed = await installedVersion();
+    if (!signals(installed ?? "")) {
+      this.versionIs(installed);
+      return null;
+    }
     this.config = this.own;
     if (!this.desktop && Date.now() - this.started > 30_000) this.run();
-    return screenOf(await this.ask<Status>(this.own, { type: "status" }));
+    const status = await this.ask<Status>(this.own, { type: "status" }).catch(
+      () => null,
+    );
+    this.versionIs(status?.version ?? installed);
+    return status && screenOf(status);
   }
 
   // Installs the newest release, as the user asks in Settings, and looks
@@ -406,8 +419,17 @@ export class Computer {
         "0s",
       ]);
     // Multibots' own desktop goes on running the release it started with:
-    // ended, so the next look starts the new one.
-    if (!failure && !this.service) this.stop();
+    // ended, and once it has, the next look starts the new one at once.
+    const old = this.desktop;
+    if (!failure && !this.service && old) {
+      this.stop();
+      if (old.exitCode === null && old.signalCode === null)
+        await new Promise((done) => {
+          old.once("close", done);
+          setTimeout(done, 10_000);
+        });
+      this.started = 0;
+    }
     this.installing = false;
     this.onChange();
     await this.poll();

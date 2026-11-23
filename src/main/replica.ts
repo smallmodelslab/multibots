@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { constants } from "node:fs";
 import {
   lstat,
@@ -348,8 +349,14 @@ export class Replica {
       await writeSealed(file, JSON.parse(bytes.toString()));
       return;
     }
-    await writeFile(`${file}.tmp`, bytes);
-    await rename(`${file}.tmp`, file);
+    // Written beside it under a short name of its own, so a name near the
+    // file system's limit still takes the ".tmp".
+    const written = join(
+      dirname(file),
+      `.${randomBytes(6).toString("hex")}.tmp`,
+    );
+    await writeFile(written, bytes);
+    await rename(written, file);
   }
 
   // Sends a file as it was just written to every other server, settling
@@ -517,12 +524,17 @@ export class Replica {
       return;
     }
     if (!inFolder(path)) throw new Error("That is not a bot's file.");
-    // Nothing is written through a folder a link took the place of here:
-    // the copy fails, so the server sending it keeps its own.
-    if (await this.linked(botId, path))
-      throw new Error(
-        `A link takes the place of a folder of ${path} on this server.`,
-      );
+    // Nothing is written through a folder a link took the place of here: a
+    // file's removal is only recorded, and its contents fail, so the server
+    // sending it keeps its own.
+    if (await this.linked(botId, path)) {
+      if (data !== null)
+        throw new Error(
+          `A link takes the place of a folder of ${path} on this server.`,
+        );
+      await this.record(botId, path, v, null);
+      return;
+    }
     // A file here too large to go is its only copy: it stays, and counts
     // as the version sent, which goes beside it, so neither is lost.
     const here = await lstat(this.file(botId, path)).catch(absent);

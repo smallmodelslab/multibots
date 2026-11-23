@@ -36,6 +36,8 @@ const newSecret = () => randomBytes(32).toString("base64url");
 // sleeps, though nothing closed it; the relay answers each ping.
 const pingMs = 30_000;
 const silentMs = 75_000;
+// How long the relay holds a request, after which it is gone from there.
+const heldMs = 7 * 24 * 60 * 60_000;
 
 // The webhooks this server listens to: those of the routines of the bots
 // it writes. A new listener at the relay replaces the one before, so the
@@ -211,8 +213,9 @@ export class Webhooks {
 
   // Hands a request on, and answers it once it is kept, so the relay holds
   // it until then. One that could not be kept is handed on again, each
-  // time a little later, up to five minutes, while its connection lasts:
-  // the relay sends a request again only to a new connection.
+  // time a little later, up to five minutes, while its connection lasts
+  // and the relay still holds it: the relay sends a request again only to
+  // a new connection.
   private async take(routineId: string, socket: WebSocket, data: string) {
     let request: { at: number; body: string; id: number };
     try {
@@ -238,7 +241,8 @@ export class Webhooks {
           routineId,
         });
         await new Promise((done) => setTimeout(done, wait));
-        if (socket.readyState !== WebSocket.OPEN) return;
+        if (socket.readyState !== WebSocket.OPEN || Date.now() > at + heldMs)
+          return;
       }
   }
 }
