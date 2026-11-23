@@ -66,17 +66,17 @@ const header: Plugin = {
 const answer: Plugin = {
   name: "answer",
   transformIndexHtml(html) {
-    if (!html.includes("<article data-answer")) return;
+    if (!/<article\b[^>]*\bdata-answer\b/.test(html)) return;
     const page =
-      /<article data-answer[^>]*>\s*<h1[^>]*>(.+?)<\/h1>\s*<p[^>]*>(.+?)<\/p>/s.exec(
+      /<article\b[^>]*\bdata-answer\b[^>]*>\s*<h1[^>]*>(.+?)<\/h1>\s*<p[^>]*>(.+?)<\/p>/s.exec(
         html,
       );
     if (!page)
       throw new Error("An answer page starts with its h1, then a paragraph.");
     const text = (fragment: string) => {
       const plain = fragment.replace(/\s+/g, " ").trim();
-      if (/[<&]/.test(plain))
-        throw new Error(`Keep markup and entities out of "${plain}".`);
+      if (!plain || /[<&]/.test(plain))
+        throw new Error(`Write "${plain}" as plain text.`);
       return plain;
     };
     const data = {

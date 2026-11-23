@@ -64,8 +64,12 @@
           model yourself.
         </p>
         <p>
-          Bots work through tools, so pick a model that supports tool calling.
-          To see the screen, a bot needs a model that takes images.
+          Bots work through tools, so pick a model that supports tool calling,
+          and turn tool calling on in its server where it's off by default, as
+          <a href="https://docs.vllm.ai/en/latest/features/tool_calling/"
+            >vLLM's</a
+          >
+          is. To see the screen, a bot needs a model that takes images.
         </p>
         <p>
           Each server keeps its own list of models and calls them itself, so add
@@ -91,8 +95,8 @@
           models served by mlx-audio. A voice chat stays on ChatGPT's voice or
           on your models, whichever it starts on. On yours, Multibots sends what
           you say between pauses to the first transcription model that answers,
-          and plays the first speech model's reading of what the bot says. To
-          set it all up, follow the <a href="/docs/">install guide</a>.
+          and plays the reading of the first speech model that answers. To set
+          it all up, follow the <a href="/docs/">install guide</a>.
         </p>
       </article>
     </div>

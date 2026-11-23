@@ -23,8 +23,10 @@ if (location.hostname === "multibots.ca") {
       },
     });
     // A link opened with the middle button fires auxclick, not click.
+    // A click the page cancelled, as on the current page's header link, went
+    // nowhere.
     const clicked = (event: MouseEvent) => {
-      if (event.button > 1) return;
+      if (event.button > 1 || event.defaultPrevented) return;
       const link = (event.target as Element).closest("a");
       const options = { transport: "sendBeacon" } as const;
       if (link?.dataset.download)

@@ -58,8 +58,9 @@
           Every computer running Multibots is a server unless you turn that off:
           it keeps a copy of every bot, with its conversation, routines and
           files, and runs them. Copies leave out node_modules folders, files
-          ending in .tmp, symbolic links and files over 200 MB. A computer with
-          server mode off keeps and runs no bots: it reaches the ones your
+          ending in .tmp, symbolic links and files over 200 MiB; other servers
+          keep the last copy they had of a file that grows past that. A computer
+          with server mode off keeps and runs no bots: it reaches the ones your
           servers run. Your computers find each other over Tailscale and copy
           bots between them, end-to-end encrypted, with no server of ours in
           between.
