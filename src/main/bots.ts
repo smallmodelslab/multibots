@@ -1261,12 +1261,15 @@ export class Bots {
   // while the request waited its turn, is let go.
   async webhookCalled(routineId: string, body: string, at: number, id: number) {
     for (const [botId, bot] of this.bots) {
-      if (!bot.routines.some((each) => each.id === routineId)) continue;
+      const routine = bot.routines.find((each) => each.id === routineId);
+      if (!routine) continue;
+      // Off as it came, it stays let go, even if turned on before its turn.
+      const cameOn = routine.enabled;
       return this.exclusive(botId, () => {
         // Another server writes the bot now: the relay sends it there.
         if (!this.mine(botId))
           throw new Error("Another server writes this bot now.");
-        return this.takeRequest(botId, bot, routineId, body, at, id);
+        return this.takeRequest(botId, bot, routineId, body, at, id, cameOn);
       });
     }
   }
@@ -1280,6 +1283,7 @@ export class Bots {
     body: string,
     at: number,
     id: number,
+    cameOn: boolean,
   ) {
     const taken = bot.taken[routineId];
     if (taken && (at < taken[0] || (at === taken[0] && id <= taken[1]))) {
@@ -1287,7 +1291,7 @@ export class Bots {
       return;
     }
     const routine = bot.routines.find((each) => each.id === routineId);
-    if (!routine?.enabled) return;
+    if (!cameOn || !routine?.enabled) return;
     bot.taken[routine.id] = [at, id];
     const reached = await this.wake(
       botId,

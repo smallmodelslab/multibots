@@ -98,9 +98,9 @@ const removeFolders = async (dir: string) => {
     const full = join(dir, entry.name);
     if (skipped.has(entry.name))
       await rm(full, { force: true, recursive: true });
+    else if (entry.isDirectory()) await removeFolders(full);
     else if (entry.isSymbolicLink() || entry.name.endsWith(".tmp"))
       await rm(full, { force: true });
-    else if (entry.isDirectory()) await removeFolders(full);
   }
   await rmdir(dir);
 };
@@ -600,11 +600,15 @@ export class Replica {
       await this.record(botId, path, v);
       return;
     }
-    // What a write here lacks of an older one is kept, and sent back on.
+    // What a write here lacks of an older one is kept, and sent back on:
+    // the file here, never what a link in its place leads to.
     const older =
-      data === null || path.includes("/") || !this.has(botId, path)
+      data === null ||
+      path.includes("/") ||
+      !this.has(botId, path) ||
+      !(await lstat(this.file(botId, path)).catch(absent))?.isFile()
         ? null
-        : await readFile(this.file(botId, path), "utf8").catch(absent);
+        : ((await readOwn(this.file(botId, path)))?.toString() ?? null);
     const merged =
       older === null
         ? null
