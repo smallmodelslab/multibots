@@ -14,8 +14,10 @@ const bridge: Bridge = {
   allowScreen: () => ipcRenderer.invoke("multibots:allow-screen"),
   call: (command) => ipcRenderer.invoke("multibots:call", command),
   checkForUpdate: () => ipcRenderer.invoke("multibots:update-check"),
-  connectModel: (kind, input) =>
-    ipcRenderer.invoke("multibots:connect-model", kind, input),
+  cancelConnectModel: (attempt) =>
+    ipcRenderer.invoke("multibots:cancel-connect-model", attempt),
+  connectModel: (kind, input, attempt) =>
+    ipcRenderer.invoke("multibots:connect-model", kind, input, attempt),
   connectPlugin: (slug) => ipcRenderer.invoke("multibots:connect-plugin", slug),
   disconnectModel: (id) => ipcRenderer.invoke("multibots:disconnect-model", id),
   disconnectPlugin: (slug) =>

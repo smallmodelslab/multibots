@@ -132,7 +132,7 @@ test("a bot's chosen color and accessories survive saving and restarting", async
       own: {} as never,
       plugins: {} as never,
       replica,
-      servers: () => [{ id: "test-host", running: 0 }],
+      servers: () => [{ id: "test-host", ready: true, running: 0 }],
       webhooks: { listen: () => {} } as never,
       ask: async () => null,
       onChange: () => {},

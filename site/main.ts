@@ -1,5 +1,4 @@
 import "@fontsource-variable/inter";
-import "@fontsource-variable/familjen-grotesk";
 import "@wrkrsh/pencil/pencil.css";
 import "./base.css";
 import "./style.css";

@@ -90,10 +90,15 @@ detail:
   it before it runs anything; one that comes back while none
   of them is online cannot know what they did, and may run a step again.
   Servers that cannot reach each other both run a bot until they meet, and
-  its conversation then keeps what each said. Packages in `node_modules`
-  and files over 200 MB stay on the server that has them. Turning server
-  mode off hands every bot to the servers online first, and the last server
-  cannot be turned off.
+  its conversation then keeps what each said. A server a copy fails to
+  reach gets no later one until it is handed what it missed, each bot's
+  library before its own files, so it never has a step without the files
+  that step made. Packages in `node_modules` and files over 200 MiB stay on
+  the server that has them, and no copy writes over such a file. Each
+  server also sends on, every minute, what changed in its bots' libraries
+  without a run, as what a shell left running writes. Turning server mode off hands every bot
+  to the servers online first; the last server cannot be turned off, nor
+  one whose bots keep files over 200 MiB until the user moves them out.
 - **The agent** (`src/main/bots.ts`) runs in a server's main process with the AI SDK
   on Codex's Responses endpoint (`src/main/codex.ts`), on GPT-6.1 Terra where
   the ChatGPT account offers it and else its best model (`src/main/chatgpt.ts`),
@@ -128,7 +133,11 @@ detail:
   the sender's secret to check each request and to answer the sender's own
   checks while the computer sleeps. A request wakes the bot with its body as
   data, once it is saved with the bot's context in one write, so a request
-  is never taken twice.
+  is never taken twice, and the relay lets it go only once every server
+  online has that write, so none is lost when the server that took it goes.
+  A scheduled routine is taken the same way: due, it is saved in the bot's
+  inbox with when it came due, so a server that takes over before its next
+  time was saved does not run it again.
 - **The whiteboard** each bot shares with the user is Multiwork's, on the
   shared [`packages/whiteboard`](packages/whiteboard): Excalidraw's
   elements in `whiteboard.json`, its images' files in `whiteboard/`. Windows
@@ -143,8 +152,9 @@ detail:
   Multibots uses that desktop through its local socket; otherwise it runs the
   installed release itself, without a cloud (`multidesktop --local`). Settings
   installs it with Multidesktop's own installer when it is missing or older
-  than 0.4.7, and moves an older service onto it with `multidesktop up`. A
-  bot's computer tool runs
+  than 0.4.8, and moves an older service onto it with `multidesktop up`.
+  Reading the screen's text and scroll-capturing need macOS's Vision, so
+  only a Mac's bots are offered them. A bot's computer tool runs
   JavaScript in m11's computer-use REPL, the API every wrkrsh product shares,
   for the rest of its run; the model sees the newest three screenshots, and
   none are kept after. Once Settings signs m11 in to Multidesktop's cloud,
@@ -171,7 +181,11 @@ detail:
   it. Connecting checks the server's `/models` and suggests them, and has a
   speech model say a word: a bot that picks none of the voices its
   `/audio/voices` lists speaks in the server's own when it takes a call
-  without one, as Ming's does, else in the first it lists or OpenAI's.
+  without one, as Ming's does, else in the first it lists or OpenAI's. A
+  chat model's context window is the one the user gives it, else the one
+  its `/models` says at the start of each run, else 128K tokens. A model
+  that turns down a request for its images and takes it without them gets
+  a note in each image's place from then on.
 - **Plugins** (`src/main/plugins.ts`) are the apps bots reach through
   [Composio](https://composio.dev), on the user's own Composio API key,
   kept on each server and sealed like the ChatGPT sign-in. The Plugins
@@ -295,7 +309,8 @@ the app. Beside the install guide, a few pages each answer one question people
 ask search and answer engines. `site/public/llms.txt` sums Multibots up for
 the agents that read it, and is served for `/` to clients that ask for
 Markdown; the build makes the sitemap from the pages in `site/vite.config.ts`.
-The monorepo's CI deploys it on every merge.
+The monorepo's CI deploys it when a commit that moves its `multibots`
+gitlink reaches the monorepo's `main`; a merge here alone deploys nothing.
 
 Released builds tell PostHog which features are used, whether they worked,
 and what failed (`src/main/analytics.ts`), unless the user turns it off under

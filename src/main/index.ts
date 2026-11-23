@@ -298,8 +298,14 @@ const start = async () => {
   };
   // The servers online, this one first when it is one.
   const servers = () => [
-    ...(serving && bots ? [{ id: hostId, running: bots.running() }] : []),
-    ...peers.servers().map(({ id, running }) => ({ id, running })),
+    ...(serving && bots
+      ? [{ id: hostId, ready: self().model !== null, running: bots.running() }]
+      : []),
+    ...peers.servers().map(({ id, model, running }) => ({
+      id,
+      ready: model !== null,
+      running,
+    })),
   ];
   // The webhooks of the bots this server writes.
   const webhooks = new Webhooks({
@@ -486,11 +492,20 @@ const start = async () => {
     }
   };
 
+  // Files too large to go to another server, which turning server mode off
+  // would lose: the user moves them out first.
+  const tooLarge = (files: string[]) =>
+    new Error(
+      `Move these files out of your bots' folders first. They're over 200 MiB, so they stay on this computer: ${files.join(", ")}`,
+    );
+
   // Stops being a server: its runs end first, what they were reading saved
   // for the next server, then another that still serves takes every bot,
-  // and only then are its copies let go. With none to take them, it serves
-  // again.
+  // and only then are its copies let go. With none to take them, or with
+  // files only it has, it serves again.
   const stopServer = async () => {
+    const large = await replica.large();
+    if (large.length) throw tooLarge(large);
     // Takes no more commands, then lets those taken, and the runs, end.
     const stopping = bots;
     bots = null;
@@ -505,11 +520,14 @@ const start = async () => {
         () => (kept = true),
         () => {},
       );
-    if (!kept) {
+    const left = kept ? await replica.large() : [];
+    if (!kept || left.length) {
       await startServer();
-      throw new Error(
-        "Turn on server mode on another of your computers first, so it keeps your bots.",
-      );
+      throw kept
+        ? tooLarge(left)
+        : new Error(
+            "Turn on server mode on another of your computers first, so it keeps your bots.",
+          );
     }
     await replica.clear();
   };
@@ -536,6 +554,7 @@ const start = async () => {
       current: false,
       installing: false,
       signingIn: false,
+      usable: false,
       version: null,
     },
     chrome: browser.state(),
@@ -608,8 +627,13 @@ const start = async () => {
     "multibots:served-models",
     (_event, address: string, key: string) => own.served(address, key),
   );
-  act("connect-model", (kind: OwnModelKind, input: OwnModelInput) =>
-    own.connect(kind, input),
+  act(
+    "connect-model",
+    (kind: OwnModelKind, input: OwnModelInput, attempt: string) =>
+      own.connect(kind, input, attempt),
+  );
+  ipcMain.handle("multibots:cancel-connect-model", (_event, attempt: string) =>
+    own.cancelConnect(attempt),
   );
   act("disconnect-model", (id: string) => own.disconnect(id));
   act("order-models", (list: ModelList, order: string[]) =>

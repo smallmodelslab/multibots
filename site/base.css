@@ -1,11 +1,19 @@
-/* What every multibots.ca page shares: colours, faces and the page itself. */
+/* What every multibots.ca page shares: colours, faces and the page itself.
+   Headings and the wordmark are in Meteon (fonts/, SIL OFL 1.1). */
+@font-face {
+  font-family: "Meteon";
+  src: url("./fonts/MeteonVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 :root {
   --paper: #fafaf8;
   --ink: #1b1b19;
   --muted: #6b6b64;
   --font-sans:
     "Inter Variable", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Familjen Grotesk Variable", var(--font-sans);
+  --font-display: "Meteon", var(--font-sans);
   color-scheme: light dark;
 }
 

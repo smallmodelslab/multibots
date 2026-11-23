@@ -107,11 +107,24 @@ export const unsent = (context: { role: string }[]) =>
 // it. The first that can be had leads: the run is told about it, fits its
 // context to it and offers the tools its provider runs. The rest are had
 // only once a call reaches them, so one that can't be, or is slow to, holds
-// up nothing before it.
-export const fallback = async (models: Fallback[]): Promise<CallableModel> => {
+// up nothing before it. A run stopped (`signal`) stops waiting for one.
+export const fallback = async (
+  models: Fallback[],
+  signal: AbortSignal,
+): Promise<CallableModel> => {
+  const stopped = new Promise<never>((_, fail) => {
+    const stop = () => fail(signal.reason);
+    if (signal.aborted) stop();
+    else signal.addEventListener("abort", stop, { once: true });
+  });
+  stopped.catch(() => {});
   const had = models.map(({ model, name }) => {
     let once: Promise<CallableModel> | undefined;
-    return { get: () => (once ??= Promise.resolve().then(model)), name };
+    return {
+      get: () =>
+        (once ??= Promise.race([Promise.resolve().then(model), stopped])),
+      name,
+    };
   });
   let lead: CallableModel | undefined;
   let missing: unknown;
@@ -119,6 +132,7 @@ export const fallback = async (models: Fallback[]): Promise<CallableModel> => {
     try {
       lead = await had[0]!.get();
     } catch (error) {
+      if (signal.aborted) throw error;
       missing ??= error;
       had.shift();
     }

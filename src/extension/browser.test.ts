@@ -170,12 +170,14 @@ const toolsOf = (bot: string) =>
     onRecap: async () => {},
     onRoutines: async () => {},
     others: [],
+    regions: false,
     reads: false,
     edits: false,
     repls: () => {
       throw new Error("No screen here.");
     },
     routines: () => [],
+    routinesPaused: false,
     screen: false,
     whiteboard: {
       edit: async () => ({ added: [], text: "" }),

@@ -57,18 +57,20 @@
         <h2 id="elsewhere">What leaves them</h2>
         <ul>
           <li>
-            A bot sends what it works on to the model you chose for it: ChatGPT,
-            through your own account, or a model you host. That includes your
-            messages, the files it reads and what it reads in your browser:
-            pages' text, addresses, titles and pictures. That provider's own
-            privacy policy applies.
+            A bot sends what it works on to the chat models in your order in
+            Settings: ChatGPT, through your own account, and models you host.
+            Each model the order tries can receive it, the next one whenever one
+            fails. That includes your messages, the files it reads and what it
+            reads in your browser: pages' text, addresses, titles and pictures.
+            Each provider's own privacy policy applies.
           </li>
           <li>
             In a voice chat, your voice and the bot's spoken replies go to the
-            voice you chose in Settings: ChatGPT's voice, or transcription and
-            speech servers you host. It can be another provider than the bot's
-            model, and when the first fails, Multibots tries the next in your
-            order.
+            voice it starts on, the first in your order in Settings that
+            answers: ChatGPT's voice, or transcription and speech servers you
+            host. It can be another provider than the bot's model. On your own
+            servers, the next of a kind takes over when one fails; a call on
+            ChatGPT's voice that fails ends.
           </li>
           <li>
             Apps you connect under Plugins are reached through Composio, with
@@ -81,8 +83,9 @@
           <li>
             A routine you start from a webhook receives its calls through our
             relay at hooks.wrkrsh.com. The relay holds each call until your
-            computers take it, and the webhook's settings and signing secrets,
-            until you delete the routine or 30 days after nothing listens to it.
+            computers take it, for seven days at most, and the webhook's
+            settings and signing secrets, until you delete the routine or 30
+            days after nothing listens to it.
           </li>
           <li>
             Multibots checks downloads.wrkrsh.com for updates. When it hits a

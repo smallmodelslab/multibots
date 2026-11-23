@@ -1,5 +1,3 @@
-import { rm } from "node:fs/promises";
-
 import type { ChatgptState } from "../shared/types";
 import {
   chatgptModel,
@@ -13,7 +11,7 @@ import {
   type ChatgptModel,
   type Tokens,
 } from "./codex";
-import { readSealed, writeSealed } from "./sealed";
+import { readSealed, removeSealed, writeSealed } from "./sealed";
 import { startVoiceCall } from "./voice";
 
 // The model bots run on where the account offers it; else its best.
@@ -21,12 +19,14 @@ const preferred = "gpt-6.1-terra";
 
 // This computer's ChatGPT sign-in, which its bots run on. It stays on this
 // computer: another computer signs in for itself, since a refresh token
-// works once and two holders would sign each other out. What a sign-in or
-// refresh brings back counts only if the user has not since signed out or
-// in again (`session`).
+// works once and two holders would sign each other out. What a sign-in,
+// refresh or model list brings back counts only if the user has not since
+// signed out or in again (`session`), and a code being fetched only if no
+// sign-in began or was cancelled since (`attempt`).
 export class Chatgpt {
   private tokens: Tokens | null = null;
   private session = 0;
+  private attempt = 0;
   private pending: { code: string; url: string; cancel: () => void } | null =
     null;
   private refreshing: Promise<Tokens> | null = null;
@@ -60,7 +60,10 @@ export class Chatgpt {
   // expires, or the user signs out.
   async signIn() {
     this.pending?.cancel();
+    this.pending = null;
+    const attempt = (this.attempt += 1);
     const login = await startLogin();
+    if (attempt !== this.attempt) return;
     let cancelled = false;
     this.pending = {
       code: login.userCode,
@@ -96,11 +99,12 @@ export class Chatgpt {
   async signOut() {
     this.pending?.cancel();
     this.pending = null;
+    this.attempt += 1;
     this.session += 1;
     this.tokens = null;
     this.refreshing = null;
     this.models = null;
-    await rm(this.file, { force: true });
+    await removeSealed(this.file);
     this.onChange();
   }
 
@@ -131,11 +135,14 @@ export class Chatgpt {
   }
 
   // The model bots run on, with one prompt cache per bot.
-  async model(cacheKey: string) {
+  async model(cacheKey: string, signal?: AbortSignal) {
     const tokens = await this.fresh();
-    this.models ??= await listModels(tokens);
-    const chosen =
-      this.models.find(({ id }) => id === preferred) ?? this.models[0];
+    const session = this.session;
+    const models = this.models ?? (await listModels(tokens, signal));
+    if (session !== this.session)
+      throw new Error("Sign in to ChatGPT in Settings.");
+    this.models = models;
+    const chosen = models.find(({ id }) => id === preferred) ?? models[0];
     if (!chosen) throw new Error("This ChatGPT account offers no models.");
     return chatgptModel(tokens, chosen, cacheKey);
   }

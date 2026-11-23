@@ -1,6 +1,11 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { wrapLanguageModel, type LanguageModelMiddleware } from "ai";
+import {
+  APICallError,
+  wrapLanguageModel,
+  type LanguageModelMiddleware,
+} from "ai";
 
+import { defaultContextWindow } from "../shared/types";
 import type { CallableModel } from "./codex";
 
 // A model the user hosts behind an OpenAI-style API (vLLM, SGLang, Ollama,
@@ -14,12 +19,9 @@ export type OwnServer = { baseUrl: string; key: string | null };
 
 export type ServedModel = { contextWindow: number | null; id: string };
 
-// Assumed when the server does not say.
-export const defaultContextWindow = 128_000;
-
 const timeoutMs = 15_000;
 // What a speech server says at most at once, as OpenAI's takes.
-const speechChars = 4_000;
+export const speechChars = 4_000;
 
 // The voices of OpenAI's speech, which servers that list none and need one
 // mostly take too.
@@ -60,12 +62,14 @@ export const baseUrlOf = (address: string) => {
 const authorization = (key: string | null): Record<string, string> =>
   key ? { authorization: `Bearer ${key}` } : {};
 
-// A call to the server, its failures said in a person's words.
+// A call to the server, its failures said in a person's words, given up
+// once `signal` stops it.
 const request = async (
   server: OwnServer,
   path: string,
   init: RequestInit = {},
   timeout = timeoutMs,
+  signal?: AbortSignal,
 ) => {
   const host = new URL(server.baseUrl).host;
   let response: Response;
@@ -73,9 +77,13 @@ const request = async (
     response = await fetch(`${server.baseUrl}${path}`, {
       ...init,
       headers: { ...authorization(server.key), ...init.headers },
-      signal: AbortSignal.timeout(timeout),
+      signal: AbortSignal.any([
+        AbortSignal.timeout(timeout),
+        ...(signal ? [signal] : []),
+      ]),
     });
   } catch (error) {
+    if (signal?.aborted) throw signal.reason;
     throw new Error(
       error instanceof DOMException && error.name === "TimeoutError"
         ? `${host} didn't answer in ${timeout / 1_000} seconds.`
@@ -109,9 +117,10 @@ const windowOf = (model: Record<string, unknown>) => {
 // The models the server serves (its /models).
 export const listServedModels = async (
   server: OwnServer,
+  signal?: AbortSignal,
 ): Promise<ServedModel[]> => {
   const body = (await (
-    await request(server, "/models")
+    await request(server, "/models", {}, timeoutMs, signal)
   )
     .json()
     .catch(() => null)) as { data?: unknown } | null;
@@ -128,10 +137,17 @@ export const listServedModels = async (
 
 // The voices a speech server offers for the model, as vLLM-Omni, Kokoro
 // and mlx-audio list them.
-const listVoices = async (server: OwnServer, model: string) => {
+const listVoices = async (
+  server: OwnServer,
+  model: string,
+  signal?: AbortSignal,
+) => {
   const body = (await request(
     server,
     `/audio/voices?model=${encodeURIComponent(model)}`,
+    {},
+    timeoutMs,
+    signal,
   )
     .then((response) => response.json())
     .catch(() => null)) as {
@@ -158,10 +174,14 @@ const listVoices = async (server: OwnServer, model: string) => {
 // none speaks in: none, so the server's own, when it speaks without one as
 // Ming's does; else the first it offers, or OpenAI's. Saying a word checks
 // that it speaks at all.
-export const speechVoices = async (server: OwnServer, model: string) => {
-  const listed = await listVoices(server, model);
+export const speechVoices = async (
+  server: OwnServer,
+  model: string,
+  signal?: AbortSignal,
+) => {
+  const listed = await listVoices(server, model, signal);
   const says = (voice: string | null) =>
-    synthesize(server, { model, slow: false, text: "Hello.", voice });
+    synthesize(server, { model, slow: false, text: "Hello.", voice }, signal);
   if (
     await says(null).then(
       () => true,
@@ -169,6 +189,7 @@ export const speechVoices = async (server: OwnServer, model: string) => {
     )
   )
     return { defaultVoice: null as string | null, voices: listed };
+  signal?.throwIfAborted();
   const voices = listed.length ? listed : openaiVoices;
   await says(voices[0]!);
   return { defaultVoice: voices[0]! as string | null, voices };
@@ -179,12 +200,40 @@ type Prompt = Parameters<
 >[0]["params"]["prompt"];
 type UserContent = Extract<Prompt[number], { role: "user" }>["content"];
 
+const hasImages = (prompt: Prompt) =>
+  prompt.some(
+    (message) =>
+      message.role === "user" &&
+      message.content.some(
+        (part) => part.type === "file" && part.mediaType.startsWith("image/"),
+      ),
+  );
+
+const withoutImages = (prompt: Prompt): Prompt =>
+  prompt.map((message) =>
+    message.role === "user"
+      ? {
+          ...message,
+          content: message.content.map((part) =>
+            part.type === "file" && part.mediaType.startsWith("image/")
+              ? { text: "[An image this model can't see]", type: "text" }
+              : part,
+          ),
+        }
+      : message,
+  );
+
+// The models, by server and id, that turned down a request for its images
+// and took it without them: their requests carry a note for each image.
+const textOnly = new Set<string>();
+
 // Chat completions take only text in a tool's result, and none of the
 // tools a provider runs itself: the screenshots the computer tool returns go
 // to the model in a message of the user's after it, and ChatGPT's web
 // searches, from a run that fell back from it or an earlier one, are left
-// out of what it said.
-const chatCompletions: LanguageModelMiddleware = {
+// out of what it said. A model that takes no images, as many served ones
+// don't, gets a note in each one's place once it turns them down.
+const chatCompletions = (id: string): LanguageModelMiddleware => ({
   transformParams: async ({ params }) => ({
     ...params,
     prompt: params.prompt.flatMap((message): Prompt => {
@@ -216,27 +265,57 @@ const chatCompletions: LanguageModelMiddleware = {
       ];
     }),
   }),
-};
-
-// The bots' model: the server's chat completions.
-export const ownChatModel = (
-  server: OwnServer,
-  model: ServedModel,
-): CallableModel => ({
-  about: `${model.id}, a model the user hosts`,
-  contextWindow: model.contextWindow ?? defaultContextWindow,
-  model: wrapLanguageModel({
-    middleware: chatCompletions,
-    model: createOpenAICompatible({
-      apiKey: server.key ?? undefined,
-      baseURL: server.baseUrl,
-      includeUsage: true,
-      name: "own",
-    }).chatModel(model.id),
-  }),
-  providerOptions: {},
-  tools: {},
+  wrapGenerate: async ({ doGenerate, model, params }) => {
+    const blind = { ...params, prompt: withoutImages(params.prompt) };
+    if (textOnly.has(id)) return model.doGenerate(blind);
+    try {
+      return await doGenerate();
+    } catch (error) {
+      if (
+        !hasImages(params.prompt) ||
+        !APICallError.isInstance(error) ||
+        [401, 403, 429].includes(error.statusCode ?? 0)
+      )
+        throw error;
+      const answered = await Promise.resolve(model.doGenerate(blind)).catch(
+        () => {
+          throw error;
+        },
+      );
+      textOnly.add(id);
+      return answered;
+    }
+  },
 });
+
+// The bots' model: the server's chat completions, with the context window
+// the user gave the model, else the one the server says it has now.
+export const ownChatModel = async (
+  saved: OwnServer & { model: string; window: number | null },
+  signal?: AbortSignal,
+): Promise<CallableModel> => {
+  const contextWindow =
+    saved.window ??
+    (await listServedModels(saved, signal).catch(() => [])).find(
+      ({ id }) => id === saved.model,
+    )?.contextWindow ??
+    defaultContextWindow;
+  return {
+    about: `${saved.model}, a model the user hosts`,
+    contextWindow,
+    model: wrapLanguageModel({
+      middleware: chatCompletions(`${saved.baseUrl} ${saved.model}`),
+      model: createOpenAICompatible({
+        apiKey: saved.key ?? undefined,
+        baseURL: saved.baseUrl,
+        includeUsage: true,
+        name: "own",
+      }).chatModel(saved.model),
+    }),
+    providerOptions: {},
+    tools: {},
+  };
+};
 
 // What the user said, in words: the server's transcriptions of a WAV.
 export const transcribe = async (
@@ -263,8 +342,8 @@ export const transcribe = async (
   return typeof body.text === "string" ? body.text.trim() : "";
 };
 
-// What the bot says, spoken: the server's speech, as WAV unless it gives
-// another kind.
+// What the bot says, spoken: the server's speech of at most speechChars, as
+// WAV unless it gives another kind.
 export const synthesize = async (
   server: OwnServer,
   options: {
@@ -274,13 +353,14 @@ export const synthesize = async (
     voice: string | null;
     slow: boolean;
   },
+  signal?: AbortSignal,
 ) => {
   const response = await request(
     server,
     "/audio/speech",
     {
       body: JSON.stringify({
-        input: options.text.slice(0, speechChars),
+        input: options.text,
         model: options.model,
         response_format: "wav",
         ...(options.voice ? { voice: options.voice } : {}),
@@ -290,6 +370,7 @@ export const synthesize = async (
       method: "POST",
     },
     60_000,
+    signal,
   );
   return {
     audio: Buffer.from(await response.arrayBuffer()),

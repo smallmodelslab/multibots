@@ -70,7 +70,8 @@
           <a href="https://docs.vllm.ai/en/latest/features/tool_calling/"
             >vLLM's</a
           >
-          is. To look at screenshots, a bot needs a model that takes images.
+          is. To look at screenshots, a bot needs a model that takes images; one
+          that turns them down gets a note in each image's place.
         </p>
         <p>
           Each server keeps its own list of models and calls them itself, so add
@@ -86,10 +87,11 @@
           run first needs it, as when ChatGPT can't list its models, sits out
           the rest of that run. A model further down gets the recent
           conversation, trimmed further when its context window is smaller. For
-          a model you host, that's the window its server reported when you added
-          it, or 128K tokens when the server didn't say. ChatGPT's built-in web
-          search comes only when ChatGPT is the first model a run can set up,
-          though a bot on any model can browse in its Chrome tabs. See
+          a model you host, that's the window you gave it when you added it,
+          else the one its server reports when a run starts, or 128K tokens when
+          the server doesn't say. ChatGPT's built-in web search comes only when
+          ChatGPT is the first model a run can set up, though a bot on any model
+          can browse in its Chrome tabs. See
           <a href="/chatgpt-subscription/">using your ChatGPT subscription</a>.
         </p>
 

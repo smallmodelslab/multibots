@@ -59,34 +59,53 @@
   transform: scale(1.05);
 }
 
+/* The wordmark dims under the pointer, and more while pressed. */
 .brand {
   font-family: var(--font-display);
   font-size: 1.3rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   text-decoration: none;
+  transition: color 150ms;
 }
 
+.brand:hover {
+  color: color-mix(in srgb, var(--ink) 78%, var(--paper));
+}
+
+.brand:active {
+  color: var(--muted);
+}
+
+/* The list and the article share the page's one row: the list in its
+   column at the brand's edge, the article centred while the list fits
+   beside it, then moved right rather than come within 3rem of it. */
 .docs {
+  display: grid;
   padding: 0 var(--gutter) 8rem;
 }
 
-/* Centred while the list fits beside it, then moved right rather than come
-   within 3rem of the list. */
 article {
+  grid-area: 1 / 1;
+  min-width: 0;
   max-width: var(--column);
   margin-left: max(calc(50% - var(--column) / 2), calc(var(--list) + 3rem));
   font-size: 1.0625rem;
   line-height: 1.65;
 }
 
-/* Fixed in its column and centred in the window, below the masthead; it
-   scrolls between its insets when its entries don't fit. */
+/* Sticky in its column rather than fixed, the list moves with the page, so
+   it never covers the masthead, even when the page bounces past its top.
+   Held 6rem from the window's top and as tall as the window less that at
+   each end, it is centred in the window from the start, and scrolls
+   between its insets when its entries don't fit. */
 .contents {
-  position: fixed;
+  grid-area: 1 / 1;
+  align-self: start;
+  position: sticky;
   top: 6rem;
-  bottom: 6rem;
   width: var(--list);
+  height: calc(100vh - 12rem);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -134,6 +153,16 @@ article {
 .contents a:hover,
 .contents a[aria-current] {
   color: var(--ink);
+}
+
+/* Pressed, an entry dims, as the header's links do; one already muted
+   fades further. */
+.contents a:active {
+  color: var(--muted);
+}
+
+.contents li.h3 a:active {
+  color: color-mix(in srgb, var(--muted) 55%, var(--paper));
 }
 
 .contents a[aria-current] span:first-child {
@@ -250,6 +279,7 @@ tbody th {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .brand,
   .pages a,
   .pages a span,
   .contents a,

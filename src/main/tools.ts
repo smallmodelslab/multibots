@@ -144,8 +144,8 @@ const days = z
   .min(1);
 const time = z
   .string()
-  .regex(/^([01]\d|2[0-4]):[0-5]\d$/)
-  .describe("24-hour time, HH:MM");
+  .regex(/^(([01]\d|2[0-3]):[0-5]\d|24:00)$/)
+  .describe("24-hour time, HH:MM; 24:00 is the day's end");
 
 const scheduleInput = z.discriminatedUnion("kind", [
   z.object({
@@ -188,9 +188,13 @@ const scheduleOf = (input: z.infer<typeof scheduleInput>): Schedule => {
   }
   if (input.kind === "weekly") {
     const minutes = minutesOf(input.time);
+    // 24:00, the day's end, is the next day's midnight.
+    const end = minutes === 24 * 60;
     return {
-      days: dayNumbers(input.days),
-      hour: Math.floor(minutes / 60) % 24,
+      days: dayNumbers(input.days)
+        .map((day) => (end ? (day + 1) % 7 : day))
+        .sort((a, b) => a - b),
+      hour: end ? 0 : Math.floor(minutes / 60),
       kind: "weekly",
       minute: minutes % 60,
       timeZone,
@@ -410,10 +414,12 @@ export const botTools = ({
   onRecap,
   onRoutines,
   others,
+  regions,
   reads,
   edits,
   repls,
   routines,
+  routinesPaused,
   screen,
   whiteboard,
 }: {
@@ -426,9 +432,10 @@ export const botTools = ({
   here: string;
   others: string[];
   // Whether this server's screen can be used, and whether its Multidesktop
-  // reads text and scrolls through long lists for the bot, and pastes and
-  // selects text.
+  // shows a region up close, reads text and scrolls through long lists for
+  // the bot, and pastes and selects text.
   screen: boolean;
+  regions: boolean;
   reads: boolean;
   edits: boolean;
   onCommand: (command: string) => void;
@@ -437,6 +444,8 @@ export const botTools = ({
   // Its REPLs, started at the computer tool's first use.
   repls: () => Repls;
   routines: () => Routine[];
+  // The routines it sets in this run stay paused, whatever it asks.
+  routinesPaused: boolean;
   whiteboard: {
     view: (
       signal?: AbortSignal,
@@ -446,7 +455,7 @@ export const botTools = ({
 }) => {
   const change = async (next: Routine[]) => {
     await onRoutines(next);
-    return next.map(({ id, title }) => ({ id, title }));
+    return next.map(({ enabled, id, title }) => ({ enabled, id, title }));
   };
   return {
     shell: tool({
@@ -478,7 +487,7 @@ export const botTools = ({
       computer: tool({
         description: `Run JavaScript that sees and uses a computer's screen: \`computer\` is the main display of ${screen ? `this server, ${here}` : "the computer you name"}${screen && others.length ? ", or of the computer you name" : ""}, with these methods. Await each.
 ${screenText}${edits ? `\n${pasteText}` : ""}
-${appsText}${edits ? `\n${selectionText}` : ""}${reads ? `\n${regionText}\n${ocrText}\n${scrollText}` : ""}
+${appsText}${edits ? `\n${selectionText}` : ""}${regions ? `\n${regionText}` : ""}${reads ? `\n${ocrText}\n${scrollText}` : ""}
 Top-level await; variables last until your run ends. console.log(value) adds text to the result. The user may be using the screen.
 ${usageText}`,
         inputSchema: onComputer(
@@ -550,7 +559,7 @@ ${usageText}`,
       }) => {
         const parsed = scheduleOf(schedule);
         const routine: Routine = {
-          enabled,
+          enabled: enabled && !routinesPaused,
           id: id ?? randomUUID(),
           instructions,
           nextRunAt: nextRun(parsed, Date.now()),

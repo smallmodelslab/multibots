@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { codex, headers, type Tokens } from "./codex";
 import { inOrder } from "./fallback";
 import type { OwnVoice } from "./ownModels";
-import { synthesize, transcribe } from "./ownServer";
+import { speechChars, synthesize, transcribe } from "./ownServer";
 
 // A voice chat with a bot: on ChatGPT, or on the user's own models.
 //
@@ -193,6 +193,24 @@ const speakable = (text: string) =>
     .replace(/[*_`#>|~]/g, "")
     .trim();
 
+// Words too many for a speech server to say at once, in pieces it takes,
+// each ending where a sentence does when one ends in its second half, else
+// at a space.
+const sayable = (words: string) => {
+  const found: string[] = [];
+  let rest = words;
+  while (rest.length > speechChars) {
+    const head = rest.slice(0, speechChars);
+    let cut = -1;
+    for (const end of head.matchAll(/[.!?]\s/g)) cut = end.index + 1;
+    if (cut < speechChars / 2) cut = head.lastIndexOf(" ");
+    if (cut <= 0) cut = speechChars;
+    found.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut).trimStart();
+  }
+  return [...found, rest].filter(Boolean);
+};
+
 // A voice chat on the user's own models: the window sends what the user
 // says, which the first transcription model that answers writes down and
 // hands to the bot, and listens for what the bot says, which the first
@@ -251,40 +269,39 @@ export const startOwnVoiceCall = (
       });
     },
     speak: (text) => {
-      const words = speakable(text);
-      if (!words) return;
-      saying = saying.then(async () => {
-        if (closed) return;
-        const spoken = await inOrder(
-          models.speech,
-          nameOf,
-          (each) =>
-            synthesize(each, {
-              model: each.model,
-              slow: options.slow,
-              text: words,
-              voice:
-                options.voice && each.voices.includes(options.voice)
-                  ? options.voice
-                  : each.defaultVoice,
-            }),
-          () => closed,
-        ).catch((error: unknown) => {
-          // Hung up first, so that what it says is not spoken in turn.
-          close();
-          options.onError(
-            error instanceof Error ? error.message : String(error),
-          );
-          return null;
+      for (const words of sayable(speakable(text)))
+        saying = saying.then(async () => {
+          if (closed) return;
+          const spoken = await inOrder(
+            models.speech,
+            nameOf,
+            (each) =>
+              synthesize(each, {
+                model: each.model,
+                slow: options.slow,
+                text: words,
+                voice:
+                  options.voice && each.voices.includes(options.voice)
+                    ? options.voice
+                    : each.defaultVoice,
+              }),
+            () => closed,
+          ).catch((error: unknown) => {
+            // Hung up first, so that what it says is not spoken in turn.
+            close();
+            options.onError(
+              error instanceof Error ? error.message : String(error),
+            );
+            return null;
+          });
+          if (!spoken || closed) return;
+          const clip = {
+            audio: spoken.audio.toString("base64"),
+            type: spoken.type,
+          };
+          if (waiting) waiting(clip);
+          else clips.push(clip);
         });
-        if (!spoken || closed) return;
-        const clip = {
-          audio: spoken.audio.toString("base64"),
-          type: spoken.type,
-        };
-        if (waiting) waiting(clip);
-        else clips.push(clip);
-      });
     },
   };
 };

@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, rename, rm, writeFile } from "node:fs/promises";
 
 // What must stay on this computer, such as a sign-in or a server's key, is
 // sealed by the system keychain where there is one. Linux without a keyring
@@ -28,20 +28,30 @@ export const readSealed = async <T>(file: string): Promise<T | null> => {
   return saved ? unseal<T>(saved) : null;
 };
 
-// Each file's writes, in the order they were asked for.
+// Each file's writes and its removal, in the order they were asked for.
 const writes = new Map<string, Promise<unknown>>();
+const inTurn = (file: string, make: () => Promise<unknown>) => {
+  const made = (writes.get(file) ?? Promise.resolve())
+    .catch(() => {})
+    .then(make);
+  writes.set(file, made);
+  return made;
+};
 
+// Written whole or not at all, so one cut short when the app is killed
+// leaves the one before.
 export const writeSealed = (file: string, value: unknown) => {
   const text = JSON.stringify(value);
-  const write = (writes.get(file) ?? Promise.resolve())
-    .catch(() => {})
-    .then(async () =>
-      writeFile(
-        file,
-        (await keychain()) ? (await storage()).encryptString(text) : text,
-        { mode: 0o600 },
-      ),
+  return inTurn(file, async () => {
+    await writeFile(
+      `${file}.tmp`,
+      (await keychain()) ? (await storage()).encryptString(text) : text,
+      { mode: 0o600 },
     );
-  writes.set(file, write);
-  return write;
+    await rename(`${file}.tmp`, file);
+  });
 };
+
+// Removed after the writes asked for before, so none of them brings it back.
+export const removeSealed = (file: string) =>
+  inTurn(file, () => rm(file, { force: true }));

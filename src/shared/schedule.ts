@@ -110,16 +110,21 @@ export const nextRun = (schedule: Schedule, after: number): number | null => {
   if (schedule.kind === "every") {
     const beat = after + schedule.minutes * 60_000;
     if (within(schedule, beat)) return beat;
-    return nextRun(
-      {
-        days: schedule.days,
-        hour: Math.floor(schedule.from / 60),
-        kind: "weekly",
-        minute: schedule.from % 60,
-        timeZone: schedule.timeZone,
-      },
-      after,
-    );
+    // The window's next start, or the one after when a daylight saving
+    // change moves it past the window's end, as a start in the skipped hour.
+    const start = {
+      days: schedule.days,
+      hour: Math.floor(schedule.from / 60),
+      kind: "weekly" as const,
+      minute: schedule.from % 60,
+      timeZone: schedule.timeZone,
+    };
+    let at = nextRun(start, after);
+    for (let tries = 0; at !== null && tries < 8; tries += 1) {
+      if (within(schedule, at)) return at;
+      at = nextRun(start, at);
+    }
+    return null;
   }
   const today = wallClock(after, schedule.timeZone);
   // Today through a week from today always holds the next one.
@@ -208,8 +213,12 @@ export const describeSchedule = (
       : ` ${zoneName(schedule.timeZone, nextRunAt ?? Date.now())}`;
   if (schedule.kind === "weekly")
     return `${dayPhrase(schedule.days)} at ${timeOfDay(schedule.hour * 60 + schedule.minute)}${zone}`;
+  // All day, the time zone still says when its days begin.
   const allDay = schedule.from === 0 && schedule.until === 24 * 60;
-  const days = schedule.days.length === 7 ? "" : dayPhrase(schedule.days);
+  const days =
+    schedule.days.length === 7
+      ? ""
+      : `${dayPhrase(schedule.days)}${allDay ? zone : ""}`;
   const hours = allDay
     ? ""
     : `${timeOfDay(schedule.from)} – ${timeOfDay(schedule.until)}${zone}`;

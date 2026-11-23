@@ -296,16 +296,26 @@ export type OwnModel = {
   address: string;
 };
 export type OwnModelsState = Record<ModelList, (OwnModel | "chatgpt")[]>;
+// The context window a chat model is taken to have when neither the user
+// nor its server says.
+export const defaultContextWindow = 128_000;
 // What connecting a model takes: the server's address, the model's id
-// (the server's first when blank) and its key, when it takes one.
-export type OwnModelInput = { address: string; model: string; key: string };
+// (the server's first when blank), its key, when it takes one, and for a
+// chat model its context window in tokens (the server's when blank).
+export type OwnModelInput = {
+  address: string;
+  model: string;
+  key: string;
+  window: string;
+};
 
 // This server's Multidesktop, through which its bots use its screen: the
-// version installed, none without one, and whether bots can use that
-// version; and the user's other computers they reach through Multidesktop's
-// cloud, null until m11 is signed in to it.
+// version installed, none without one, whether bots can use that version,
+// and whether it has all they use; and the user's other computers they
+// reach through Multidesktop's cloud, null until m11 is signed in to it.
 export type MultidesktopState = {
   version: string | null;
+  usable: boolean;
   current: boolean;
   installing: boolean;
   computers: string[] | null;
@@ -374,10 +384,20 @@ export type Bridge = {
   signOut: () => Promise<void>;
   // Takes another computer's pairing code, or makes a new one (null).
   pair: (code: string | null) => Promise<void>;
-  // The models a server serves, for the model field to suggest.
-  servedModels: (address: string, key: string) => Promise<string[]>;
-  // Checks the server answers before keeping it.
-  connectModel: (kind: OwnModelKind, input: OwnModelInput) => Promise<void>;
+  // The models a server serves, with the context window it says each has,
+  // for the model and context window fields to suggest.
+  servedModels: (
+    address: string,
+    key: string,
+  ) => Promise<{ id: string; contextWindow: number | null }[]>;
+  // Checks the server answers before keeping it, unless its attempt is
+  // cancelled first.
+  connectModel: (
+    kind: OwnModelKind,
+    input: OwnModelInput,
+    attempt: string,
+  ) => Promise<void>;
+  cancelConnectModel: (attempt: string) => Promise<void>;
   disconnectModel: (id: string) => Promise<void>;
   // A list of models in a new order, by id ("chatgpt" for ChatGPT).
   orderModels: (list: ModelList, order: string[]) => Promise<void>;

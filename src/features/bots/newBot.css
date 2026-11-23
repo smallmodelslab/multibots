@@ -203,3 +203,11 @@
   max-width: 280px;
   text-align: center;
 }
+
+/* What a Grok Bot bot is for, under its name when another has the same. */
+.new-bot-grok-about {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

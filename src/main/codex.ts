@@ -175,13 +175,22 @@ export type ChatgptModel = {
   id: string;
 };
 
-// The models the account offers, best first.
+// How long a request for the account's models may take.
+const modelsMs = 20_000;
+
+// The models the account offers, best first; asked no longer than modelsMs,
+// or than until `signal` stops it.
 export const listModels = async (
   tokens: Pick<Tokens, "access" | "accountId">,
+  signal?: AbortSignal,
 ): Promise<ChatgptModel[]> => {
   const body = await json(
     await fetch(`${codex}/models?client_version=${clientVersion}`, {
       headers: headers(tokens),
+      signal: AbortSignal.any([
+        AbortSignal.timeout(modelsMs),
+        ...(signal ? [signal] : []),
+      ]),
     }),
     "models",
   );
@@ -235,6 +244,10 @@ const runnable = (schema: unknown): unknown =>
             .map(([key, value]) => [key, runnable(value)]),
         )
       : schema;
+
+// An answer that sends nothing for this long has stalled, as Codex judges
+// its own streams, and fails, so the next model in the user's order is tried.
+const idleMs = 300_000;
 
 // Codex only streams ("Stream must be set to true"): a call for one whole
 // answer streams it and puts it together. Its raw chunks are read for its
@@ -301,8 +314,22 @@ const codexStream: LanguageModelMiddleware = {
       Generated,
       "finishReason" | "providerMetadata" | "usage"
     > | null = null;
+    const stalled = new Error(
+      `ChatGPT sent nothing for ${idleMs / 60_000} minutes.`,
+    );
     for (;;) {
-      const { done, value: part } = await reader.read();
+      let idle: NodeJS.Timeout | undefined;
+      const { done, value: part } = await Promise.race([
+        reader.read(),
+        new Promise<never>((_, fail) => {
+          idle = setTimeout(() => fail(stalled), idleMs);
+        }),
+      ])
+        .catch(async (error: unknown) => {
+          if (error === stalled) await reader.cancel(stalled).catch(() => {});
+          throw error;
+        })
+        .finally(() => clearTimeout(idle));
       if (done) break;
       switch (part.type) {
         case "text-start":

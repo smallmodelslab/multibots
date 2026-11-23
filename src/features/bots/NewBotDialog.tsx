@@ -113,6 +113,9 @@ const Wizard = ({
   // picked.
   const [grok, setGrok] = useState<GrokRecipe[] | null>(null);
   const [recipe, setRecipe] = useState<GrokRecipe | null>(null);
+  // Each import begun or stopped, so what one before still loading brings,
+  // Grok Bot's list or a recipe file, is let go.
+  const importing = useRef(0);
 
   const steps = grok ? importSteps : newSteps;
   const index = Math.min(at.index, steps.length - 1);
@@ -153,14 +156,17 @@ const Wizard = ({
   };
   const startImport = () => {
     edit();
+    const run = (importing.current += 1);
     setGrok([]);
     setAt({ direction: 1, index: 0 });
-    void bridge
-      .grokBots()
-      .then((found) => setGrok((list) => list && [...list, ...found]));
+    void bridge.grokBots().then((found) => {
+      if (run === importing.current)
+        setGrok((list) => list && [...list, ...found]);
+    });
   };
   const stopImport = () => {
     edit();
+    importing.current += 1;
     setGrok(null);
     setRecipe(null);
     setAt({ direction: -1, index: 0 });
@@ -174,12 +180,14 @@ const Wizard = ({
     avatar.react();
   };
   const openRecipe = async (file: File) => {
+    const run = importing.current;
     const parsed = grokRecipeSchema.safeParse(
       await file
         .text()
         .then(JSON.parse)
         .catch(() => null),
     );
+    if (run !== importing.current) return;
     if (!parsed.success) {
       setStatus({ kind: "failed", message: "That isn't a Grok Bot recipe." });
       return;
@@ -247,20 +255,40 @@ const Wizard = ({
         {grok?.length ? (
           <fieldset className="wizard-choices">
             <legend className="sr-only">Grok Bot's bots</legend>
-            {grok.map((each, i) => (
-              <label className="wizard-choice glow" key={i}>
-                <input
-                  aria-label={each.profile.name}
-                  autoFocus={i === 0}
-                  checked={recipe === each}
-                  className="sr-only"
-                  name="grok-bot"
-                  onChange={() => pick(each)}
-                  type="radio"
-                />
-                <span className="wizard-choice-name">{each.profile.name}</span>
-              </label>
-            ))}
+            {grok.map((each, i) => {
+              // Bots of the same name, as from two accounts, tell what each
+              // is for.
+              const same = grok.some(
+                (other) =>
+                  other !== each && other.profile.name === each.profile.name,
+              );
+              const about = same ? each.profile.description : "";
+              return (
+                <label className="wizard-choice glow" key={i}>
+                  <input
+                    aria-label={
+                      about
+                        ? `${each.profile.name}: ${about}`
+                        : each.profile.name
+                    }
+                    autoFocus={i === 0}
+                    checked={recipe === each}
+                    className="sr-only"
+                    name="grok-bot"
+                    onChange={() => pick(each)}
+                    type="radio"
+                  />
+                  <span className="wizard-choice-name">
+                    {each.profile.name}
+                  </span>
+                  {about ? (
+                    <span className="wizard-choice-note new-bot-grok-about">
+                      {about}
+                    </span>
+                  ) : null}
+                </label>
+              );
+            })}
           </fieldset>
         ) : null}
         <label

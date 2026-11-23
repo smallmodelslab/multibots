@@ -9,6 +9,7 @@ import type {
   OwnModelsState,
 } from "../../shared/types";
 import { bridge, messageOf } from "../data";
+import { Hint } from "../shell/Hint";
 import { toastError } from "../shell/Toasts";
 import { hostOf } from "./OwnModelSetting";
 
@@ -67,7 +68,8 @@ const usePendingOrder = (
 };
 
 // A capability's sources in the order they are tried: each dragged into its
-// place, or moved with the arrow keys from its handle.
+// place, or moved with the arrow keys from its handle. A lone source's
+// handle stays, disabled, with what would let it move.
 const SourceOrder = ({
   arrange = (_, after) => after,
   label,
@@ -97,6 +99,7 @@ const SourceOrder = ({
     <ol aria-label={`${label} order`} className="source-order">
       {order.map((id, index) => {
         const source = byId.get(id)!;
+        const alone = order.length < 2;
         return (
           <li
             className={cn(
@@ -104,7 +107,7 @@ const SourceOrder = ({
               source.skipped && "is-skipped",
               moving?.id === id && "is-moving",
             )}
-            draggable={order.length > 1}
+            draggable={!alone}
             key={id}
             onDragEnd={(event) => {
               if (event.dataTransfer.dropEffect === "none") setMoving(null);
@@ -129,26 +132,30 @@ const SourceOrder = ({
               if (moving?.id) store(moving.order);
             }}
           >
-            <button
-              aria-label={`Move ${source.name}`}
-              className="icon-button source-handle"
-              disabled={order.length < 2}
-              onKeyDown={(event) => {
-                const to =
-                  event.key === "ArrowUp"
-                    ? index - 1
-                    : event.key === "ArrowDown"
-                      ? index + 1
-                      : null;
-                if (to === null) return;
-                event.preventDefault();
-                if (to >= 0 && to < order.length)
-                  store(arrange(order, moved(order, id, to), id));
-              }}
-              type="button"
+            <Hint
+              label={alone ? "Add another model to change the order" : null}
             >
-              <GripVertical aria-hidden size={16} strokeWidth={1.5} />
-            </button>
+              <button
+                aria-disabled={alone || undefined}
+                aria-label={`Move ${source.name}`}
+                className="icon-button source-handle"
+                onKeyDown={(event) => {
+                  const to =
+                    event.key === "ArrowUp"
+                      ? index - 1
+                      : event.key === "ArrowDown"
+                        ? index + 1
+                        : null;
+                  if (to === null) return;
+                  event.preventDefault();
+                  if (!alone && to >= 0 && to < order.length)
+                    store(arrange(order, moved(order, id, to), id));
+                }}
+                type="button"
+              >
+                <GripVertical aria-hidden size={16} strokeWidth={1.5} />
+              </button>
+            </Hint>
             <span className="source-index">{index + 1}</span>
             <span className="truncate">{source.name}</span>
             <span className="truncate text-muted-foreground">

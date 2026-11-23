@@ -92,9 +92,11 @@ type Saved = Pick<
 // included, each step as it finishes; what reached it since its run began,
 // read at the next one; the inputs a run moved into the context and has
 // not answered yet, which a restart, or another server, reads again; the
-// run's reply until it shows in the conversation; its webhooks' newest
-// requests taken, by when each came and its id at the relay, so one the
-// relay sends again is not; the server holding it while it runs or is in a
+// run's reply until it shows in the conversation; its routines' newest runs
+// taken, a webhook's request by when it came and its id at the relay, so
+// one the relay sends again is not, and a schedule's by when it came due,
+// so a server that takes over before the routine's next time was saved
+// does not run it again; the server holding it while it runs or is in a
 // voice chat, which writes it until then; and how many times a server was
 // given it, its term, which every server's copy of it goes by
 // (src/main/replica.ts).
@@ -124,8 +126,8 @@ const conversationOf = (saved: Partial<Conversation> | Message[]) =>
     : { deleted: [], messages: [], recap: null, ...saved };
 
 // The servers online, this one too if it is one, with how many bots each
-// holds.
-type Server = { id: string; running: number };
+// holds and whether it has a model to run them on.
+type Server = { id: string; running: number; ready: boolean };
 
 const files = {
   conversation: "messages.json",
@@ -284,6 +286,16 @@ const excerpt = (text: string) =>
 const errorText = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
+// What a bot brought over from Grok Bot sets up first, by its id in the
+// inbox: the routines it sets then stay paused, as the bot in Grok Bot may
+// still run them.
+const importSetup = "grok-bot-setup:";
+
+// What a webhook's request that did not reach every server fails with, so
+// the relay keeps it until it does.
+const unreached =
+  "A server didn't get this request; the relay keeps it until every server has it.";
+
 // This server's copies of the user's bots, which it writes and runs while
 // they are its own: each in a folder of its own (`bots/<id>`), with its
 // conversation, routines, context and whiteboard, and the folder its shell
@@ -297,6 +309,7 @@ export class Bots {
   // What the bots other servers write are doing, as those servers say.
   private readonly heard = new Map<string, Status & { by: string }>();
   private timer: NodeJS.Timeout | null = null;
+  private scanner: NodeJS.Timeout | null = null;
   // Runs start once this server has caught up with the others.
   private started = false;
   // The runs and commands going on.
@@ -416,21 +429,25 @@ export class Bots {
   }
 
   // Once this server has caught up with the others: what came due while it
-  // was off waits for its next time, but a one-off, which runs late; what
-  // it held and was reading it reads again, and what it held otherwise it
-  // lets go.
+  // was off waits for its next time, saved so no other server runs it, but
+  // a one-off, which runs late; what it held and was reading it reads
+  // again, and what it held otherwise it lets go. What the bots' shells
+  // leave running after a run writes files then too, which go to the other
+  // servers once a minute.
   start() {
     this.started = true;
     const now = Date.now();
     for (const [botId, bot] of this.bots) {
       if (this.writer(botId) !== this.options.hostId) continue;
-      for (const routine of bot.routines)
-        if (
+      const missed = bot.routines.filter(
+        (routine) =>
           routine.schedule.kind !== "once" &&
           routine.nextRunAt !== null &&
-          routine.nextRunAt < now
-        )
-          routine.nextRunAt = nextRun(routine.schedule, now);
+          routine.nextRunAt < now,
+      );
+      for (const routine of missed)
+        routine.nextRunAt = nextRun(routine.schedule, now);
+      if (missed.length) this.later(botId, () => this.saveRoutines(botId, bot));
       if (bot.held !== this.options.hostId)
         this.later(botId, () => this.publish(botId, bot));
       else if (bot.reading || bot.inbox.length) this.run(botId, bot);
@@ -442,6 +459,12 @@ export class Bots {
     }
     this.serversChanged();
     this.timer = setInterval(() => this.wakeDue(), 15_000);
+    this.scanner = setInterval(() => {
+      for (const botId of this.bots.keys())
+        void this.options.replica
+          .scan(botId)
+          .catch((error: unknown) => this.options.onError(botId, error));
+    }, 60_000);
   }
 
   // Stops every run and voice chat, settling once the runs, and the
@@ -449,6 +472,7 @@ export class Bots {
   close() {
     this.closed = true;
     if (this.timer) clearInterval(this.timer);
+    if (this.scanner) clearInterval(this.scanner);
     this.listen();
     for (const bot of this.bots.values()) {
       bot.abort?.abort();
@@ -746,7 +770,13 @@ export class Bots {
           accessories: command.accessories,
           hue: command.hue,
         });
-        if (setup) await this.wake(bot.saved.id, bot, setup);
+        if (setup)
+          await this.wake(
+            bot.saved.id,
+            bot,
+            setup,
+            `${importSetup}${randomUUID()}`,
+          );
         return this.view(bot.saved.id, bot);
       }
       case "bot.update": {
@@ -1225,17 +1255,20 @@ export class Bots {
   }
 
   // A request to a routine's webhook wakes its bot with what it carried, as
-  // data, settling once it is saved, with its receipt, in the bot's inbox.
-  // One taken before, whose answer the relay missed, settles once what took
-  // it is saved; one that comes while the routine is off is let go.
+  // data, settling once it is saved, with its receipt, in the bot's inbox
+  // on every server online, so none loses it when this one goes. One taken
+  // before, whose answer the relay missed, settles once what took it is
+  // saved there; one that comes while the routine is off, or was turned off
+  // while the request waited its turn, is let go.
   async webhookCalled(routineId: string, body: string, at: number, id: number) {
     for (const [botId, bot] of this.bots) {
-      const routine = bot.routines.find((each) => each.id === routineId);
-      if (!routine?.enabled) continue;
+      if (!bot.routines.some((each) => each.id === routineId)) continue;
       return this.exclusive(botId, () => {
         // Another server writes the bot now: the relay sends it there.
         if (!this.mine(botId))
           throw new Error("Another server writes this bot now.");
+        const routine = bot.routines.find((each) => each.id === routineId);
+        if (!routine?.enabled) return Promise.resolve();
         return this.takeRequest(botId, bot, routine, body, at, id);
       });
     }
@@ -1251,11 +1284,11 @@ export class Bots {
   ) {
     const taken = bot.taken[routine.id];
     if (taken && (at < taken[0] || (at === taken[0] && id <= taken[1]))) {
-      await this.save(botId, bot);
+      if (!(await this.save(botId, bot)).reached) throw new Error(unreached);
       return;
     }
     bot.taken[routine.id] = [at, id];
-    await this.wake(
+    const reached = await this.wake(
       botId,
       bot,
       [
@@ -1265,13 +1298,15 @@ export class Bots {
         "If nothing is worth telling the user, reply with nothing.",
       ].join("\n"),
     );
+    if (!reached) throw new Error(unreached);
   }
 
   // Runs what is due of the bots this server writes, and what a restart,
   // or a server that went, left to read. The routines due wake a bot
-  // together: each is saved in its inbox, and its next time in its
-  // routines, while this server still writes it, before it may go to
-  // another server to run.
+  // together: each is saved in its inbox, taken in the same write, and its
+  // next time in its routines, while this server still writes it, before
+  // it may go to another server to run. One taken already, by a server
+  // that went before saving its next time, only moves on.
   private wakeDue() {
     for (const [botId, bot] of this.bots)
       this.later(botId, async () => {
@@ -1283,14 +1318,21 @@ export class Bots {
             routine.nextRunAt !== null &&
             routine.nextRunAt <= now,
         );
-        if (due.length) {
+        const fresh = due.filter(
+          (routine) => (bot.taken[routine.id]?.[0] ?? -1) < routine.nextRunAt!,
+        );
+        if (fresh.length) {
           bot.inbox.push(
-            ...due.map((routine) => ({
+            ...fresh.map((routine) => ({
               content: `Your routine "${routine.title}" is due: ${routine.instructions}\nIf nothing is worth telling the user, reply with nothing.`,
               id: randomUUID(),
             })),
           );
+          for (const routine of fresh)
+            bot.taken[routine.id] = [routine.nextRunAt!, 0];
           await this.save(botId, bot);
+        }
+        if (due.length) {
           for (const routine of due)
             routine.nextRunAt = nextRun(routine.schedule, now);
           // A one-off is done once it has run.
@@ -1307,7 +1349,7 @@ export class Bots {
 
   // Saves the bot's run state as it is when its turn to be written comes,
   // unless a run's `fenced` says then that another server took it over.
-  // Settles with whether it saved.
+  // Settles with whether it saved, and whether every server online has it.
   private save(botId: string, bot: Record, fenced?: () => boolean) {
     return this.options.replica.write(botId, files.run, () => {
       if (fenced?.()) return undefined;
@@ -1338,7 +1380,7 @@ export class Bots {
     if (fenced?.()) return;
     bot.reading = null;
     bot.reply = reply;
-    if (await this.save(botId, bot, fenced))
+    if ((await this.save(botId, bot, fenced)).wrote)
       await this.publish(botId, bot, fenced);
   }
 
@@ -1351,15 +1393,21 @@ export class Bots {
   }
 
   // What reached the bot waits for its next run; one starts unless it is
-  // already running. Settles once the inbox is saved.
-  private async wake(botId: string, bot: Record, content: UserContent) {
-    bot.inbox.push({ content, id: randomUUID() });
+  // already running. Settles once the inbox is saved, with whether every
+  // server online has it.
+  private async wake(
+    botId: string,
+    bot: Record,
+    content: UserContent,
+    id: string = randomUUID(),
+  ) {
+    bot.inbox.push({ content, id });
     if (bot.held === this.options.hostId) {
-      await this.save(botId, bot);
+      const { reached } = await this.save(botId, bot);
       if (!this.closed) await this.resume(botId, bot);
-      return;
+      return reached;
     }
-    await this.place(botId, bot);
+    return this.place(botId, bot);
   }
 
   // A bot not running that has something to read runs, here when this
@@ -1373,33 +1421,33 @@ export class Bots {
     } else if (bot.reply) await this.publish(botId, bot);
   }
 
-  // A bot with something to read goes to the server holding the fewest,
-  // this one when it holds no more than the rest, which runs it once it
-  // has the bot's run state saying it holds it.
+  // A bot with something to read goes to the server holding the fewest of
+  // those with a model to run it on, this one when it holds no more than
+  // the rest, which runs it once it has the bot's run state saying it holds
+  // it. Settles with whether every server online has that state.
   private async place(botId: string, bot: Record) {
     // Not running now: what reached the bot is kept for whoever runs it.
-    if (this.closed || !this.started) {
-      await this.save(botId, bot);
-      return;
-    }
-    const [least] = this.options
-      .servers()
-      .sort(
-        (a, b) =>
-          a.running - b.running ||
-          Number(b.id === this.options.hostId) -
-            Number(a.id === this.options.hostId),
-      );
+    if (this.closed || !this.started)
+      return (await this.save(botId, bot)).reached;
+    const servers = this.options.servers();
+    const ready = servers.filter((server) => server.ready);
+    const [least] = (ready.length ? ready : servers).sort(
+      (a, b) =>
+        a.running - b.running ||
+        Number(b.id === this.options.hostId) -
+          Number(a.id === this.options.hostId),
+    );
     const target = least?.id ?? this.options.hostId;
     if (target === this.options.hostId) {
-      await this.hold(botId, bot);
+      const reached = await this.hold(botId, bot);
       if (!bot.working) this.run(botId, bot);
-      return;
+      return reached;
     }
     this.handTo(bot, target);
-    await this.save(botId, bot);
+    const { reached } = await this.save(botId, bot);
     this.listen();
     this.options.onChange(botId);
+    return reached;
   }
 
   // A server is given the bot, in a new term, so nothing the server that
@@ -1429,13 +1477,15 @@ export class Bots {
     );
   }
 
-  // This server holds the bot while it runs or is in a voice chat.
+  // This server holds the bot while it runs or is in a voice chat. Settles
+  // with whether every server online has that.
   private async hold(botId: string, bot: Record) {
-    if (bot.held === this.options.hostId) return;
+    if (bot.held === this.options.hostId) return true;
     this.handTo(bot, this.options.hostId);
-    await this.save(botId, bot);
+    const { reached } = await this.save(botId, bot);
     this.listen();
     this.options.onRunning();
+    return reached;
   }
 
   // Lets the bot go once it neither runs nor is in a voice chat, to the
@@ -1546,7 +1596,7 @@ export class Bots {
       // Started by the computer tool, if the run uses it.
       let repls = null as Repls | null;
       try {
-        if (!(await this.save(botId, bot, fenced))) break;
+        if (!(await this.save(botId, bot, fenced)).wrote) break;
         // Only its files are copied: a folder they leave empty is made here.
         await mkdir(this.folder(botId, "files"), { recursive: true });
         const [{ about, contextWindow, tools: hosted, ...model }, plugins] =
@@ -1555,18 +1605,16 @@ export class Bots {
               this.options.own.bots().map((entry) =>
                 entry === "chatgpt"
                   ? {
-                      model: () => this.options.chatgpt.model(botId),
+                      model: () =>
+                        this.options.chatgpt.model(botId, abort.signal),
                       name: "ChatGPT",
                     }
                   : {
-                      model: () =>
-                        ownChatModel(entry, {
-                          contextWindow: entry.contextWindow,
-                          id: entry.model,
-                        }),
+                      model: () => ownChatModel(entry, abort.signal),
                       name: entry.model,
                     },
               ),
+              abort.signal,
             ),
             this.options.plugins.forBots(abort.signal),
           ]);
@@ -1602,9 +1650,13 @@ export class Bots {
                 return (repls ??= computer.repls());
               },
               screen: computer.screen() === "ready",
+              regions: computer.regions(),
               reads: computer.reads(),
               edits: computer.edits(),
               routines: () => bot.routines,
+              routinesPaused: Boolean(
+                bot.reading?.some((id) => id.startsWith(importSetup)),
+              ),
               onCommand: (command) => {
                 bot.commands = [...bot.commands, command].slice(-20);
                 setWorking(`Running ${command.split("\n")[0]}`);
@@ -1659,7 +1711,7 @@ export class Bots {
             await this.options.replica.scan(botId);
             if (fenced()) return abort.abort();
             bot.context.push(...withScreens(step.response.messages, 0));
-            if (!(await this.save(botId, bot, fenced))) abort.abort();
+            if (!(await this.save(botId, bot, fenced)).wrote) abort.abort();
           },
         });
         // A run stopped at its last step returns what it had: kept only by

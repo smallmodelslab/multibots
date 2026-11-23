@@ -1,5 +1,4 @@
 import "@fontsource-variable/inter";
-import "@fontsource-variable/familjen-grotesk";
 import "../base.css";
 import "./docs.css";
 import "../analytics";
@@ -29,21 +28,38 @@ const entries = headings.map((heading) => {
 document.querySelector(".contents")!.append(list);
 
 // The section being read: the last heading within 80px of the top, the
-// first before any, and the last once the page is scrolled to its end.
+// first before any, and the last once a page that scrolls is scrolled to
+// its end. An entry followed stays the one being read until the page moves
+// from where the jump left it, as when its heading is too near the end to
+// reach the top.
 let current: HTMLAnchorElement | undefined;
+let followed: { entry: HTMLAnchorElement; at: number } | null = null;
 function mark() {
+  if (followed && Math.abs(scrollY - followed.at) > 1) followed = null;
+  const { scrollHeight } = document.documentElement;
   const end =
-    innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
+    scrollHeight > innerHeight + 2 && innerHeight + scrollY >= scrollHeight - 2;
   let index = 0;
   headings.forEach((heading, i) => {
     if (heading.getBoundingClientRect().top <= 80) index = i;
   });
-  const active = entries[end ? entries.length - 1 : index];
+  const active = followed?.entry ?? entries[end ? entries.length - 1 : index];
   if (active === current) return;
   current?.removeAttribute("aria-current");
   active?.setAttribute("aria-current", "location");
   current = active;
 }
+// The jump lands before the next frame, which notes where it left the page.
+for (const entry of entries)
+  entry.addEventListener("click", (event) => {
+    // Not one opened elsewhere, which leaves the page where it is.
+    if (event.button || event.metaKey || event.ctrlKey || event.shiftKey)
+      return;
+    requestAnimationFrame(() => {
+      followed = { at: scrollY, entry };
+      mark();
+    });
+  });
 let queued = false;
 addEventListener(
   "scroll",

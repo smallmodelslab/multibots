@@ -10,7 +10,7 @@ import { SettingRow } from "./SettingRow";
 // screen: installed here when it is missing or too old. Signed in to
 // Multidesktop's cloud, it also lets them use the user's other computers.
 export const MultidesktopSetting = ({
-  multidesktop: { computers, current, installing, signingIn, version },
+  multidesktop: { computers, current, installing, signingIn, usable, version },
 }: {
   multidesktop: MultidesktopState;
 }) => {
@@ -48,6 +48,8 @@ export const MultidesktopSetting = ({
             <span className="text-destructive">{error}</span>
           ) : version && current ? (
             `Version ${version}`
+          ) : version && usable ? (
+            `Version ${version}; 0.4.8 lets bots ${bridge.platform === "darwin" ? "read text on the screen" : "see part of the screen up close"}.`
           ) : version ? (
             `Version ${version}; bots need 0.4.7 or newer to use the screen.`
           ) : (

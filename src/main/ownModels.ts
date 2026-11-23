@@ -17,7 +17,9 @@ import { readSealed, writeSealed } from "./sealed";
 type Saved = OwnServer & {
   id: string;
   model: string;
-  contextWindow: number | null;
+  // The context window the user gave a chat model, in tokens; null for the
+  // one its server says.
+  window: number | null;
 };
 export type SpeechModel = Saved & { kind: "speech" } & Awaited<
     ReturnType<typeof speechVoices>
@@ -34,6 +36,18 @@ const serverOf = (input: Pick<OwnModelInput, "address" | "key">) => ({
   key: input.key.trim() || null,
 });
 
+// The context window typed for a chat model, or null for the server's.
+const windowOf = (typed: string) => {
+  const text = typed.replaceAll(/[\s,_]/g, "");
+  if (!text) return null;
+  const tokens = Number(text);
+  if (!Number.isInteger(tokens) || tokens < 1024)
+    throw new Error(
+      "The context window is a number of tokens, such as 32768, or left empty for the server's.",
+    );
+  return tokens;
+};
+
 const idOf = (entry: Entry) => (entry === "chatgpt" ? entry : entry.id);
 
 const listOf = (kind: OwnModelKind): ModelList =>
@@ -45,6 +59,8 @@ const listOf = (kind: OwnModelKind): ModelList =>
 // connects its own.
 export class OwnModels {
   private lists: Lists = { bots: ["chatgpt"], voice: ["chatgpt"] };
+  // What stops each connection being checked, by the window's attempt.
+  private readonly connecting = new Map<string, AbortController>();
 
   constructor(
     private readonly file: string,
@@ -73,32 +89,37 @@ export class OwnModels {
   }
 
   async served(address: string, key: string) {
-    return (await listServedModels(serverOf({ address, key }))).map(
-      (model) => model.id,
-    );
+    return listServedModels(serverOf({ address, key }));
   }
 
   // Keeps a server once it answers, and a speech server once it speaks,
-  // with the model asked for, else its first, at the end of its list.
-  async connect(kind: OwnModelKind, input: OwnModelInput) {
-    const server = serverOf(input);
-    const served = await listServedModels(server);
-    const id = input.model.trim() || served[0]?.id;
-    if (!id)
-      throw new Error(`${new URL(server.baseUrl).host} serves no models.`);
-    const saved = {
-      ...server,
-      contextWindow:
-        served.find((each) => each.id === id)?.contextWindow ?? null,
-      id: randomUUID(),
-      model: id,
-    };
-    const model: OwnModel =
-      kind === "speech"
-        ? { ...saved, kind, ...(await speechVoices(server, id)) }
-        : { ...saved, kind };
-    const list = listOf(kind);
-    await this.save({ ...this.lists, [list]: [...this.lists[list], model] });
+  // with the model asked for, else its first, at the end of its list,
+  // unless the window cancels its attempt first.
+  async connect(kind: OwnModelKind, input: OwnModelInput, attempt: string) {
+    const stop = new AbortController();
+    this.connecting.set(attempt, stop);
+    try {
+      const server = serverOf(input);
+      const window = kind === "bots" ? windowOf(input.window) : null;
+      const served = await listServedModels(server, stop.signal);
+      const id = input.model.trim() || served[0]?.id;
+      if (!id)
+        throw new Error(`${new URL(server.baseUrl).host} serves no models.`);
+      const saved = { ...server, id: randomUUID(), model: id, window };
+      const model: OwnModel =
+        kind === "speech"
+          ? { ...saved, kind, ...(await speechVoices(server, id, stop.signal)) }
+          : { ...saved, kind };
+      stop.signal.throwIfAborted();
+      const list = listOf(kind);
+      await this.save({ ...this.lists, [list]: [...this.lists[list], model] });
+    } finally {
+      this.connecting.delete(attempt);
+    }
+  }
+
+  cancelConnect(attempt: string) {
+    this.connecting.get(attempt)?.abort(new Error("Cancelled."));
   }
 
   async disconnect(id: string) {

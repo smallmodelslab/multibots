@@ -98,7 +98,10 @@
         </p>
         <h3 id="chatgpt">Sign in to ChatGPT</h3>
         <p>
-          In Settings, under ChatGPT, choose Sign in, then open the link
+          First turn on
+          <a href="https://learn.chatgpt.com/docs/auth">device code login</a> in
+          ChatGPT's security settings, or in a workspace ask its admin to allow
+          it. Then, in Settings, under ChatGPT, choose Sign in, open the link
           Multibots shows and enter its code there. The sign-in stays on this
           computer.
         </p>
@@ -107,8 +110,11 @@
           In Settings, under Your models, Add model connects a model served
           behind an OpenAI-style API, such as vLLM, SGLang, Ollama or LM Studio,
           for chat, transcription or speech: its address, its model and an
-          optional key. Voice chats on your own models need a transcription and
-          a speech model.
+          optional key, and for chat its context window when the server doesn't
+          say it. The server must answer /models, which Multibots reads to check
+          it and suggest its models, and a chat model must support
+          <a href="/local-models/#connect">tool calling</a>. Voice chats on your
+          own models need a transcription and a speech model.
         </p>
         <h3 id="order">Use both</h3>
         <p>
@@ -175,7 +181,9 @@
         <p>
           To keep bots off a computer, turn off Server mode in Settings, under
           Server. It hands its bots to your other servers and then only shows
-          them. The last server can't be turned off while it holds bots.
+          them. The last server can't be turned off while it holds bots, nor a
+          server whose bots keep files over 200 MiB, which stay on the server
+          that has them, until you move those out.
         </p>
 
         <h2 id="updates">Updates</h2>

@@ -40,7 +40,8 @@ const base32 = (encoded: string) => {
 
 // The bots of every account signed in to Grok Bot on this computer, whose
 // apps keep their data in `appData`, each with its name, instructions and
-// colour; none without Grok Bot.
+// colour, once, as a bot in two accounts that says the same; none without
+// Grok Bot.
 export const localGrokBots = async (appData: string): Promise<GrokRecipe[]> => {
   const dir = join(appData, "Grok Bot", "sand-client-persistence");
   const seen = new Set<string>();
@@ -54,8 +55,11 @@ export const localGrokBots = async (appData: string): Promise<GrokRecipe[]> => {
         .catch(() => null),
     );
     for (const row of roster.data?.value.rows ?? []) {
-      if (row.isGroup || seen.has(row.id) || !row.name.trim()) continue;
+      const same = JSON.stringify([row.name.trim(), row.description.trim()]);
+      if (row.isGroup || seen.has(row.id) || seen.has(same) || !row.name.trim())
+        continue;
       seen.add(row.id);
+      seen.add(same);
       recipes.push(
         grokRecipeSchema.parse({
           profile: {

@@ -53,6 +53,9 @@ const atLeast = (version: string, since: number[]) => {
 };
 // The first release whose local socket signals.
 const signals = (version: string) => atLeast(version, [0, 4, 7]);
+// The first release with all bots use of a desktop on this platform yet:
+// region screenshots, and on macOS its text read and long lists scrolled.
+const newest = (version: string) => atLeast(version, [0, 4, 8]);
 
 // What a program says when it fails, or null when it does not.
 const failureOf = (file: string, args: string[]) =>
@@ -251,17 +254,24 @@ export class Computer {
     const { computers, installing, signingIn, version } = this;
     return {
       computers,
-      current: signals(version ?? ""),
+      current: newest(version ?? ""),
       installing,
       signingIn,
+      usable: signals(version ?? ""),
       version,
     };
   }
 
-  // Whether the Multidesktop bots use reads the screen's text and reads a
-  // long list or page whole, as 0.4.8 began to.
+  // Whether the Multidesktop bots use shows a region of the screen up
+  // close, as 0.4.8 began to.
+  regions() {
+    return newest(this.version ?? "");
+  }
+
+  // Whether it reads the screen's text and reads a long list or page whole,
+  // as 0.4.8 began to with macOS's Vision, which no other system has.
   reads() {
-    return atLeast(this.version ?? "", [0, 4, 8]);
+    return mac && newest(this.version ?? "");
   }
 
   // Whether it pastes and selects text in apps' elements, as 0.4.10 began to.
@@ -387,7 +397,7 @@ export class Computer {
     this.installing = true;
     this.onChange();
     let failure = await failureOf("/bin/sh", ["-c", installer]);
-    if (!failure && this.service && !signals(this.version ?? ""))
+    if (!failure && this.service && !newest(this.version ?? ""))
       failure = await failureOf(join(bin, "multidesktop"), [
         "up",
         "--wait",

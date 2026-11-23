@@ -1,10 +1,11 @@
+import { constants } from "node:fs";
 import {
+  lstat,
   mkdir,
   readdir,
   readFile,
   rename,
   rm,
-  stat,
   writeFile,
 } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
@@ -21,8 +22,9 @@ import { unseal, writeSealed } from "./sealed";
 // Two servers that meet, as when one was away, each take what the other has
 // newer, by their versions. A file removed, and a bot
 // deleted, are kept as versions too, so a copy that was away does not bring
-// them back. A sealed file travels as what it holds, sealed again by each
-// server's own keychain.
+// them back. A bot's own sealed file travels as what it holds, sealed again
+// by each server's own keychain. Only regular files travel: a link is taken
+// for a file removed.
 
 // When it was written, never before the version it replaced, and by which
 // server; and for a bot's run state, its term: how many times a server
@@ -51,9 +53,10 @@ const newer = (a: Version, than: Version | undefined) => {
   return a[0] > than[0] || (a[0] === than[0] && a[1] > than[1]);
 };
 
-// A bot's own files, which say what it is, go before its library's.
+// A bot's library goes before its own files, which refer to it, so a server
+// that has a step of a run has the files that step made.
 const byFolder = (a: string, b: string) =>
-  Number(a.includes("/")) - Number(b.includes("/"));
+  Number(b.includes("/")) - Number(a.includes("/"));
 
 const versions = ".versions.json";
 // What marks a deleted bot.
@@ -66,7 +69,17 @@ const skipped = new Set(["node_modules"]);
 // Larger files stay on the server that has them.
 const largest = 200 * 1024 * 1024;
 
-const sealed = (path: string) => path.endsWith(".sealed");
+// A bot's own sealed file, such as its webhooks' secrets; one in its library
+// is the user's own file.
+const sealed = (path: string) =>
+  !path.includes("/") && path.endsWith(".sealed");
+
+// A path in a bot's folder, every name in it a name.
+const inFolder = (path: string) =>
+  path !== versions &&
+  path.split("/").every((name) => name && name !== "." && name !== "..");
+
+type Info = { size: number; mtimeMs: number };
 
 // A file or folder that is not there is null; failing to read one that is
 // fails, so it is never taken for removed.
@@ -81,10 +94,14 @@ export class Replica {
   private readonly queues = new Map<string, Promise<unknown>>();
   // Each bot's changes, made in order.
   private readonly changes = new Map<string, Promise<unknown>>();
-  // The servers a copy failed to reach, handed what they missed later.
+  // The servers a copy failed to reach, handed what they missed later and
+  // sent no copy until then, and those a copy skipped meanwhile.
   private readonly behind = new Set<string>();
+  private readonly missed = new Set<string>();
   // The servers this one could not catch up with yet.
   private readonly uncaught = new Set<string>();
+  // This computer let its copies go: nothing changes them any more.
+  private cleared = false;
 
   constructor(
     private readonly options: {
@@ -116,6 +133,7 @@ export class Replica {
   }
 
   async load() {
+    this.cleared = false;
     await mkdir(this.options.dir, { recursive: true });
     for (const botId of await readdir(this.options.dir)) {
       const saved = await readFile(this.file(botId, versions), "utf8").then(
@@ -159,7 +177,7 @@ export class Replica {
   // read fails the walk.
   private async walk(botId: string, dirs: string[]) {
     const root = this.file(botId);
-    const found = new Map<string, { size: number; mtimeMs: number }>();
+    const found = new Map<string, Info>();
     const walk = async (dir: string) => {
       for (const entry of (await readdir(dir, { withFileTypes: true }).catch(
         absent,
@@ -172,8 +190,9 @@ export class Replica {
           entry.name !== versions &&
           !entry.name.endsWith(".tmp")
         ) {
-          const info = await stat(full).catch(absent);
-          if (info) found.set(relative(root, full).split(sep).join("/"), info);
+          const info = await lstat(full).catch(absent);
+          if (info?.isFile())
+            found.set(relative(root, full).split(sep).join("/"), info);
         }
       }
     };
@@ -189,11 +208,15 @@ export class Replica {
     );
   }
 
-  // Makes a change to a bot's folder once those before it are made.
+  // Makes a change to a bot's folder once those before it are made, unless
+  // this computer let its copies go meanwhile.
   private change<T>(botId: string, make: () => Promise<T>) {
     const made = (this.changes.get(botId) ?? Promise.resolve())
       .catch(() => {})
-      .then(make);
+      .then(() => {
+        if (this.cleared) throw new Error("This computer keeps no bots.");
+        return make();
+      });
     this.changes.set(botId, made);
     return made;
   }
@@ -215,10 +238,24 @@ export class Replica {
     return term ? [at, this.options.hostId, term] : [at, this.options.hostId];
   }
 
-  private async record(botId: string, path: string, v: Version) {
+  // Records a file's version as the file is now, or as a scan found it
+  // (`found`, null when it found none); anything but a regular file counts
+  // as removed.
+  private async record(
+    botId: string,
+    path: string,
+    v: Version,
+    found?: Info | null,
+  ) {
     const manifest = this.manifests.get(botId) ?? {};
     this.manifests.set(botId, manifest);
-    const info = await stat(this.file(botId, path)).catch(absent);
+    const info =
+      found === undefined
+        ? await lstat(this.file(botId, path)).then(
+            (stats) => (stats.isFile() ? stats : null),
+            absent,
+          )
+        : found;
     manifest[path] = info
       ? { mtime: info.mtimeMs, size: info.size, v }
       : { gone: true, v };
@@ -236,9 +273,16 @@ export class Replica {
         ? Buffer.from(JSON.stringify(await unseal(saved))).toString("base64")
         : null;
     }
-    const info = await stat(file).catch(absent);
-    if (!info || info.size > largest) return null;
-    return (await readFile(file).catch(absent))?.toString("base64") ?? null;
+    const info = await lstat(file).catch(absent);
+    if (!info?.isFile() || info.size > largest) return null;
+    // Not through a link it was made since.
+    return (
+      (
+        await readFile(file, {
+          flag: constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0),
+        }).catch(absent)
+      )?.toString("base64") ?? null
+    );
   }
 
   private async put(botId: string, path: string, data: string | null) {
@@ -258,8 +302,9 @@ export class Replica {
   }
 
   // Sends a file as it was just written to every other server, settling
-  // once each has it or could not be reached. Called while the change is
-  // made, so each server gets the changes in the order they were made. The
+  // with whether each has it. Called while the change is made, so each
+  // server gets the changes in the order they were made; one a copy failed
+  // to reach gets none after it until it is handed what it missed. The
   // file goes as it is when its turn comes, with the version it has then,
   // so at most one waits in memory for each server.
   private send(botId: string, path: string) {
@@ -268,30 +313,41 @@ export class Replica {
         const sent = (this.queues.get(hostId) ?? Promise.resolve())
           .catch(() => {})
           .then(async () => {
+            if (this.behind.has(hostId)) {
+              this.missed.add(hostId);
+              return false;
+            }
             const copy = await this.copy(botId, path);
             if (copy) await this.options.send(hostId, copy);
+            return true;
           })
           .catch(() => {
             this.behind.add(hostId);
+            return false;
           });
         this.queues.set(hostId, sent);
         return sent;
       }),
-    );
+    ).then((reached) => reached.every(Boolean));
   }
 
   // A file written here, recorded as a new version of it, on its way to
   // the others.
-  private async mine(botId: string, path: string, term?: number) {
+  private async mine(
+    botId: string,
+    path: string,
+    term?: number,
+    found?: Info | null,
+  ) {
     const v = this.next(botId, path, term);
-    await this.record(botId, path, v);
+    await this.record(botId, path, v, found);
     return { sent: this.send(botId, path) };
   }
 
   // Writes one of a bot's files, as JSON, this server being its writer:
   // the data `value` gives when the change is made, in its term, or nothing
   // when it gives nothing or the bot was deleted meanwhile. Settles with
-  // whether it wrote.
+  // whether it wrote, and whether every other server online has it.
   async write(
     botId: string,
     path: string,
@@ -310,8 +366,9 @@ export class Replica {
       }
       return this.mine(botId, path, made.term);
     });
-    await sent;
-    return sent !== null;
+    return sent === null
+      ? { reached: false, wrote: false }
+      : { reached: await sent, wrote: true };
   }
 
   // What changed in the bot's library and whiteboard since they were last
@@ -343,7 +400,10 @@ export class Replica {
           changed.push(path);
       const sending: Promise<unknown>[] = [];
       for (const path of changed)
-        sending.push((await this.mine(botId, path)).sent);
+        sending.push(
+          (await this.mine(botId, path, undefined, found.get(path) ?? null))
+            .sent,
+        );
       return { sent: Promise.all(sending) };
     });
     await sent;
@@ -400,8 +460,14 @@ export class Replica {
       await this.options.onApplied(botId, path);
       return;
     }
-    if (path.includes("..") || path.startsWith("/") || path === versions)
-      throw new Error("That is not a bot's file.");
+    if (!inFolder(path)) throw new Error("That is not a bot's file.");
+    // A file here too large to go is its only copy: it stays, and counts
+    // as the version sent.
+    const here = await lstat(this.file(botId, path)).catch(absent);
+    if (here?.isFile() && here.size > largest) {
+      await this.record(botId, path, v);
+      return;
+    }
     // What a write here lacks of an older one is kept, and sent back on.
     const older =
       data === null || path.includes("/") || !this.has(botId, path)
@@ -431,8 +497,8 @@ export class Replica {
     await this.options.onApplied(botId, path);
   }
 
-  // Takes what another server has newer than here, each bot's own files
-  // before its library's. A file that could not be had leaves the rest to
+  // Takes what another server has newer than here, each bot's library
+  // before its own files. A file that could not be had leaves the rest to
   // be taken, and the server to catch up with again.
   async catchUp(hostId: string) {
     this.uncaught.delete(hostId);
@@ -463,8 +529,8 @@ export class Replica {
     this.options.onBehind(hostId, failures[0]);
   }
 
-  // Sends another server what it has older than here, each bot's own files
-  // before its library's: what a copy failed to bring it, or every bot
+  // Sends another server what it has older than here, each bot's library
+  // before its own files: what a copy failed to bring it, or every bot
   // before this computer lets its copies go.
   async hand(hostId: string) {
     const theirs = await this.options.manifest(hostId);
@@ -496,22 +562,45 @@ export class Replica {
   }
 
   // Tries again what failed: handing each server a copy failed to reach
-  // what it missed, and catching up with those it could not.
+  // what it missed, again while copies made meanwhile skip it, then sending
+  // it copies again; and catching up with those it could not.
   async retry() {
     const online = new Set(this.options.servers());
     for (const hostId of this.behind)
       if (online.has(hostId))
-        await this.hand(hostId).then(
-          () => this.behind.delete(hostId),
-          () => {},
-        );
+        try {
+          do {
+            this.missed.delete(hostId);
+            await this.hand(hostId);
+          } while (this.missed.has(hostId));
+          this.behind.delete(hostId);
+        } catch {
+          // Handed again next time.
+        }
     for (const hostId of this.uncaught)
       if (online.has(hostId)) await this.catchUp(hostId);
   }
 
-  // This computer keeps no bots.
+  // The files of the bots here too large to go to another server, which
+  // stay only here, by their paths on this computer.
+  async large() {
+    const found: string[] = [];
+    for (const botId of this.ids())
+      for (const [path, info] of await this.walk(botId, scanned))
+        if (info.size > largest) found.push(this.file(botId, path));
+    return found;
+  }
+
+  // This computer keeps no bots: once the changes already under way are
+  // made, nothing changes its copies again, a copy still coming included.
   async clear() {
+    this.cleared = true;
+    await Promise.allSettled(this.changes.values());
     this.manifests.clear();
+    this.changes.clear();
+    this.behind.clear();
+    this.missed.clear();
+    this.uncaught.clear();
     await rm(this.options.dir, { force: true, recursive: true });
   }
 }

@@ -1016,8 +1016,21 @@ button.sidebar-update:hover {
   margin-left: -6px;
 }
 
-.source-handle:disabled {
-  visibility: hidden;
+/* Alone in its list, the handle moves nothing: dimmed, without light or
+   a hover fill. */
+.source-handle[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.icon-button.source-handle[aria-disabled="true"]:hover {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.source-handle[aria-disabled="true"]::before,
+.source-handle[aria-disabled="true"]::after {
+  display: none;
 }
 
 .login-wait {
