@@ -234,35 +234,6 @@ tbody th {
   }
 }
 
-/* Too narrow for three columns, each row's name goes above its cells. */
-@media (max-width: 36rem) {
-  thead td {
-    display: none;
-  }
-
-  tbody tr {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0.6rem 0;
-  }
-
-  tbody th {
-    grid-column: 1 / -1;
-    width: auto;
-    padding-bottom: 0.2rem;
-  }
-
-  tbody th,
-  tbody td {
-    padding-top: 0;
-  }
-
-  thead tr {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .pages a,
   .pages a span,
