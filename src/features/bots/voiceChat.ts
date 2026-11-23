@@ -31,6 +31,8 @@ export type VoiceChat = {
 let chat: VoiceChat | null = null;
 let current: {
   end: () => void;
+  // It ended at the host: what was heard of the bot plays out first.
+  ended: () => void;
   mute: (muted: boolean) => void;
   // Its host has shown the call as the bot's.
   seen: boolean;
@@ -63,10 +65,7 @@ export const followVoiceChat = (bots: Bot[] | null) => {
   if (!chat?.callId || !current) return;
   const bot = bots?.find((each) => each.id === chat?.botId);
   if (bot?.call === chat.callId) current.seen = true;
-  else if (current.seen) {
-    toastError("The voice chat ended.");
-    current.end();
-  }
+  else if (current.seen) current.ended();
 };
 
 export const muteVoiceChat = (muted: boolean) => current?.mute(muted);
@@ -161,7 +160,15 @@ const hearing = async (
 // user says into what they say between pauses and sends each, and plays
 // what the bot says in order. While the bot speaks, it does not hear, so
 // that it does not hear the bot.
-const ownCall = async ({ bot, microphone, onEnd, place, update }: Placing) => {
+const ownCall = async ({
+  bot,
+  ended: endedThere,
+  microphone,
+  onDrain,
+  onEnd,
+  place,
+  update,
+}: Placing) => {
   const placed = await place(null);
   if (!placed) return;
   const id = placed.callId;
@@ -176,6 +183,7 @@ const ownCall = async ({ bot, microphone, onEnd, place, update }: Placing) => {
   update({ live: true });
 
   let playing = Promise.resolve();
+  onDrain(() => playing);
   let speaking = false;
   const play = async (clip: { audio: string; type: string }) => {
     if (ended) return;
@@ -207,13 +215,8 @@ const ownCall = async ({ bot, microphone, onEnd, place, update }: Placing) => {
         await new Promise((done) => setTimeout(done, 2_000));
         return null;
       });
-      // Ended there: what it said already plays to its end first.
       if (heard?.ended) {
-        if (!ended) {
-          toastError("The voice chat ended.");
-          await playing;
-          endVoiceChat();
-        }
+        endedThere();
         return;
       }
       const clip = heard?.clip;
@@ -260,8 +263,12 @@ const ownCall = async ({ bot, microphone, onEnd, place, update }: Placing) => {
 type Placing = {
   bot: Pick<Bot, "id">;
   microphone: MediaStream;
-  // What to stop once the chat ends.
+  // What to stop once the chat ends, and what to wait for when it ends at
+  // the host, as the bot's words still playing.
   onEnd: (stop: () => void) => void;
+  onDrain: (wait: () => Promise<void>) => void;
+  // It ended at the host.
+  ended: () => void;
   // Asks the bot's computer for the call: null once it ended meanwhile.
   place: (
     sdp: string | null,
@@ -279,6 +286,8 @@ export const startVoiceChat = async (
   // Muted before the microphone opened, it opens muted.
   let muted = false;
   const stops: (() => void)[] = [];
+  let drain = () => Promise.resolve();
+  let ending = false;
   const update = (change: Partial<VoiceChat>) => {
     if (current === session && chat) set({ ...chat, ...change });
   };
@@ -291,6 +300,13 @@ export const startVoiceChat = async (
       for (const track of microphone?.getTracks() ?? []) track.stop();
       if (callId)
         call({ botId: bot.id, callId, type: "voice.stop" }).catch(() => {});
+    },
+    // Hung up here meanwhile, or another chat begun, it ends no more.
+    ended: () => {
+      if (current !== session || ending) return;
+      ending = true;
+      toastError("The voice chat ended.");
+      void drain().then(session.end, session.end);
     },
     mute: (next: boolean) => {
       muted = next;
@@ -325,6 +341,10 @@ export const startVoiceChat = async (
       bot,
       microphone,
       onEnd: (stop) => stops.push(stop),
+      onDrain: (wait) => {
+        drain = wait;
+      },
+      ended: () => session.ended(),
       place: async (sdp) => {
         const answer = await call({
           botId: bot.id,

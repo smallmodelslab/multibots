@@ -7,7 +7,6 @@ import {
   readFile,
   rename,
   rm,
-  rmdir,
   writeFile,
 } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
@@ -88,6 +87,14 @@ type Info = { size: number; mtimeMs: number };
 const absent = (error: NodeJS.ErrnoException) => {
   if (error.code === "ENOENT") return null;
   throw error;
+};
+
+// Whether a folder holds anything but folders, at any depth.
+const holdsFiles = async (dir: string): Promise<boolean> => {
+  for (const entry of await readdir(dir, { withFileTypes: true }))
+    if (!entry.isDirectory() || (await holdsFiles(join(dir, entry.name))))
+      return true;
+  return false;
 };
 
 // A file's bytes, not through a link put in its place.
@@ -358,8 +365,13 @@ export class Replica {
     );
     try {
       await writeFile(written, bytes);
-      // A folder the file took the place of goes once its files have.
-      if ((await lstat(file).catch(absent))?.isDirectory()) await rmdir(file);
+      // A folder the file took the place of goes once it holds no files,
+      // only folders they left.
+      if ((await lstat(file).catch(absent))?.isDirectory()) {
+        if (await holdsFiles(file))
+          throw new Error(`${path} is a folder with files on this server.`);
+        await rm(file, { force: true, recursive: true });
+      }
       await rename(written, file);
     } finally {
       await rm(written, { force: true });

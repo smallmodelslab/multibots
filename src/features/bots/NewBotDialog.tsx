@@ -101,7 +101,7 @@ const parting = (about: string, others: string[]) => {
     while (same < about.length && about[same] === other[same]) same += 1;
     at = Math.max(at, same);
   }
-  if (at < 40) return about;
+  if (at <= 12) return about;
   return `…${about.slice(Math.max(about.lastIndexOf(" ", at) + 1, at - 12))}`;
 };
 
@@ -137,7 +137,7 @@ const AboutHint = ({
             setFocused(event.target.matches(":focus-visible")),
         })}
       />
-      <TooltipContent className="max-h-[60vh] overflow-hidden">
+      <TooltipContent className="max-h-[60vh] overflow-hidden [overflow-wrap:anywhere]">
         {about}
       </TooltipContent>
     </Tooltip>

@@ -198,10 +198,11 @@ export class OwnModels {
     const current = { ...model, contextWindow: said };
     const update = (entry: Entry) =>
       entry !== "chatgpt" && entry.id === model.id ? current : entry;
+    // Not saved, it still counts for this run.
     await this.save({
       bots: this.lists.bots.map(update),
       voice: this.lists.voice.map(update),
-    });
+    }).catch(() => {});
     return ownChatModel(current);
   }
 

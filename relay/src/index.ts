@@ -112,8 +112,14 @@ export class Hook extends DurableObject<Env> {
     let since = Date.now();
     if (!this.ctx.getWebSockets().length) {
       const left = await this.ctx.storage.get<number>("left");
-      if (left === undefined) await this.ctx.storage.put("left", since);
-      else since = left;
+      if (left !== undefined) since = left;
+      else {
+        // A webhook from before `left` was kept: its alarm says when its
+        // listener left.
+        const alarm = await this.ctx.storage.getAlarm();
+        if (alarm !== null) since = Math.min(since, alarm - idleMs);
+        await this.ctx.storage.put("left", since);
+      }
     }
     await this.ctx.storage.setAlarm(
       Math.min(since + idleMs, oldest === null ? Infinity : oldest + holdMs),
