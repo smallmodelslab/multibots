@@ -93,9 +93,9 @@ type Saved = Pick<
 // not answered yet, which a restart, or another server, reads again; the
 // run's reply until it shows in the conversation; its routines' newest runs
 // taken, a webhook's request by when it came and its id at the relay, so
-// one the relay sends again is not, and a schedule's by when it came due,
-// so a server that takes over before the routine's next time was saved
-// does not run it again; the server holding it while it runs or is in a
+// one the relay sends again is not, and apart from those a schedule's by
+// when it came due, so a server that takes over before the routine's next
+// time was saved does not run it again; the server holding it while it runs or is in a
 // voice chat, which writes it until then; and how many times a server was
 // given it, its term, which every server's copy of it goes by
 // (src/main/replica.ts).
@@ -289,6 +289,10 @@ const errorText = (error: unknown) =>
 // inbox: the routines it sets then stay paused, as the bot in Grok Bot may
 // still run them.
 const importSetup = "grok-bot-setup:";
+
+// Where a routine's schedule's runs taken are kept, apart from its
+// webhook's requests, whose times come from the relay's clock.
+const dueOf = (routineId: string) => `${routineId} due`;
 
 // What a webhook's request that did not reach every server fails with, so
 // the relay keeps it until it does.
@@ -1340,7 +1344,8 @@ export class Bots {
             routine.nextRunAt <= now,
         );
         const fresh = due.filter(
-          (routine) => (bot.taken[routine.id]?.[0] ?? -1) < routine.nextRunAt!,
+          (routine) =>
+            (bot.taken[dueOf(routine.id)]?.[0] ?? -1) < routine.nextRunAt!,
         );
         if (fresh.length) {
           bot.inbox.push(
@@ -1350,7 +1355,7 @@ export class Bots {
             })),
           );
           for (const routine of fresh)
-            bot.taken[routine.id] = [routine.nextRunAt!, 0];
+            bot.taken[dueOf(routine.id)] = [routine.nextRunAt!, 0];
           await this.save(botId, bot);
         }
         if (due.length) {

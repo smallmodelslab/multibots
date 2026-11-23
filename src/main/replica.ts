@@ -652,21 +652,38 @@ export class Replica {
         .sort((a, b) => byFolder(a.path, b.path));
       // A bot whose library did not all come takes none of its own files
       // this time, nor a file newer than the one listed, which may refer
-      // to library files this pass did not take.
+      // to library files this pass did not take. A library file that
+      // failed is tried once more after the rest, as one taking the place
+      // of a folder whose files had not gone yet.
       const short = new Set<string>();
-      for (const { botId, path, v } of wanted)
+      const take = async ({ botId, path, v }: (typeof wanted)[number]) => {
+        const copy = await this.options.fetch(hostId, botId, path);
+        if (copy && !sameVersion(copy.v, v)) {
+          this.uncaught.add(hostId);
+          return false;
+        }
+        if (copy) await this.apply(copy);
+        return true;
+      };
+      const again: typeof wanted = [];
+      for (const each of wanted.filter(({ path }) => path.includes("/")))
         try {
-          if (!path.includes("/") && short.has(botId)) continue;
-          const copy = await this.options.fetch(hostId, botId, path);
-          if (copy && !sameVersion(copy.v, v)) {
-            this.uncaught.add(hostId);
-            if (path.includes("/")) short.add(botId);
-            continue;
-          }
-          if (copy) await this.apply(copy);
+          if (!(await take(each))) short.add(each.botId);
+        } catch {
+          again.push(each);
+        }
+      for (const each of again)
+        try {
+          if (!(await take(each))) short.add(each.botId);
         } catch (error) {
           failures.push(error);
-          if (path.includes("/")) short.add(botId);
+          short.add(each.botId);
+        }
+      for (const each of wanted.filter(({ path }) => !path.includes("/")))
+        try {
+          if (!short.has(each.botId)) await take(each);
+        } catch (error) {
+          failures.push(error);
         }
     } catch (error) {
       failures.push(error);
@@ -720,13 +737,14 @@ export class Replica {
   }
 
   // Another server is online again, or for the first time: each takes
-  // what the other wrote while they could not reach each other. Copies
-  // made meanwhile wait for the handing, so none overtakes what it missed.
+  // what the other wrote while they could not reach each other, this one
+  // first, and hands it what it missed in the background. Copies made
+  // meanwhile wait for the handing, so none overtakes what it missed.
   async meet(hostId: string) {
     this.meetings.set(hostId, (this.meetings.get(hostId) ?? 0) + 1);
     this.behind.set(hostId, new Set(["*"]));
     await this.catchUp(hostId);
-    await this.handMissed(hostId);
+    void this.handMissed(hostId);
   }
 
   // Hands a server behind what it missed, again, a few times at most,
