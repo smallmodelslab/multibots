@@ -64,7 +64,7 @@
           <tbody>
             <tr>
               <th scope="row">Where bots run</th>
-              <td>Your own computers, each keeping a copy of every bot</td>
+              <td>Your own computers</td>
               <td>
                 A cloud computer for your account; your own computer only for
                 commands you allow
@@ -102,7 +102,7 @@
             </tr>
             <tr>
               <th scope="row">Phone</th>
-              <td>Not yet</td>
+              <td>An iPhone app, not released yet</td>
               <td>iPhone, iPad and Android</td>
             </tr>
             <tr>
@@ -112,7 +112,8 @@
                 GitHub, Stripe, Slack or a key
               </td>
               <td>
-                Schedules at least five minutes apart, or a webhook with a key
+                Schedules at least five minutes apart, Slack, GitHub, Linear,
+                Sentry or PagerDuty events, email, or a webhook with a key
               </td>
             </tr>
             <tr>
@@ -170,12 +171,13 @@
 
         <h2 id="bring-over">Bring your Grok Bot bots over</h2>
         <p>
-          New bot can start from a bot the Grok Bot app keeps on your computer,
-          with its name, instructions and colour, or from a Grok Bot template
-          recipe, a JSON file your Grok bot makes when you ask. A recipe's
-          skills and work log become files in the bot's folder, and on its first
-          run the bot sets up the recipe's routines, paused until you turn them
-          on.
+          New bot can copy a bot's name and instructions from the Grok Bot app
+          on your computer, or start from a Grok Bot template recipe, a JSON
+          file your Grok bot makes when you ask. A recipe's skills and work log
+          become files in the bot's folder, and on its first run the bot sets
+          its routines up again, paused, and asks you whether to turn them on.
+          Check each one's schedule and pause state before you switch over; the
+          shortest Multibots runs is every 15 minutes.
         </p>
       </article>
     </div>

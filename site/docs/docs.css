@@ -8,7 +8,49 @@
 }
 
 .masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem 2rem;
   padding: 1.5rem var(--gutter);
+}
+
+/* The docs pages, after the brand: plain text links, the current one bold
+   and grown from its centre, as the contents list marks its section. */
+.pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.25rem;
+  font-size: 0.9375rem;
+}
+
+.pages a {
+  display: grid;
+  color: color-mix(in srgb, var(--ink) 78%, var(--paper));
+  text-decoration: none;
+  transition: color 150ms;
+}
+
+.pages a span {
+  grid-area: 1 / 1;
+  text-align: center;
+  transition: transform 150ms;
+}
+
+.pages a span + span {
+  font-weight: 700;
+  visibility: hidden;
+}
+
+.pages a:hover,
+.pages a[aria-current] {
+  color: var(--ink);
+}
+
+.pages a[aria-current] span:first-child {
+  font-weight: 700;
+  transform: scale(1.05);
 }
 
 .brand {
@@ -222,6 +264,8 @@ tbody th {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .pages a,
+  .pages a span,
   .contents a,
   .contents a span {
     transition: none;

@@ -57,16 +57,18 @@
         <p>
           Every computer running Multibots is a server unless you turn that off:
           it keeps a copy of every bot, with its conversation, routines and
-          files, and runs them. A computer with server mode off only shows the
-          bots. Your computers find each other over Tailscale and copy bots
-          between them directly.
+          files, and runs them. Packages a bot installs and files over 200 MB
+          stay on the server that has them. A computer with server mode off only
+          shows the bots. Your computers find each other over Tailscale and copy
+          bots between them directly.
         </p>
         <p>
-          What leaves them is what a bot sends its model, which is ChatGPT or a
-          model server you choose, what it reaches through the apps and tools
-          you give it, and its webhooks' calls, which come in through our relay
-          at hooks.wrkrsh.com. The <a href="/privacy/">privacy page</a> lists
-          everything.
+          A bot's work leaves them as what it sends its model, which is ChatGPT
+          or a model server you choose, what it reaches through the apps and
+          tools you give it, and its webhooks' calls, which come in through our
+          relay at hooks.wrkrsh.com. The <a href="/privacy/">privacy page</a>
+          lists everything that leaves them, usage analytics and update checks
+          included.
         </p>
 
         <h2 id="away">Keep it working while you're away</h2>
@@ -79,13 +81,15 @@
         <p>
           Bots run while at least one of your servers is on. A laptop that
           sleeps hands its bots to your other servers, which go on from each
-          run's last saved step, so a desktop that stays on keeps them working.
+          run's last saved step. Each server signs in to ChatGPT or adds its
+          models for itself, so a desktop that stays on, with its own, keeps
+          them working.
         </p>
 
         <h2 id="can-do">What a bot can do</h2>
         <ul>
           <li>Run any command in a shell on its computer, as you.</li>
-          <li>Search the web, when it runs on ChatGPT.</li>
+          <li>Search the web, when its run starts on ChatGPT.</li>
           <li>
             See and use the screen through Multidesktop, and reach your other
             computers once you sign in to Multidesktop.

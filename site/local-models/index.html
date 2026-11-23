@@ -56,10 +56,12 @@
 
         <h2 id="connect">Connect a model</h2>
         <p>
-          The address is the server's OpenAI-style API, ending in /v1: by
-          default http://localhost:11434/v1 for Ollama, http://localhost:1234/v1
-          for LM Studio and http://localhost:8000/v1 for vLLM. Multibots asks
-          the server which models it serves and suggests them.
+          The address is the server's OpenAI-style API, which usually ends in
+          /v1: by default http://localhost:11434/v1 for Ollama,
+          http://localhost:1234/v1 for LM Studio and http://localhost:8000/v1
+          for vLLM. Multibots reads the server's /models to suggest the models
+          it serves, so the server must answer /models even when you type the
+          model yourself.
         </p>
         <p>
           Bots work through tools, so pick a model that supports tool calling.
@@ -74,20 +76,21 @@
         <h2 id="order">Use them with ChatGPT</h2>
         <p>
           With ChatGPT signed in too, Settings lists under Order what chat,
-          transcription and speech each try, in turn. Each model call goes to
-          the first that answers, and a model further down gets as much of the
-          conversation as fits its own context window. Web search comes with
-          ChatGPT only. See
+          transcription and speech each try, in turn. Each chat model call goes
+          to the first that answers, and a model further down gets as much of
+          the conversation as fits its own context window. Bots search the web
+          only when a run starts on ChatGPT. See
           <a href="/chatgpt-subscription/">using your ChatGPT subscription</a>.
         </p>
 
         <h2 id="voice">Voice chats</h2>
         <p>
           Add a transcription model and a speech model too, such as open speech
-          models served by mlx-audio. Multibots sends what you say between
-          pauses to the first transcription model that answers, and plays the
-          first speech model's reading of what the bot says. To set it all up,
-          follow the <a href="/docs/">install guide</a>.
+          models served by mlx-audio. A voice chat stays on ChatGPT's voice or
+          on your models, whichever it starts on. On yours, Multibots sends what
+          you say between pauses to the first transcription model that answers,
+          and plays the first speech model's reading of what the bot says. To
+          set it all up, follow the <a href="/docs/">install guide</a>.
         </p>
       </article>
     </div>
