@@ -430,7 +430,7 @@ const start = async () => {
 
   // Becomes a server: takes every bot the servers online have, then runs
   // what it writes. The first server makes a bot to start with, pinned.
-  const startServer = async () => {
+  const startServer = async (resumed = false) => {
     computer = new Computer(
       home,
       name,
@@ -481,7 +481,8 @@ const start = async () => {
       await rm(legacy, { force: true });
     }
     await computer.start();
-    if (!replica.ids().length) {
+    // Not when it serves again after turning server mode off was refused.
+    if (!resumed && !replica.ids().length) {
       const first = (await made.handle({
         hue: 145,
         instructions: "",
@@ -527,19 +528,20 @@ const start = async () => {
         });
       return changed;
     };
-    // With no bots, only what marks bots deleted is left, handed to the
-    // servers online when there are any, so none brings a bot back.
+    // With no bots, only what marks bots deleted is left, handed like them
+    // to a server online when there is one, which hands it on to the rest
+    // as they meet, so none brings a bot back.
     const empty = !replica.ids().length;
     let kept = empty;
     let settled = empty && !peers.servers().length;
     await scanAll();
-    // Bots go to any server online that takes them all; what marks them
-    // deleted, to every one.
+    // Bots go to a server online that takes them all.
     for (let pass = 0; pass < 3 && unread === null && !settled; pass += 1) {
-      let handed = 0;
+      let handed = false;
       for (const { id } of peers.servers())
-        if ((await replica.hand(id).catch(() => null))?.size === 0) handed += 1;
-      if (empty ? handed < peers.servers().length : !handed) break;
+        if ((await replica.hand(id).catch(() => null))?.size === 0)
+          handed = true;
+      if (!handed) break;
       kept = true;
       settled = (await scanAll()) === 0;
     }
@@ -551,7 +553,7 @@ const start = async () => {
           })
         : [];
     if (unread !== null || !settled || left.length) {
-      await startServer();
+      await startServer(true);
       throw unread !== null
         ? new Error(
             `Your bots' files couldn't all be read, so this computer keeps them: ${unread instanceof Error ? unread.message : String(unread)}`,
@@ -563,7 +565,7 @@ const start = async () => {
           : !settled
             ? new Error(
                 empty
-                  ? "Your other computers didn't all take which bots you deleted. Try again once they can be reached."
+                  ? "None of your other computers took which bots you deleted. Try again once one can be reached."
                   : "Your bots' files kept changing as they were handed over. Try again once what their shells started has stopped.",
               )
             : tooLarge(left);

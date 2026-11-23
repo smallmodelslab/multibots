@@ -90,16 +90,17 @@ const absent = (error: NodeJS.ErrnoException) => {
   throw error;
 };
 
-// Removes a folder that holds only folders, and scratch no copy keeps,
-// deepest first, one at a time, so one that holds a file, even one made
-// meanwhile, fails it.
+// Removes a folder that holds only folders, and what no copy keeps (links,
+// left as such, and scratch), deepest first, one at a time, so one that
+// holds a file, even one made meanwhile, fails it.
 const removeFolders = async (dir: string) => {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
     if (skipped.has(entry.name))
       await rm(full, { force: true, recursive: true });
+    else if (entry.isSymbolicLink() || entry.name.endsWith(".tmp"))
+      await rm(full, { force: true });
     else if (entry.isDirectory()) await removeFolders(full);
-    else if (entry.name.endsWith(".tmp")) await rm(full, { force: true });
   }
   await rmdir(dir);
 };
