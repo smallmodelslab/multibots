@@ -79,7 +79,8 @@ detail:
   once, with its version: when it was written, and by which server. The one
   holding a bot while it runs or is in a voice chat writes it; an idle bot is
   written by the server its id picks among those online, and a bot woken
-  then goes to the server holding the fewest (`src/main/bots.ts`). Each
+  then goes to the server holding the fewest of those with a model to run
+  it on (`src/main/bots.ts`). Each
   time a server is given a bot, its run state's term goes up, and outranks
   the time a copy was written, so a server that held the bot before cannot
   write over the one holding it now. Every
@@ -153,8 +154,9 @@ detail:
   installed release itself, without a cloud (`multidesktop --local`). Settings
   installs it with Multidesktop's own installer when it is missing or older
   than 0.4.8, and moves an older service onto it with `multidesktop up`.
-  Reading the screen's text and scroll-capturing need macOS's Vision, so
-  only a Mac's bots are offered them. A bot's computer tool runs
+  Reading the screen's text and scroll-capturing need macOS's Vision, so a
+  bot is offered them for a Mac's own screen, and for the user's other
+  computers with a note that they work only on a Mac's. A bot's computer tool runs
   JavaScript in m11's computer-use REPL, the API every wrkrsh product shares,
   for the rest of its run; the model sees the newest three screenshots, and
   none are kept after. Once Settings signs m11 in to Multidesktop's cloud,

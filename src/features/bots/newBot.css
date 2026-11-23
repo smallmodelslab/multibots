@@ -205,7 +205,7 @@
 }
 
 /* What a Grok Bot bot is for, under its name when another has the same:
-   two lines of it, and all of it on hover. */
+   two lines of it, and all of it in its hint. */
 .new-bot-grok-about {
   display: -webkit-box;
   max-width: 100%;

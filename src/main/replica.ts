@@ -97,6 +97,17 @@ const readOwn = (file: string) =>
 const sameVersion = (a: Version, b: Version) =>
   a[0] === b[0] && a[1] === b[1] && (a[2] ?? 0) === (b[2] ?? 0);
 
+// Where a file that came for a path whose file here is too large to go is
+// kept, beside it, named for the server it came from.
+const beside = (path: string, by: string) => {
+  const folder = path.slice(0, path.lastIndexOf("/") + 1);
+  const name = path.slice(folder.length);
+  const dot = name.lastIndexOf(".");
+  const [stem, extension] =
+    dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ""];
+  return `${folder}${stem} (from ${by.slice(0, 8)})${extension}`;
+};
+
 export class Replica {
   private readonly manifests = new Map<string, Manifest>();
   // Each server's copies, sent in order.
@@ -487,9 +498,14 @@ export class Replica {
     }
     if (!inFolder(path)) throw new Error("That is not a bot's file.");
     // A file here too large to go is its only copy: it stays, and counts
-    // as the version sent.
+    // as the version sent, which goes beside it, so neither is lost.
     const here = await lstat(this.file(botId, path)).catch(absent);
     if (here?.isFile() && here.size > largest) {
+      if (data !== null) {
+        const kept = beside(path, v[1]);
+        await this.put(botId, kept, data);
+        void (await this.mine(botId, kept)).sent;
+      }
       await this.record(botId, path, v);
       return;
     }
@@ -549,6 +565,7 @@ export class Replica {
           const copy = await this.options.fetch(hostId, botId, path);
           if (copy && !sameVersion(copy.v, v)) {
             this.uncaught.add(hostId);
+            if (path.includes("/")) short.add(botId);
             continue;
           }
           if (copy) await this.apply(copy);
@@ -566,7 +583,8 @@ export class Replica {
 
   // Sends another server what it has older than here, each bot's library
   // before its own files: what a copy failed to bring it, or every bot
-  // before this computer lets its copies go.
+  // before this computer lets its copies go. Settles with whether it sent
+  // all it listed, as no file changed on the way.
   async hand(hostId: string) {
     const theirs = await this.options.manifest(hostId);
     const older = [...this.manifests]
@@ -577,16 +595,18 @@ export class Replica {
       )
       .sort((a, b) => byFolder(a.path, b.path));
     const failures: unknown[] = [];
-    // A bot whose library did not all go sends none of its own files this
-    // time, nor a file written since the list was made, which may refer to
-    // library files it leaves out: the next pass sends those first.
+    // A file written since the list was made waits for the next pass, as
+    // it may refer to library files this one leaves out; a bot whose
+    // library did not all go sends none of its own files this time.
     const short = new Set<string>();
+    let complete = true;
     for (const { botId, path, v } of older)
       try {
         if (!path.includes("/") && short.has(botId)) continue;
         const copy = await this.copy(botId, path);
         if (copy && !sameVersion(copy.v, v)) {
-          this.missed.add(hostId);
+          complete = false;
+          if (path.includes("/")) short.add(botId);
           continue;
         }
         if (copy) await this.options.send(hostId, copy);
@@ -595,20 +615,27 @@ export class Replica {
         if (path.includes("/")) short.add(botId);
       }
     if (failures.length) throw failures[0];
+    return complete;
   }
 
   // Another server is online again, or for the first time: each takes
   // what the other wrote while they could not reach each other.
   async meet(hostId: string) {
     await this.catchUp(hostId);
-    await this.hand(hostId).catch(() => {
-      this.behind.add(hostId);
-    });
+    await this.hand(hostId).then(
+      (complete) => {
+        if (!complete) this.behind.add(hostId);
+      },
+      () => {
+        this.behind.add(hostId);
+      },
+    );
   }
 
   // Tries again what failed: handing each server a copy failed to reach
-  // what it missed, again while copies made meanwhile skip it, then sending
-  // it copies again; and catching up with those it could not.
+  // what it missed, again, a few times at most, while copies made meanwhile
+  // skip it or files change on the way, then sending it copies again; and
+  // catching up with those it could not.
   retry() {
     this.retrying ??= this.retryAll().finally(() => {
       this.retrying = null;
@@ -621,11 +648,13 @@ export class Replica {
     for (const hostId of [...this.behind])
       if (online.has(hostId))
         try {
-          do {
+          for (let pass = 0; pass < 5; pass += 1) {
             this.missed.delete(hostId);
-            await this.hand(hostId);
-          } while (this.missed.has(hostId));
-          this.behind.delete(hostId);
+            if ((await this.hand(hostId)) && !this.missed.has(hostId)) {
+              this.behind.delete(hostId);
+              break;
+            }
+          }
         } catch {
           // Handed again next time.
         }

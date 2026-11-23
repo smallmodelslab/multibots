@@ -1,9 +1,12 @@
 import type { Dialog } from "@base-ui/react/dialog";
 import {
+  cloneElement,
   useEffect,
   useRef,
   useState,
   type CSSProperties,
+  type FocusEvent,
+  type ReactElement,
   type ReactNode,
 } from "react";
 
@@ -32,6 +35,7 @@ import {
   WizardStep,
 } from "@wrkrsh/wizard";
 import { WizardTop } from "../shell/WizardTop";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { botColors, nextHue } from "./colors";
 import "./newBot.css";
 
@@ -87,6 +91,36 @@ const Outfits = <Kind extends keyof Accessories>({
     ))}
   </fieldset>
 );
+
+// What a Grok Bot bot is for, all of it in a hint over its card on hover,
+// and while the card's radio has the keyboard's focus, which a hint on the
+// card alone would not see; none when it is not needed.
+const AboutHint = ({
+  about,
+  children,
+}: {
+  about: string;
+  children: ReactElement<{
+    onBlur?: () => void;
+    onFocus?: (event: FocusEvent) => void;
+  }>;
+}) => {
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  if (!about) return children;
+  return (
+    <Tooltip onOpenChange={setHovered} open={hovered || focused}>
+      <TooltipTrigger
+        render={cloneElement(children, {
+          onBlur: () => setFocused(false),
+          onFocus: (event: FocusEvent) =>
+            setFocused(event.target.matches(":focus-visible")),
+        })}
+      />
+      <TooltipContent>{about}</TooltipContent>
+    </Tooltip>
+  );
+};
 
 type Status =
   | { kind: "editing" }
@@ -264,33 +298,31 @@ const Wizard = ({
               );
               const about = same ? each.profile.description : "";
               return (
-                <label
-                  className="wizard-choice glow"
-                  key={i}
-                  title={about || undefined}
-                >
-                  <input
-                    aria-label={
-                      about
-                        ? `${each.profile.name}: ${about}`
-                        : each.profile.name
-                    }
-                    autoFocus={i === 0}
-                    checked={recipe === each}
-                    className="sr-only"
-                    name="grok-bot"
-                    onChange={() => pick(each)}
-                    type="radio"
-                  />
-                  <span className="wizard-choice-name">
-                    {each.profile.name}
-                  </span>
-                  {about ? (
-                    <span className="wizard-choice-note new-bot-grok-about">
-                      {about}
+                <AboutHint about={about} key={i}>
+                  <label className="wizard-choice glow">
+                    <input
+                      aria-label={
+                        about
+                          ? `${each.profile.name}: ${about}`
+                          : each.profile.name
+                      }
+                      autoFocus={i === 0}
+                      checked={recipe === each}
+                      className="sr-only"
+                      name="grok-bot"
+                      onChange={() => pick(each)}
+                      type="radio"
+                    />
+                    <span className="wizard-choice-name">
+                      {each.profile.name}
                     </span>
-                  ) : null}
-                </label>
+                    {about ? (
+                      <span className="wizard-choice-note new-bot-grok-about">
+                        {about}
+                      </span>
+                    ) : null}
+                  </label>
+                </AboutHint>
               );
             })}
           </fieldset>

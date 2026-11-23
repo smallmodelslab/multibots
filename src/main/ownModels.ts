@@ -114,6 +114,11 @@ export class OwnModels {
       stop.signal.throwIfAborted();
       const list = listOf(kind);
       await this.save({ ...this.lists, [list]: [...this.lists[list], model] });
+      // Cancelled while it was saved: let go again.
+      if (stop.signal.aborted) {
+        await this.disconnect(model.id);
+        throw stop.signal.reason;
+      }
       return model.id;
     } finally {
       this.connecting.delete(attempt);

@@ -223,8 +223,9 @@ const withoutImages = (prompt: Prompt): Prompt =>
       : message,
   );
 
-// The models, by server and id, that turned down a request for its images
-// and took it without them: their requests carry a note for each image.
+// The models connected, by their ids in Settings, that turned down a
+// request for its images and took it without them: their requests carry a
+// note for each image.
 const textOnly = new Set<string>();
 
 // Chat completions take only text in a tool's result, and none of the
@@ -291,7 +292,7 @@ const chatCompletions = (id: string): LanguageModelMiddleware => ({
 // The bots' model: the server's chat completions, with the context window
 // the user gave the model, else the one the server says it has now.
 export const ownChatModel = async (
-  saved: OwnServer & { model: string; window: number | null },
+  saved: OwnServer & { id: string; model: string; window: number | null },
   signal?: AbortSignal,
 ): Promise<CallableModel> => {
   const contextWindow =
@@ -304,7 +305,7 @@ export const ownChatModel = async (
     about: `${saved.model}, a model the user hosts`,
     contextWindow,
     model: wrapLanguageModel({
-      middleware: chatCompletions(`${saved.baseUrl} ${saved.model}`),
+      middleware: chatCompletions(saved.id),
       model: createOpenAICompatible({
         apiKey: saved.key ?? undefined,
         baseURL: saved.baseUrl,

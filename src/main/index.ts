@@ -515,11 +515,13 @@ const start = async () => {
     computer = null;
     hostChanged();
     let kept = !replica.ids().length;
+    // Handed again while files change on the way, a few times.
     for (const { id } of peers.servers())
-      await replica.hand(id).then(
-        () => (kept = true),
-        () => {},
-      );
+      for (let pass = 0; pass < 3; pass += 1)
+        if (await replica.hand(id).catch(() => false)) {
+          kept = true;
+          break;
+        }
     const left = kept ? await replica.large() : [];
     if (!kept || left.length) {
       await startServer();

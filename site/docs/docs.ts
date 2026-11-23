@@ -54,9 +54,8 @@ function mark() {
 // arrived at by Back or Forward, or the page opens at it.
 const follow = () => {
   const entry = entries.find(({ hash }) => hash && hash === location.hash);
-  if (!entry) return;
   requestAnimationFrame(() => {
-    followed = { at: scrollY, entry };
+    followed = entry ? { at: scrollY, entry } : null;
     mark();
   });
 };
