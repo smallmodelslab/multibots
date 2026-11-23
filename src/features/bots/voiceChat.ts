@@ -186,7 +186,10 @@ const ownCall = async ({
   // A clip on its way when the call ends there plays too.
   let listening: Promise<unknown> = Promise.resolve();
   onDrain(async () => {
-    await listening.catch(() => {});
+    await Promise.race([
+      listening.catch(() => {}),
+      new Promise((done) => setTimeout(done, 5_000)),
+    ]);
     await playing;
   });
   let speaking = false;
@@ -308,11 +311,13 @@ export const startVoiceChat = async (
       if (callId)
         call({ botId: bot.id, callId, type: "voice.stop" }).catch(() => {});
     },
-    // Hung up here meanwhile, or another chat begun, it ends no more.
+    // Hung up here meanwhile, or another chat begun, it ends no more. The
+    // microphone closes at once.
     ended: () => {
       if (current !== session || ending) return;
       ending = true;
       toastError("The voice chat ended.");
+      for (const track of microphone?.getTracks() ?? []) track.stop();
       void drain().then(session.end, session.end);
     },
     mute: (next: boolean) => {

@@ -226,6 +226,9 @@ export const startOwnVoiceCall = (
   const clips: Clip[] = [];
   let waiting: ((clip: Clip | null) => void) | null = null;
   let closed = false;
+  // No speech model could say something: the call ends once the window
+  // has what was said before.
+  let ending = false;
   let saying = Promise.resolve();
   let gone: NodeJS.Timeout | undefined;
   const close = () => {
@@ -256,6 +259,7 @@ export const startOwnVoiceCall = (
     kind: "own",
     listen: () => {
       const next = clips.shift();
+      if (!next && ending) close();
       if (closed || next) return Promise.resolve(next ?? null);
       waiting?.(null);
       clearTimeout(gone);
@@ -273,7 +277,7 @@ export const startOwnVoiceCall = (
     speak: (text) => {
       for (const words of sayable(speakable(text)))
         saying = saying.then(async () => {
-          if (closed) return;
+          if (closed || ending) return;
           const spoken = await inOrder(
             models.speech,
             nameOf,
@@ -289,8 +293,10 @@ export const startOwnVoiceCall = (
               }),
             () => closed,
           ).catch((error: unknown) => {
-            // Hung up first, so that what it says is not spoken in turn.
-            close();
+            // Ending first, so that what it says is not spoken in turn; at
+            // once when the window has all that was said before.
+            ending = true;
+            if (!clips.length) close();
             options.onError(
               error instanceof Error ? error.message : String(error),
             );

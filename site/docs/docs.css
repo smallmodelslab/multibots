@@ -82,8 +82,11 @@
    beside it, then moved right rather than come within 3rem of it. */
 /* The space under the article is the article's own, in the list's row, so
    the list stays centred to the page's end. */
+/* The row is at least as tall as the window less the list's top inset,
+   so on a short page the list still reaches its place. */
 .docs {
   display: grid;
+  grid-template-rows: minmax(calc(100vh - 6rem), auto);
   padding: 0 var(--gutter);
 }
 

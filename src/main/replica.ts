@@ -143,6 +143,9 @@ export class Replica {
   // and each server's handing of what it missed, one at a time.
   private retrying: Promise<void> | null = null;
   private readonly handing = new Map<string, Promise<void>>();
+  // How many times each server came back online, so a handing begun
+  // before does not decide what it now waits for.
+  private readonly meetings = new Map<string, number>();
   // This computer let its copies go: nothing changes them any more.
   private cleared = false;
 
@@ -360,7 +363,9 @@ export class Replica {
   private async put(botId: string, path: string, data: string | null) {
     const file = this.file(botId, path);
     if (data === null) {
-      await rm(file, { force: true });
+      // A folder at its path now holds newer files, which stay.
+      if (!(await lstat(file).catch(absent))?.isDirectory())
+        await rm(file, { force: true });
       return;
     }
     await mkdir(dirname(file), { recursive: true });
@@ -703,6 +708,7 @@ export class Replica {
   // what the other wrote while they could not reach each other. Copies
   // made meanwhile wait for the handing, so none overtakes what it missed.
   async meet(hostId: string) {
+    this.meetings.set(hostId, (this.meetings.get(hostId) ?? 0) + 1);
     this.behind.set(hostId, new Set(["*"]));
     await this.catchUp(hostId);
     await this.handMissed(hostId);
@@ -727,8 +733,10 @@ export class Replica {
   private async handMissedNow(hostId: string) {
     try {
       for (let pass = 0; pass < 5; pass += 1) {
+        const meeting = this.meetings.get(hostId);
         this.missed.delete(hostId);
         const short = await this.hand(hostId);
+        if (meeting !== this.meetings.get(hostId)) continue;
         for (const botId of this.missed.get(hostId) ?? []) short.add(botId);
         if (!short.size) {
           this.behind.delete(hostId);
