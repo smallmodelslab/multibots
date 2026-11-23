@@ -1442,6 +1442,7 @@ export class Bots {
   private async resume(botId: string, bot: Record) {
     if (bot.working) return;
     if (bot.reading || bot.inbox.length) {
+      if (this.placement(botId, bot) === "later") return;
       if (bot.held === this.options.hostId) this.run(botId, bot);
       else await this.place(botId, bot);
     } else if (bot.reply) await this.publish(botId, bot);
@@ -1469,12 +1470,24 @@ export class Bots {
     );
     const target = least?.id ?? this.options.hostId;
     if (target === this.options.hostId) {
+      // Kept for a server with a model, once it has what it missed.
+      if (this.placement(botId, bot) === "later")
+        return (await this.save(botId, bot)).reached;
       const reached = await this.hold(botId, bot);
       if (!bot.working) this.run(botId, bot);
       return reached;
     }
     this.handTo(bot, target);
     const { reached } = await this.save(botId, bot);
+    // That server missed it, as a copy before it failed: back here.
+    if (this.options.replica.behindOn(target, botId)) {
+      this.handTo(bot, this.options.hostId);
+      const back = await this.save(botId, bot);
+      this.listen();
+      this.options.onRunning();
+      if (!bot.working) this.run(botId, bot);
+      return back.reached;
+    }
     this.listen();
     this.options.onChange(botId);
     return reached;
@@ -1551,15 +1564,25 @@ export class Bots {
     bot.call?.close();
   }
 
-  // Whether the bot's next run belongs on another server: this one has no
-  // model left to run it on, another has, and no voice chat holds it here.
-  private elsewhere(bot: Record) {
-    if (bot.call) return false;
+  // Where the bot's next run belongs: here while this server has a model
+  // to run it on, a voice chat holds it here, or no other server has one;
+  // there, given to one, when another that copies of the bot reach has;
+  // and later, kept waiting, while those with one are still being handed
+  // what they missed of it.
+  private placement(botId: string, bot: Record) {
     const servers = this.options.servers();
-    return (
-      !servers.find(({ id }) => id === this.options.hostId)?.ready &&
-      servers.some(({ ready }) => ready)
+    const ready = servers.filter(
+      ({ id, ready }) => ready && id !== this.options.hostId,
     );
+    if (
+      bot.call ||
+      servers.find(({ id }) => id === this.options.hostId)?.ready ||
+      !ready.length
+    )
+      return "here";
+    return ready.some(({ id }) => !this.options.replica.behindOn(id, botId))
+      ? "there"
+      : "later";
   }
 
   // One run at a time, taken before anything is waited for.
@@ -1598,12 +1621,13 @@ export class Bots {
           bot.held === this.options.hostId &&
           (bot.reading || bot.inbox.length)
         ) {
-          if (!this.elsewhere(bot)) this.run(botId, bot);
-          else {
-            // Given straight to that server, in one write.
+          const where = this.placement(botId, bot);
+          if (where === "here") this.run(botId, bot);
+          // Given straight to that server, in one write.
+          else if (where === "there") {
             await this.place(botId, bot);
             this.options.onRunning();
-          }
+          } else await this.release(botId, bot);
         } else await this.release(botId, bot);
       });
     }
@@ -1624,7 +1648,7 @@ export class Bots {
     await this.publish(botId, bot, fenced);
     while ((bot.reading || bot.inbox.length) && !fenced() && !this.closed) {
       // What it reads, a batch begun included, which its context carries.
-      if (this.elsewhere(bot)) break;
+      if (this.placement(botId, bot) !== "here") break;
       const abort = new AbortController();
       bot.abort = abort;
       setWorking("Thinking");

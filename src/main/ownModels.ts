@@ -194,16 +194,14 @@ export class OwnModels {
     const said = (await listServedModels(model, signal).catch(() => [])).find(
       ({ id }) => id === model.model,
     )?.contextWindow;
-    // Unsaid, the latest it said, as another run may have heard since.
-    if (!said)
-      return ownChatModel(
-        this.lists.bots.find(
-          (entry): entry is OwnModel =>
-            entry !== "chatgpt" && entry.id === model.id,
-        ) ?? model,
-      );
-    if (said === model.contextWindow) return ownChatModel(model);
-    const current = { ...model, contextWindow: said };
+    // As saved now, which another run may have changed since.
+    const latest =
+      this.lists.bots.find(
+        (entry): entry is OwnModel =>
+          entry !== "chatgpt" && entry.id === model.id,
+      ) ?? model;
+    if (!said || said === latest.contextWindow) return ownChatModel(latest);
+    const current = { ...latest, contextWindow: said };
     const update = (entry: Entry) =>
       entry !== "chatgpt" && entry.id === model.id ? current : entry;
     // Not saved, it still counts for this run.

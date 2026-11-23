@@ -40,14 +40,14 @@ const base32 = (encoded: string) => {
 
 // The bots of every account signed in to Grok Bot on this computer, whose
 // apps keep their data in `appData`, each with its name, instructions and
-// colour, once, as a bot in two accounts that says the same; none without
-// Grok Bot.
+// colour; none without Grok Bot.
 export const localGrokBots = async (appData: string): Promise<GrokRecipe[]> => {
   const dir = join(appData, "Grok Bot", "sand-client-persistence");
-  // Each bot once, and a bot that says the same in another account once:
-  // in one account, two that say the same are two.
+  // Each bot once, and bots that say the same as many times as the account
+  // with the most of them has them: each in another account is one of
+  // those.
   const seen = new Set<string>();
-  const said = new Map<string, string>();
+  const shown = new Map<string, number>();
   const recipes: GrokRecipe[] = [];
   for (const file of await readdir(dir).catch(() => [])) {
     if (!base32(file.replace(/\.blob$/, "")).endsWith(".roster.last-roster"))
@@ -57,18 +57,15 @@ export const localGrokBots = async (appData: string): Promise<GrokRecipe[]> => {
         .then(JSON.parse)
         .catch(() => null),
     );
+    const here = new Map<string, number>();
     for (const row of roster.data?.value.rows ?? []) {
-      const same = JSON.stringify([row.name.trim(), row.description.trim()]);
-      const account = said.get(same);
-      if (
-        row.isGroup ||
-        seen.has(row.id) ||
-        (account !== undefined && account !== file) ||
-        !row.name.trim()
-      )
-        continue;
+      if (row.isGroup || seen.has(row.id) || !row.name.trim()) continue;
       seen.add(row.id);
-      said.set(same, file);
+      const same = JSON.stringify([row.name.trim(), row.description.trim()]);
+      const count = (here.get(same) ?? 0) + 1;
+      here.set(same, count);
+      if (count <= (shown.get(same) ?? 0)) continue;
+      shown.set(same, count);
       recipes.push(
         grokRecipeSchema.parse({
           profile: {
