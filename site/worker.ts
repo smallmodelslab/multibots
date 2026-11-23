@@ -30,16 +30,14 @@ async function home(request: Request, env: Env) {
     response.headers.append("Vary", "Accept");
     return response;
   }
+  // llms.txt with its own caching headers, so a repeat request revalidates.
   const text = await env.ASSETS.fetch(
-    new Request(new URL("/llms.txt", request.url), { method: request.method }),
+    new Request(new URL("/llms.txt", request.url), request),
   );
-  return new Response(text.body, {
-    status: text.status,
-    headers: {
-      "Content-Type": "text/markdown; charset=utf-8",
-      Vary: "Accept",
-    },
-  });
+  const response = new Response(text.body, text);
+  response.headers.set("Content-Type", "text/markdown; charset=utf-8");
+  response.headers.append("Vary", "Accept");
+  return response;
 }
 
 export default {
