@@ -6,6 +6,11 @@ type Env = { ASSETS: { fetch(request: Request): Promise<Response> } };
 
 const ANALYTICS_PATH = "/antenna";
 
+// Google Search Console's ownership check. Answered here because the assets
+// redirect a `.html` path to its extensionless form, and the check needs this
+// exact URL.
+const GOOGLE_VERIFICATION = "google254c6b9283c3d425.html";
+
 // Whether the client names Markdown itself, acceptably and at least as
 // highly as HTML. Wildcards alone, as browsers and curl send, keep the page.
 function prefersMarkdown(accept: string | null) {
@@ -51,6 +56,10 @@ export default {
       return Response.redirect(url.toString(), 308);
     }
     if (url.pathname === "/") return home(request, env);
+    if (url.pathname === `/${GOOGLE_VERIFICATION}`)
+      return new Response(`google-site-verification: ${GOOGLE_VERIFICATION}`, {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
     if (!url.pathname.startsWith(`${ANALYTICS_PATH}/`))
       return env.ASSETS.fetch(request);
     const path = url.pathname.slice(ANALYTICS_PATH.length) + url.search;
