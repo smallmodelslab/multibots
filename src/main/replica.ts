@@ -661,7 +661,9 @@ export class Replica {
           );
     if (merged === null) {
       await this.put(botId, path, data);
-      await this.record(botId, path, v);
+      // A removal is recorded as such, not as what another spelling of its
+      // path finds where letters' case isn't told apart.
+      await this.record(botId, path, v, data === null ? null : undefined);
     } else {
       const ours: Version = [
         Math.max(Date.now(), v[0] + 1),

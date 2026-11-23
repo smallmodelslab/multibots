@@ -137,7 +137,7 @@ const AboutHint = ({
             setFocused(event.target.matches(":focus-visible")),
         })}
       />
-      <TooltipContent className="max-h-[60vh] overflow-hidden [overflow-wrap:anywhere]">
+      <TooltipContent className="max-h-[60vh] overflow-hidden whitespace-pre-line [overflow-wrap:anywhere]">
         {about}
       </TooltipContent>
     </Tooltip>
@@ -325,21 +325,23 @@ const Wizard = ({
               const unlike = others.filter((other) => other !== about);
               const twin = unlike.length < others.length;
               const color = each.profile.avatarColor ?? "";
-              const tells = [
-                unlike.length ? parting(about, unlike) : "",
-                twin ? color.charAt(0).toUpperCase() + color.slice(1) : "",
-              ]
-                .filter(Boolean)
-                .join(" · ");
+              const colorName = twin
+                ? color.charAt(0).toUpperCase() + color.slice(1)
+                : "";
+              const tells = unlike.length ? parting(about, unlike) : "";
               return (
-                <AboutHint about={about} key={i}>
+                <AboutHint
+                  about={[about, colorName].filter(Boolean).join("\n\n")}
+                  key={i}
+                >
                   <label className="wizard-choice glow">
                     <input
-                      aria-label={
-                        about
-                          ? `${each.profile.name}: ${[about, twin ? color : ""].filter(Boolean).join(", ")}`
-                          : each.profile.name
-                      }
+                      aria-label={[
+                        each.profile.name,
+                        [about, colorName].filter(Boolean).join(", "),
+                      ]
+                        .filter(Boolean)
+                        .join(": ")}
                       autoFocus={i === 0}
                       checked={recipe === each}
                       className="sr-only"
@@ -354,6 +356,9 @@ const Wizard = ({
                       <span className="wizard-choice-note new-bot-grok-about">
                         {tells}
                       </span>
+                    ) : null}
+                    {colorName ? (
+                      <span className="wizard-choice-note">{colorName}</span>
                     ) : null}
                   </label>
                 </AboutHint>

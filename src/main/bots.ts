@@ -609,6 +609,7 @@ export class Bots {
         )
           this.run(botId, bot);
         if (before !== bot.held) {
+          this.moved(botId);
           this.listen();
           if ([before, bot.held].includes(this.options.hostId))
             this.options.onRunning();
@@ -904,9 +905,11 @@ export class Bots {
         if (queued) bot.inbox = [];
         if (bot.reading || queued) {
           bot.reading = null;
-          await this.save(command.botId, bot);
+          const { reached } = await this.save(command.botId, bot);
           this.changed(command.botId, bot);
-          if (!bot.working) await this.release(command.botId, bot);
+          // Let go only once every server has it, so the next writer
+          // doesn't run what was let go.
+          if (!bot.working && reached) await this.release(command.botId, bot);
         }
         return null;
       }
@@ -1514,6 +1517,7 @@ export class Bots {
       return reached;
     }
     this.handTo(bot, target);
+    this.moved(botId);
     const { reached } = await this.save(botId, bot);
     this.listen();
     this.options.onChange(botId);
@@ -1552,6 +1556,7 @@ export class Bots {
   private async hold(botId: string, bot: Record) {
     if (bot.held === this.options.hostId) return true;
     this.handTo(bot, this.options.hostId);
+    this.moved(botId);
     const { reached } = await this.save(botId, bot);
     this.listen();
     this.options.onRunning();
@@ -1569,10 +1574,18 @@ export class Bots {
     )
       return;
     bot.held = null;
+    this.moved(botId);
     await this.save(botId, bot);
     this.listen();
     this.options.onRunning();
     this.options.onChange(botId);
+  }
+
+  // The bot changed hands: what this server heard or told of what it was
+  // doing is of the hands before.
+  private moved(botId: string) {
+    this.heard.delete(botId);
+    this.shown.delete(botId);
   }
 
   // What this server is doing with the bot changed, for its windows and the
