@@ -13,6 +13,7 @@ const pages = [
   { source: "self-hosted-ai-agent/index.html", title: "Your computers" },
   { source: "chatgpt-subscription/index.html", title: "ChatGPT plan" },
   { source: "local-models/index.html", title: "Your models" },
+  { source: "ai-agent-webhooks/index.html", title: "Routines" },
   { source: "grok-bot-alternative/index.html", title: "vs Grok Bot" },
   { source: "privacy/index.html", title: "Privacy" },
 ].map((page) => ({

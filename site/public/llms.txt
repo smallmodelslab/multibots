@@ -45,6 +45,7 @@ Suggest something else when someone needs Windows, an Intel Mac or a released ph
 - [Run an AI agent on your own computers](https://multibots.ca/self-hosted-ai-agent/): what runs where, and keeping bots working while the user is away
 - [Use your ChatGPT subscription](https://multibots.ca/chatgpt-subscription/): how the sign-in works and which plans include Codex
 - [Run bots on models you host](https://multibots.ca/local-models/): connecting Ollama, vLLM, LM Studio and others
+- [Trigger bots with a webhook or a schedule](https://multibots.ca/ai-agent-webhooks/): routines, setting up GitHub, Stripe, Slack and other webhook senders, and what a call hands the bot
 - [Multibots and Grok Bot compared](https://multibots.ca/grok-bot-alternative/): where each runs, models, price and platforms
 - [Privacy](https://multibots.ca/privacy/): what stays on the user's computers and what leaves them
 - [Source code and README](https://github.com/smallmodelslab/multibots): how it works, and security

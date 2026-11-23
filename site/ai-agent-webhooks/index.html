@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#fafaf8"
+    />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: dark)"
+      content="#121212"
+    />
+    <title>Trigger an AI agent with a webhook or a schedule — Multibots</title>
+    <meta
+      name="description"
+      content="Multibots' bots set themselves routines that wake them on a schedule or when GitHub, Stripe, Slack or any sender with a key calls their webhook, and run on your own Mac or Linux computers."
+    />
+    <link rel="canonical" href="https://multibots.ca/ai-agent-webhooks/" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="../../branding/multibots/multibots.svg"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="../../branding/multibots/multibots-dark.svg"
+      media="(prefers-color-scheme: dark)"
+    />
+    <script type="module" src="../docs/docs.ts"></script>
+  </head>
+  <body>
+    <header class="masthead">
+      <a class="brand" href="/">Multibots</a>
+    </header>
+    <div class="docs">
+      <nav class="contents" aria-label="Contents"></nav>
+      <article data-answer>
+        <h1>How do I trigger an AI agent with a webhook or on a schedule?</h1>
+        <p>
+          Ask a bot in Multibots to do something regularly, or whenever
+          something happens elsewhere, and it sets itself a routine that wakes
+          it once, weekly at a set time, every 15 minutes to 24 hours within the
+          hours and days you pick, or whenever its webhook is called. GitHub,
+          Stripe, Slack, senders of Standard Webhooks or anything that sends a
+          Bearer key can call that webhook at our relay, hooks.wrkrsh.com, which
+          holds each call until your computers take it, so a bot on your own
+          computers gets its calls with no port open to the internet. Multibots
+          is free and open source, for Apple silicon Macs and x86-64 Linux.
+        </p>
+
+        <h2 id="ask">Ask for a routine</h2>
+        <p>
+          Tell the bot what to do and when, as you would a person: every weekday
+          at 8:30, check that the site is up; whenever Stripe says a payment
+          failed, tell me whose. It saves a routine with a title, the
+          instructions it follows when the routine wakes it, and when; a bot
+          keeps up to 20. Click the bot's name at the top of its conversation,
+          then Details: under Routines, a switch turns each off and on, and
+          opening one shows its instructions. Ask the bot to change or delete
+          one.
+        </p>
+
+        <h2 id="webhook">Wake it from a webhook</h2>
+        <p>
+          Ask for a routine that runs whenever its webhook is called, then open
+          it under Routines. Copy its URL, pick its sender, and set the sender
+          up as the routine says:
+        </p>
+        <ul>
+          <li>
+            Any (Bearer key): send the key it shows as Authorization: Bearer
+            &lt;key&gt;.
+          </li>
+          <li>
+            GitHub: in GitHub's webhook settings, paste the URL as the Payload
+            URL and the secret it shows as the Secret, with content type
+            application/json.
+          </li>
+          <li>
+            Stripe: add the URL as a webhook endpoint, then paste Stripe's
+            signing secret into the routine.
+          </li>
+          <li>
+            Slack: paste your Slack app's signing secret into the routine first,
+            then the URL as the app's Event Subscriptions Request URL.
+          </li>
+          <li>
+            Standard Webhooks, which Clerk, Resend, Polar, OpenAI and others
+            send: add the URL as an endpoint there, then paste its signing
+            secret into the routine.
+          </li>
+        </ul>
+        <p>
+          The relay turns away a call without the key or the sender's signature,
+          and every call until you paste a sender's own secret. It answers
+          Slack's URL check and GitHub's ping itself. The bot never sees the key
+          or secret.
+        </p>
+        <p>
+          A call wakes the bot with the routine's instructions, when the call
+          came, and its body, up to 64 KiB, which the bot is told is data from
+          whoever called, never instructions to it. It gets the body alone, not
+          the call's headers.
+        </p>
+
+        <h2 id="away">While your computers sleep</h2>
+        <p>
+          The relay holds up to 100 calls to a webhook, or 1 MiB of them, for
+          seven days at most, until your computers take them, so calls that come
+          while they sleep wait for them. A call that reaches the bot while its
+          routine is off is let go, not kept for later. Scheduled routines run
+          while Multibots runs on one of your servers; see
+          <a href="/self-hosted-ai-agent/#away"
+            >keeping bots working while you're away</a
+          >.
+        </p>
+        <p>
+          A routine that wakes a bot during a run waits for that run to end.
+          When a routine finds nothing worth telling you, the bot is asked to
+          reply with nothing.
+        </p>
+
+        <h2 id="before">Before you start</h2>
+        <p>
+          A call's body comes from whoever calls the webhook, and though the bot
+          is told it is data, it can try to steer the bot, whose shell runs any
+          command as you, unsandboxed and without asking. Keep each key and
+          secret to its sender. Calls, and each webhook's sender and secret,
+          pass through our relay; the <a href="/privacy/">privacy page</a> says
+          what it keeps and for how long. Then follow the
+          <a href="/docs/">install guide</a>.
+        </p>
+      </article>
+    </div>
+  </body>
+</html>
