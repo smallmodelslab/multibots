@@ -142,7 +142,7 @@ const AboutHint = ({
       />
       <TooltipContent className="flex-col items-start">
         {about ? (
-          <span className="max-h-[55vh] overflow-hidden [overflow-wrap:anywhere]">
+          <span className="max-h-[55vh] overflow-hidden whitespace-pre-line [overflow-wrap:anywhere]">
             {about}
           </span>
         ) : null}

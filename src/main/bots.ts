@@ -609,7 +609,7 @@ export class Bots {
         )
           this.run(botId, bot);
         if (before !== bot.held) {
-          this.moved(botId);
+          this.moved(botId, bot.held);
           this.listen();
           if ([before, bot.held].includes(this.options.hostId))
             this.options.onRunning();
@@ -1526,7 +1526,7 @@ export class Bots {
       return reached;
     }
     this.handTo(bot, target);
-    this.moved(botId);
+    this.moved(botId, target);
     const { reached } = await this.save(botId, bot);
     this.listen();
     this.options.onChange(botId);
@@ -1565,7 +1565,7 @@ export class Bots {
   private async hold(botId: string, bot: Record) {
     if (bot.held === this.options.hostId) return true;
     this.handTo(bot, this.options.hostId);
-    this.moved(botId);
+    this.moved(botId, this.options.hostId);
     const { reached } = await this.save(botId, bot);
     this.listen();
     this.options.onRunning();
@@ -1583,7 +1583,7 @@ export class Bots {
     )
       return;
     bot.held = null;
-    this.moved(botId);
+    this.moved(botId, null);
     await this.save(botId, bot);
     this.listen();
     this.options.onRunning();
@@ -1591,9 +1591,9 @@ export class Bots {
   }
 
   // The bot changed hands: what this server heard or told of what it was
-  // doing is of the hands before.
-  private moved(botId: string) {
-    this.heard.delete(botId);
+  // doing is of the hands before, unless heard from those it went to.
+  private moved(botId: string, to: string | null) {
+    if (this.heard.get(botId)?.by !== to) this.heard.delete(botId);
     this.shown.delete(botId);
   }
 

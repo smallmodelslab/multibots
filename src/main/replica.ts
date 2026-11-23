@@ -640,7 +640,9 @@ export class Replica {
         await this.put(botId, kept, data);
         void (await this.mine(botId, kept)).sent;
       }
-      await this.record(botId, path, v);
+      // A removal is recorded as one, for the other servers to have from
+      // here too; the file stays, as its size keeps it from going.
+      await this.record(botId, path, v, data === null ? null : undefined);
       return;
     }
     // What a write here lacks of an older one is kept, and sent back on:
