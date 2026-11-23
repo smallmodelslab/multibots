@@ -313,6 +313,8 @@ export class Bots {
   private readonly heard = new Map<string, Status & { by: string }>();
   private timer: NodeJS.Timeout | null = null;
   private scanner: NodeJS.Timeout | null = null;
+  // What each bot was last told to be doing.
+  private readonly shown = new Map<string, string | null>();
   // How many times each routine was paused here, so a webhook request
   // that waited its turn through a pause is let go.
   private readonly pauses = new WeakMap<Routine, number>();
@@ -893,16 +895,18 @@ export class Bots {
         return message;
       }
       // What its run took stays read, not read again after a restart.
-      // Waiting for a server with a model, what it would read is let go.
+      // Not running, as while it waits for a server with a model, what it
+      // would read is let go, and so is the bot.
       case "bot.stop": {
         const bot = this.bot(command.botId);
         bot.abort?.abort();
-        const waiting = this.waits(command.botId, bot);
-        if (waiting) bot.inbox = [];
-        if (bot.reading || waiting) {
+        const queued = !bot.working && bot.inbox.length > 0;
+        if (queued) bot.inbox = [];
+        if (bot.reading || queued) {
           bot.reading = null;
           await this.save(command.botId, bot);
           this.changed(command.botId, bot);
+          if (!bot.working) await this.release(command.botId, bot);
         }
         return null;
       }
@@ -1465,7 +1469,12 @@ export class Bots {
   private async resume(botId: string, bot: Record) {
     if (bot.working) return;
     if (bot.reading || bot.inbox.length) {
-      if (this.placement(botId, bot) === "later") return;
+      if (this.placement(botId, bot) === "later") {
+        // Told once it starts waiting, as a routine due does.
+        if (this.status(botId, bot).working !== this.shown.get(botId))
+          this.changed(botId, bot);
+        return;
+      }
       if (bot.held === this.options.hostId) this.run(botId, bot);
       else await this.place(botId, bot);
     } else if (bot.reply) await this.publish(botId, bot);
@@ -1569,7 +1578,9 @@ export class Bots {
   // What this server is doing with the bot changed, for its windows and the
   // other servers.
   private changed(botId: string, bot: Record) {
-    this.options.onChange(botId, { status: this.status(botId, bot) });
+    const status = this.status(botId, bot);
+    this.shown.set(botId, status.working);
+    this.options.onChange(botId, { status });
   }
 
   // Ends what this server was doing with a bot, which another writes now

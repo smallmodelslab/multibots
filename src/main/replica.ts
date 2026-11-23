@@ -10,7 +10,7 @@ import {
   rmdir,
   writeFile,
 } from "node:fs/promises";
-import { basename, dirname, join, relative, sep } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 
 import { unseal, writeSealed } from "./sealed";
 
@@ -387,15 +387,27 @@ export class Replica {
     }
   }
 
+  // Whether a path is here with every name in it spelled as given.
+  private async spelled(botId: string, path: string) {
+    const names = path.split("/");
+    for (let at = 0; at < names.length; at += 1) {
+      const here: string[] = await readdir(
+        this.file(botId, names.slice(0, at).join("/")),
+      ).catch(() => []);
+      if (!here.includes(names[at]!)) return false;
+    }
+    return true;
+  }
+
   private async put(botId: string, path: string, data: string | null) {
     const file = this.file(botId, path);
     if (data === null) {
-      // Only the file of that very name, not one named in another case
-      // that a file system not telling them apart takes for it; a folder
-      // at its path now holds newer files, which stay.
-      const names: string[] = await readdir(dirname(file)).catch(() => []);
+      // Only the file at that very path, every name in it as spelled, not
+      // one in another case that a file system not telling them apart
+      // takes for it; a folder at its path now holds newer files, which
+      // stay.
       if (
-        names.includes(basename(file)) &&
+        (await this.spelled(botId, path)) &&
         !(await lstat(file).catch(absent))?.isDirectory()
       )
         await rm(file, { force: true });

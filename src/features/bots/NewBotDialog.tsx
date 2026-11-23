@@ -313,7 +313,8 @@ const Wizard = ({
             <legend className="sr-only">Grok Bot's bots</legend>
             {grok.map((each, i) => {
               // Bots of the same name, as from two accounts, tell what each
-              // is for, from where it parts from the others'.
+              // is for, from where it parts from the others', and their
+              // colour when another says the same.
               const others = grok
                 .filter(
                   (other) =>
@@ -321,13 +322,22 @@ const Wizard = ({
                 )
                 .map(({ profile }) => profile.description);
               const about = others.length ? each.profile.description : "";
+              const unlike = others.filter((other) => other !== about);
+              const twin = unlike.length < others.length;
+              const color = each.profile.avatarColor ?? "";
+              const tells = [
+                unlike.length ? parting(about, unlike) : "",
+                twin ? color.charAt(0).toUpperCase() + color.slice(1) : "",
+              ]
+                .filter(Boolean)
+                .join(" · ");
               return (
                 <AboutHint about={about} key={i}>
                   <label className="wizard-choice glow">
                     <input
                       aria-label={
                         about
-                          ? `${each.profile.name}: ${about}`
+                          ? `${each.profile.name}: ${[about, twin ? color : ""].filter(Boolean).join(", ")}`
                           : each.profile.name
                       }
                       autoFocus={i === 0}
@@ -340,9 +350,9 @@ const Wizard = ({
                     <span className="wizard-choice-name">
                       {each.profile.name}
                     </span>
-                    {about ? (
+                    {tells ? (
                       <span className="wizard-choice-note new-bot-grok-about">
-                        {parting(about, others)}
+                        {tells}
                       </span>
                     ) : null}
                   </label>
