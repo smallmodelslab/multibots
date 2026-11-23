@@ -70,18 +70,20 @@
         <h2 id="webhook">Wake it from a webhook</h2>
         <p>
           Ask for a routine that runs whenever its webhook is called, then open
-          it under Routines. Copy its URL, pick its sender, and set the sender
-          up as the routine says:
+          it under Routines. It is ready once its switch is on and its line
+          under Routines no longer says needs its secret or not registered yet.
+          Copy its URL, pick its sender, and set the sender up as the routine
+          says:
         </p>
         <ul>
           <li>
-            Any (Bearer key): POST to the URL with the key it shows as
-            Authorization: Bearer &lt;key&gt;.
+            Any (Bearer key): once the routine is ready, POST to the URL with
+            the key it shows as Authorization: Bearer &lt;key&gt;.
           </li>
           <li>
-            GitHub: in GitHub's webhook settings, paste the URL as the Payload
-            URL and the secret it shows as the Secret, with content type
-            application/json.
+            GitHub: once the routine is ready, in GitHub's webhook settings,
+            paste the URL as the Payload URL and the secret it shows as the
+            Secret, with content type application/json.
           </li>
           <li>
             Stripe: add the URL as a webhook endpoint, then paste Stripe's
@@ -89,8 +91,8 @@
           </li>
           <li>
             Slack: paste your Slack app's signing secret into the routine and
-            save it, wait until the routine is ready, then add the URL as the
-            app's Event Subscriptions Request URL.
+            save it, then, once the routine is ready, add the URL as the app's
+            Event Subscriptions Request URL.
           </li>
           <li>
             Standard Webhooks, which Clerk, Resend, Polar, OpenAI and others
@@ -99,17 +101,12 @@
           </li>
         </ul>
         <p>
-          The routine is ready once its line under Routines no longer says needs
-          its secret or not registered yet; have the sender call it only then.
           The relay turns away calls without the key or the sender's signature,
-          and answers Slack's URL check and GitHub's ping itself.
-        </p>
-        <p>
-          The relay takes bodies up to 64 KiB and passes on the body alone, not
-          the call's headers. Multibots hands it to the bot with the routine's
-          instructions and when the call came, marked as data from whoever
-          called, never instructions to it. Like any message, it reaches a model
-          only as far as it fits that model's context window.
+          and answers Slack's URL check and GitHub's ping itself. It takes
+          bodies up to 64 KiB and passes on the body alone, not the call's
+          headers. Multibots hands it to the bot with the routine's instructions
+          and when the call came, marked as data from whoever called, never
+          instructions to it.
         </p>
 
         <h2 id="away">While your computers sleep</h2>
