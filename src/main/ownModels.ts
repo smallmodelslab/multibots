@@ -9,6 +9,7 @@ import type {
 import {
   baseUrlOf,
   listServedModels,
+  ownChatModel,
   speechVoices,
   type OwnServer,
 } from "./ownServer";
@@ -18,7 +19,7 @@ type Saved = OwnServer & {
   id: string;
   model: string;
   // The context window the user gave a chat model, in tokens, null for the
-  // one its server says; and the one it said when the model was added.
+  // one its server says; and the one it said last.
   window: number | null;
   contextWindow: number | null;
 };
@@ -166,6 +167,25 @@ export class OwnModels {
   // The bots' models, in the order they try them.
   bots() {
     return this.lists.bots;
+  }
+
+  // A chat model of the user's for a run: with the context window they
+  // gave it, else the one its server says now, saved when it changes for
+  // a time the server doesn't answer, a restart between included.
+  async chatModel(model: OwnModel, signal?: AbortSignal) {
+    if (model.window !== null) return ownChatModel(model);
+    const said = (await listServedModels(model, signal).catch(() => [])).find(
+      ({ id }) => id === model.model,
+    )?.contextWindow;
+    if (!said || said === model.contextWindow) return ownChatModel(model);
+    const current = { ...model, contextWindow: said };
+    const update = (entry: Entry) =>
+      entry !== "chatgpt" && entry.id === model.id ? current : entry;
+    await this.save({
+      bots: this.lists.bots.map(update),
+      voice: this.lists.voice.map(update),
+    });
+    return ownChatModel(current);
   }
 
   // What voice chats run on, in the user's order: ChatGPT's voice while

@@ -80,15 +80,18 @@
 /* The list and the article share the page's one row: the list in its
    column at the brand's edge, the article centred while the list fits
    beside it, then moved right rather than come within 3rem of it. */
+/* The space under the article is the article's own, in the list's row, so
+   the list stays centred to the page's end. */
 .docs {
   display: grid;
-  padding: 0 var(--gutter) 8rem;
+  padding: 0 var(--gutter);
 }
 
 article {
   grid-area: 1 / 1;
   min-width: 0;
   max-width: var(--column);
+  padding-bottom: 8rem;
   margin-left: max(calc(50% - var(--column) / 2), calc(var(--list) + 3rem));
   font-size: 1.0625rem;
   line-height: 1.65;

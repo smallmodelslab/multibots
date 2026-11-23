@@ -61,7 +61,6 @@ import type { Computer, Repls } from "./computer";
 import { fallback, fits, inOrder, unsent } from "./fallback";
 import { fromRecipe } from "./grokBot";
 import type { OwnModels } from "./ownModels";
-import { ownChatModel } from "./ownServer";
 import type { Plugins } from "./plugins";
 import { deleted, type Replica } from "./replica";
 import { readSealed } from "./sealed";
@@ -1610,7 +1609,8 @@ export class Bots {
                       name: "ChatGPT",
                     }
                   : {
-                      model: () => ownChatModel(entry, abort.signal),
+                      model: () =>
+                        this.options.own.chatModel(entry, abort.signal),
                       name: entry.model,
                     },
               ),

@@ -31,11 +31,14 @@ document.querySelector(".contents")!.append(list);
 // first before any, and the last once a page that scrolls is scrolled to
 // its end. An entry followed stays the one being read until the page moves
 // from where the jump left it, as when its heading is too near the end to
-// reach the top.
+// reach the top; then its place in history stops counting as followed.
 let current: HTMLAnchorElement | undefined;
 let followed: { entry: HTMLAnchorElement; at: number } | null = null;
 function mark() {
-  if (followed && Math.abs(scrollY - followed.at) > 1) followed = null;
+  if (followed && Math.abs(scrollY - followed.at) > 1) {
+    followed = null;
+    history.replaceState(null, "");
+  }
   const { scrollHeight } = document.documentElement;
   const end =
     scrollHeight > innerHeight + 2 && innerHeight + scrollY >= scrollHeight - 2;
@@ -49,34 +52,43 @@ function mark() {
   active?.setAttribute("aria-current", "location");
   current = active;
 }
-// The entry for the address's fragment, followed once the jump to it has
-// landed, the frame after: when an entry is followed, its fragment is
-// arrived at by Back or Forward, or the page opens at it. Only where the
-// page shows its heading at the top, or as near it as the page's end lets
-// it come; Back can bring back a place the reader scrolled to instead.
-const follow = () => {
-  const index = entries.findIndex(({ hash }) => hash && hash === location.hash);
+// An entry followed, once the jump to it has landed, the frame after, and
+// only where the page shows its heading at the top, or as near it as the
+// page's end lets it come. Its place in history remembers that, so Back or
+// Forward to it follows it again; to anywhere else, what shows is marked.
+const pin = (entry: HTMLAnchorElement | undefined) =>
   requestAnimationFrame(() => {
-    const top = headings[index]?.getBoundingClientRect().top;
+    clicked = false;
+    const top = entry
+      ? headings[entries.indexOf(entry)]!.getBoundingClientRect().top
+      : null;
     const end =
       innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
     followed =
-      top !== undefined && top >= -2 && (top <= 80 || end)
-        ? { at: scrollY, entry: entries[index]! }
+      entry && top !== null && top >= -2 && (top <= 80 || end)
+        ? { at: scrollY, entry }
         : null;
+    if (followed) history.replaceState({ followed: true }, "");
     mark();
   });
-};
+const remembered = () =>
+  (history.state as { followed?: boolean } | null)?.followed
+    ? entries.find(({ hash }) => hash && hash === location.hash)
+    : undefined;
+// A click pins its entry itself, so the address change it makes doesn't.
+let clicked = false;
 for (const entry of entries)
   entry.addEventListener("click", (event) => {
     // Not one opened elsewhere, which leaves the page where it is.
     if (event.button || event.metaKey || event.ctrlKey || event.shiftKey)
       return;
-    // The same fragment again moves no address, so no hashchange tells.
-    if (entry.hash === location.hash) follow();
+    clicked = true;
+    pin(entry);
   });
-addEventListener("hashchange", follow);
-addEventListener("load", follow);
+addEventListener("hashchange", () => {
+  if (!clicked) pin(remembered());
+});
+addEventListener("load", () => pin(remembered()));
 let queued = false;
 addEventListener(
   "scroll",

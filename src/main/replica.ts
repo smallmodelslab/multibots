@@ -99,14 +99,20 @@ const sameVersion = (a: Version, b: Version) =>
 
 // Where a file that came for a path whose file here is too large to go is
 // kept, beside it, named for the server it came from, and numbered after
-// the first, so none is written over.
+// the first, so none is written over; its name cut short to fit the 255
+// bytes file systems allow, with room for a write's ".tmp".
 const beside = (path: string, by: string, copy = 1) => {
   const folder = path.slice(0, path.lastIndexOf("/") + 1);
   const name = path.slice(folder.length);
   const dot = name.lastIndexOf(".");
-  const [stem, extension] =
+  let [stem, extension] =
     dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ""];
-  return `${folder}${stem} (from ${by.slice(0, 8)}${copy > 1 ? ` ${copy}` : ""})${extension}`;
+  const mark = ` (from ${by.slice(0, 8)}${copy > 1 ? ` ${copy}` : ""})`;
+  const room = () => Buffer.byteLength(`${stem}${mark}${extension}.tmp`);
+  while (room() > 255 && stem) stem = [...stem].slice(0, -1).join("");
+  while (room() > 255 && extension)
+    extension = [...extension].slice(0, -1).join("");
+  return `${folder}${stem}${mark}${extension}`;
 };
 
 export class Replica {
@@ -121,8 +127,10 @@ export class Replica {
   private readonly missed = new Set<string>();
   // The servers this one could not catch up with yet.
   private readonly uncaught = new Set<string>();
-  // The retry under way, which a later one waits for rather than repeats.
+  // The retry under way, which a later one waits for rather than repeats,
+  // and each server's handing of what it missed, one at a time.
   private retrying: Promise<void> | null = null;
+  private readonly handing = new Map<string, Promise<void>>();
   // This computer let its copies go: nothing changes them any more.
   private cleared = false;
 
@@ -193,6 +201,12 @@ export class Replica {
   has(botId: string, path: string) {
     const entry = this.manifests.get(botId)?.[path];
     return Boolean(entry && !("gone" in entry));
+  }
+
+  // Whether a file stays here for its size, so a copy of it never goes.
+  private async stays(botId: string, path: string) {
+    const info = await lstat(this.file(botId, path)).catch(absent);
+    return Boolean(info?.isFile() && info.size > largest);
   }
 
   // Whether a folder on the way to a file in a bot's folder is a link,
@@ -355,6 +369,9 @@ export class Replica {
               return false;
             }
             const copy = await this.copy(botId, path);
+            // Not there to go, unless it stays for its size: handed later.
+            if (!copy && !(await this.stays(botId, path)))
+              throw new Error("That file isn't there to send.");
             if (copy) await this.options.send(hostId, copy);
             return true;
           })
@@ -409,12 +426,13 @@ export class Replica {
   }
 
   // What changed in the bot's library and whiteboard since they were last
-  // looked at here, sent on to the other servers. A file grown too large
-  // to go keeps the version the others have.
+  // looked at here, sent on to the other servers, settling with how many
+  // files did. A file grown too large to go keeps the version the others
+  // have.
   async scan(botId: string) {
-    const { sent } = await this.change(botId, async () => {
+    const { changed, sent } = await this.change(botId, async () => {
       const manifest = this.manifests.get(botId) ?? {};
-      if (manifest[deleted]) return { sent: null };
+      if (manifest[deleted]) return { changed: 0, sent: null };
       const found = await this.walk(botId, scanned);
       const changed: string[] = [];
       for (const [path, info] of found) {
@@ -441,9 +459,10 @@ export class Replica {
           (await this.mine(botId, path, undefined, found.get(path) ?? null))
             .sent,
         );
-      return { sent: Promise.all(sending) };
+      return { changed: changed.length, sent: Promise.all(sending) };
     });
     await sent;
+    return changed ?? 0;
   }
 
   // A deleted bot leaves only what marks it deleted.
@@ -498,6 +517,9 @@ export class Replica {
       return;
     }
     if (!inFolder(path)) throw new Error("That is not a bot's file.");
+    // Nothing is written through a folder a link took the place of here,
+    // which this server counts as removed.
+    if (await this.linked(botId, path)) return;
     // A file here too large to go is its only copy: it stays, and counts
     // as the version sent, which goes beside it, so neither is lost.
     const here = await lstat(this.file(botId, path)).catch(absent);
@@ -614,11 +636,7 @@ export class Replica {
         const copy = await this.copy(botId, path);
         // A file listed that is not there to go, unless it stays here for
         // its size, may come back as it was: it goes next pass.
-        const stays =
-          !copy &&
-          ((await lstat(this.file(botId, path)).catch(absent))?.size ?? 0) >
-            largest;
-        if (copy ? !sameVersion(copy.v, v) : !stays) {
+        if (copy ? !sameVersion(copy.v, v) : !(await this.stays(botId, path))) {
           complete = false;
           if (path.includes("/")) short.add(botId);
           continue;
@@ -643,8 +661,20 @@ export class Replica {
 
   // Hands a server behind what it missed, again, a few times at most,
   // while copies made meanwhile skip it or files change on the way, then
-  // sends it copies again; else it is handed again next time.
-  private async handMissed(hostId: string) {
+  // sends it copies again; else it is handed again next time. One handing
+  // at a time per server, which alone lets its copies go again.
+  private handMissed(hostId: string) {
+    let handing = this.handing.get(hostId);
+    if (!handing) {
+      handing = this.handMissedNow(hostId).finally(() =>
+        this.handing.delete(hostId),
+      );
+      this.handing.set(hostId, handing);
+    }
+    return handing;
+  }
+
+  private async handMissedNow(hostId: string) {
     try {
       for (let pass = 0; pass < 5; pass += 1) {
         this.missed.delete(hostId);

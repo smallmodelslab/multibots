@@ -289,33 +289,18 @@ const chatCompletions = (id: string): LanguageModelMiddleware => ({
   },
 });
 
-// The context windows the models connected last said, by their ids in
-// Settings, for when their servers don't answer.
-const reported = new Map<string, number>();
-
 // The bots' model: the server's chat completions, with the context window
-// the user gave the model, else the one the server says it has now, else
-// the one it said last.
-export const ownChatModel = async (
+// the user gave the model, else the one its server said last.
+export const ownChatModel = (
   saved: OwnServer & {
     id: string;
     model: string;
     window: number | null;
     contextWindow: number | null;
   },
-  signal?: AbortSignal,
-): Promise<CallableModel> => {
-  const said = saved.window
-    ? null
-    : (await listServedModels(saved, signal).catch(() => [])).find(
-        ({ id }) => id === saved.model,
-      )?.contextWindow;
-  if (said) reported.set(saved.id, said);
+): CallableModel => {
   const contextWindow =
-    saved.window ??
-    reported.get(saved.id) ??
-    saved.contextWindow ??
-    defaultContextWindow;
+    saved.window ?? saved.contextWindow ?? defaultContextWindow;
   return {
     about: `${saved.model}, a model the user hosts`,
     contextWindow,

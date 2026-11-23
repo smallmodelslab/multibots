@@ -515,33 +515,44 @@ const start = async () => {
     computer = null;
     hostChanged();
     // What the bots' shells left running wrote since the last scan goes
-    // too; a bot whose files can't be read keeps them here.
+    // too: handed, then looked for again, until a look finds nothing new,
+    // a few times at most. A bot whose files can't be read keeps them here.
     let unread: unknown = null;
-    for (const botId of replica.ids())
-      await replica.scan(botId).catch((error: unknown) => {
-        unread ??= error;
-      });
+    const scanAll = async () => {
+      let changed = 0;
+      for (const botId of replica.ids())
+        changed += await replica.scan(botId).catch((error: unknown) => {
+          unread ??= error;
+          return 0;
+        });
+      return changed;
+    };
     let kept = !replica.ids().length;
-    // Handed again while files change on the way, a few times.
-    if (unread === null)
+    let settled = kept;
+    await scanAll();
+    for (let pass = 0; pass < 3 && unread === null && !settled; pass += 1) {
+      kept = false;
       for (const { id } of peers.servers())
-        for (let pass = 0; pass < 3; pass += 1)
-          if (await replica.hand(id).catch(() => false)) {
-            kept = true;
-            break;
-          }
-    const left = kept && unread === null ? await replica.large() : [];
-    if (unread !== null || !kept || left.length) {
+        if (await replica.hand(id).catch(() => false)) kept = true;
+      if (!kept) break;
+      settled = (await scanAll()) === 0;
+    }
+    const left = settled && unread === null ? await replica.large() : [];
+    if (unread !== null || !settled || left.length) {
       await startServer();
       throw unread !== null
         ? new Error(
             `Your bots' files couldn't all be read, so this computer keeps them: ${unread instanceof Error ? unread.message : String(unread)}`,
           )
-        : kept
-          ? tooLarge(left)
-          : new Error(
+        : !kept
+          ? new Error(
               "Turn on server mode on another of your computers first, so it keeps your bots.",
-            );
+            )
+          : !settled
+            ? new Error(
+                "Your bots' files kept changing as they were handed over. Try again once what their shells started has stopped.",
+              )
+            : tooLarge(left);
     }
     await replica.clear();
   };
