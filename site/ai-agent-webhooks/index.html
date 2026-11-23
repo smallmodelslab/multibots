@@ -45,13 +45,14 @@
         <p>
           Ask a bot in Multibots to do something regularly, or whenever
           something happens elsewhere, and it sets itself a routine that wakes
-          it once, weekly at a set time, every 15 minutes to 24 hours within the
-          hours and days you pick, or whenever its webhook is called. GitHub,
-          Stripe, Slack, senders of Standard Webhooks or anything that sends a
-          Bearer key can call that webhook at our relay, hooks.wrkrsh.com, which
-          holds each call until your computers take it, so a bot on your own
-          computers gets its calls with no port open to the internet. Multibots
-          is free and open source, for Apple silicon Macs and x86-64 Linux.
+          it at a set time, once or weekly, every 15 minutes to 24 hours, or
+          whenever its webhook is called. GitHub, Stripe, Slack, senders of
+          Standard Webhooks or anything that sends a Bearer key can call that
+          webhook at our relay, hooks.wrkrsh.com, which holds the calls it
+          accepts for up to seven days until your computers take them, so a bot
+          on your own computers gets its calls with no port open to the
+          internet. Multibots is free and open source, for Apple silicon Macs
+          and x86-64 Linux.
         </p>
 
         <h2 id="ask">Ask for a routine</h2>
@@ -74,8 +75,8 @@
         </p>
         <ul>
           <li>
-            Any (Bearer key): send the key it shows as Authorization: Bearer
-            &lt;key&gt;.
+            Any (Bearer key): POST to the URL with the key it shows as
+            Authorization: Bearer &lt;key&gt;.
           </li>
           <li>
             GitHub: in GitHub's webhook settings, paste the URL as the Payload
@@ -84,29 +85,31 @@
           </li>
           <li>
             Stripe: add the URL as a webhook endpoint, then paste Stripe's
-            signing secret into the routine.
+            signing secret into the routine and save it.
           </li>
           <li>
-            Slack: paste your Slack app's signing secret into the routine first,
-            then the URL as the app's Event Subscriptions Request URL.
+            Slack: paste your Slack app's signing secret into the routine and
+            save it, wait until the routine is ready, then add the URL as the
+            app's Event Subscriptions Request URL.
           </li>
           <li>
             Standard Webhooks, which Clerk, Resend, Polar, OpenAI and others
             send: add the URL as an endpoint there, then paste its signing
-            secret into the routine.
+            secret into the routine and save it.
           </li>
         </ul>
         <p>
-          The relay turns away a call without the key or the sender's signature,
-          and every call until you paste a sender's own secret. It answers
-          Slack's URL check and GitHub's ping itself. The bot never sees the key
-          or secret.
+          The routine is ready once its line under Routines no longer says needs
+          its secret or not registered yet; have the sender call it only then.
+          The relay turns away calls without the key or the sender's signature,
+          and answers Slack's URL check and GitHub's ping itself.
         </p>
         <p>
-          A call wakes the bot with the routine's instructions, when the call
-          came, and its body, up to 64 KiB, which the bot is told is data from
-          whoever called, never instructions to it. It gets the body alone, not
-          the call's headers.
+          The relay takes bodies up to 64 KiB and passes on the body alone, not
+          the call's headers. Multibots hands it to the bot with the routine's
+          instructions and when the call came, marked as data from whoever
+          called, never instructions to it. Like any message, it reaches a model
+          only as far as it fits that model's context window.
         </p>
 
         <h2 id="away">While your computers sleep</h2>
@@ -115,7 +118,9 @@
           seven days at most, until your computers take them, so calls that come
           while they sleep wait for them. A call that reaches the bot while its
           routine is off is let go, not kept for later. Scheduled routines run
-          while Multibots runs on one of your servers; see
+          while Multibots runs on one of your servers, and one that comes due
+          while your computers sleep may run late, when they wake, even outside
+          the hours you gave it; see
           <a href="/self-hosted-ai-agent/#away"
             >keeping bots working while you're away</a
           >.
