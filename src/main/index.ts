@@ -533,7 +533,7 @@ const start = async () => {
     for (let pass = 0; pass < 3 && unread === null && !settled; pass += 1) {
       kept = false;
       for (const { id } of peers.servers())
-        if (await replica.hand(id).catch(() => false)) kept = true;
+        if ((await replica.hand(id).catch(() => null))?.size === 0) kept = true;
       if (!kept) break;
       settled = (await scanAll()) === 0;
     }

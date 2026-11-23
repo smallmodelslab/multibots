@@ -183,7 +183,12 @@ const ownCall = async ({
   update({ live: true });
 
   let playing = Promise.resolve();
-  onDrain(() => playing);
+  // A clip on its way when the call ends there plays too.
+  let listening: Promise<unknown> = Promise.resolve();
+  onDrain(async () => {
+    await listening.catch(() => {});
+    await playing;
+  });
   let speaking = false;
   const play = async (clip: { audio: string; type: string }) => {
     if (ended) return;
@@ -207,11 +212,13 @@ const ownCall = async ({
   };
   void (async () => {
     while (!ended) {
-      const heard = await call({
+      const asked = call({
         botId: bot.id,
         callId: id,
         type: "voice.listen",
-      }).catch(async () => {
+      });
+      listening = asked;
+      const heard = await asked.catch(async () => {
         await new Promise((done) => setTimeout(done, 2_000));
         return null;
       });

@@ -7,6 +7,7 @@ import {
   readFile,
   rename,
   rm,
+  rmdir,
   writeFile,
 } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
@@ -89,12 +90,12 @@ const absent = (error: NodeJS.ErrnoException) => {
   throw error;
 };
 
-// Whether a folder holds anything but folders, at any depth.
-const holdsFiles = async (dir: string): Promise<boolean> => {
+// Removes a folder that holds only folders, deepest first, one at a time,
+// so one that holds a file, even one made meanwhile, fails it.
+const removeFolders = async (dir: string) => {
   for (const entry of await readdir(dir, { withFileTypes: true }))
-    if (!entry.isDirectory() || (await holdsFiles(join(dir, entry.name))))
-      return true;
-  return false;
+    if (entry.isDirectory()) await removeFolders(join(dir, entry.name));
+  await rmdir(dir);
 };
 
 // A file's bytes, not through a link put in its place.
@@ -130,10 +131,12 @@ export class Replica {
   private readonly queues = new Map<string, Promise<unknown>>();
   // Each bot's changes, made in order.
   private readonly changes = new Map<string, Promise<unknown>>();
-  // The servers a copy failed to reach, handed what they missed later and
-  // sent no copy until then, and those a copy skipped meanwhile.
-  private readonly behind = new Set<string>();
-  private readonly missed = new Set<string>();
+  // The servers a copy failed to reach, by the bots whose copies they
+  // missed ("*" for all, as for a server back online), handed what they
+  // missed later and sent no copy of those bots until then; and the bots
+  // whose copies skipped or failed them meanwhile.
+  private readonly behind = new Map<string, Set<string>>();
+  private readonly missed = new Map<string, Set<string>>();
   // The servers this one could not catch up with yet.
   private readonly uncaught = new Set<string>();
   // The retry under way, which a later one waits for rather than repeats,
@@ -167,6 +170,15 @@ export class Replica {
       merge: (path: string, older: string, newer: string) => string | null;
     },
   ) {}
+
+  private behindOn(hostId: string, botId: string) {
+    const bots = this.behind.get(hostId);
+    return Boolean(bots && (bots.has("*") || bots.has(botId)));
+  }
+
+  private note(noted: Map<string, Set<string>>, hostId: string, botId: string) {
+    noted.set(hostId, new Set(noted.get(hostId)).add(botId));
+  }
 
   private file(botId: string, path = "") {
     return join(this.options.dir, botId, ...path.split("/"));
@@ -367,11 +379,8 @@ export class Replica {
       await writeFile(written, bytes);
       // A folder the file took the place of goes once it holds no files,
       // only folders they left.
-      if ((await lstat(file).catch(absent))?.isDirectory()) {
-        if (await holdsFiles(file))
-          throw new Error(`${path} is a folder with files on this server.`);
-        await rm(file, { force: true, recursive: true });
-      }
+      if ((await lstat(file).catch(absent))?.isDirectory())
+        await removeFolders(file);
       await rename(written, file);
     } finally {
       await rm(written, { force: true });
@@ -380,8 +389,9 @@ export class Replica {
 
   // Sends a file as it was just written to every other server, settling
   // with whether each has it. Called while the change is made, so each
-  // server gets the changes in the order they were made; one a copy failed
-  // to reach gets none after it until it is handed what it missed. The
+  // server gets the changes in the order they were made; one a copy of a
+  // bot failed to reach gets none of that bot after it until it is handed
+  // what it missed. The
   // file goes as it is when its turn comes, with the version it has then,
   // so at most one waits in memory for each server.
   private send(botId: string, path: string) {
@@ -390,8 +400,8 @@ export class Replica {
         const sent = (this.queues.get(hostId) ?? Promise.resolve())
           .catch(() => {})
           .then(async () => {
-            if (this.behind.has(hostId)) {
-              this.missed.add(hostId);
+            if (this.behindOn(hostId, botId)) {
+              this.note(this.missed, hostId, botId);
               return false;
             }
             const copy = await this.copy(botId, path);
@@ -402,7 +412,8 @@ export class Replica {
             return true;
           })
           .catch(() => {
-            this.behind.add(hostId);
+            this.note(this.behind, hostId, botId);
+            this.note(this.missed, hostId, botId);
             return false;
           });
         this.queues.set(hostId, sent);
@@ -647,8 +658,8 @@ export class Replica {
 
   // Sends another server what it has older than here, each bot's library
   // before its own files: what a copy failed to bring it, or every bot
-  // before this computer lets its copies go. Settles with whether it sent
-  // all it listed, as no file changed on the way.
+  // before this computer lets its copies go. Settles with the bots it did
+  // not send all it listed of, none when it did.
   async hand(hostId: string) {
     const theirs = await this.options.manifest(hostId);
     const older = [...this.manifests]
@@ -667,12 +678,10 @@ export class Replica {
       .sort(
         (a, b) => byFolder(a.path, b.path) || Number(b.gone) - Number(a.gone),
       );
-    const failures: unknown[] = [];
     // A file written since the list was made waits for the next pass, as
     // it may refer to library files this one leaves out; a bot whose
     // library did not all go sends none of its own files this time.
     const short = new Set<string>();
-    let complete = true;
     for (const { botId, path, v } of older)
       try {
         if (!path.includes("/") && short.has(botId)) continue;
@@ -680,24 +689,21 @@ export class Replica {
         // A file listed that is not there to go, unless it stays here for
         // its size, may come back as it was: it goes next pass.
         if (copy ? !sameVersion(copy.v, v) : !(await this.stays(botId, path))) {
-          complete = false;
-          if (path.includes("/")) short.add(botId);
+          short.add(botId);
           continue;
         }
         if (copy) await this.options.send(hostId, copy);
-      } catch (error) {
-        failures.push(error);
-        if (path.includes("/")) short.add(botId);
+      } catch {
+        short.add(botId);
       }
-    if (failures.length) throw failures[0];
-    return complete;
+    return short;
   }
 
   // Another server is online again, or for the first time: each takes
   // what the other wrote while they could not reach each other. Copies
   // made meanwhile wait for the handing, so none overtakes what it missed.
   async meet(hostId: string) {
-    this.behind.add(hostId);
+    this.behind.set(hostId, new Set(["*"]));
     await this.catchUp(hostId);
     await this.handMissed(hostId);
   }
@@ -705,7 +711,8 @@ export class Replica {
   // Hands a server behind what it missed, again, a few times at most,
   // while copies made meanwhile skip it or files change on the way, then
   // sends it copies again; else it is handed again next time. One handing
-  // at a time per server, which alone lets its copies go again.
+  // at a time per server, which alone lets copies of its bots go again,
+  // those it handed all of.
   private handMissed(hostId: string) {
     let handing = this.handing.get(hostId);
     if (!handing) {
@@ -721,10 +728,13 @@ export class Replica {
     try {
       for (let pass = 0; pass < 5; pass += 1) {
         this.missed.delete(hostId);
-        if ((await this.hand(hostId)) && !this.missed.has(hostId)) {
+        const short = await this.hand(hostId);
+        for (const botId of this.missed.get(hostId) ?? []) short.add(botId);
+        if (!short.size) {
           this.behind.delete(hostId);
           return;
         }
+        this.behind.set(hostId, short);
       }
     } catch {
       // Handed again next time.
@@ -742,7 +752,7 @@ export class Replica {
 
   private async retryAll() {
     const online = new Set(this.options.servers());
-    for (const hostId of [...this.behind])
+    for (const hostId of [...this.behind.keys()])
       if (online.has(hostId)) await this.handMissed(hostId);
     for (const hostId of [...this.uncaught])
       if (online.has(hostId)) await this.catchUp(hostId);
