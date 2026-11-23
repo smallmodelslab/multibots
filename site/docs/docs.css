@@ -186,6 +186,14 @@ article a {
   text-underline-offset: 0.18em;
 }
 
+article a:hover {
+  text-decoration-thickness: 2px;
+}
+
+article a:active {
+  color: var(--muted);
+}
+
 pre {
   margin: 0 0 1rem;
   overflow-x: auto;
