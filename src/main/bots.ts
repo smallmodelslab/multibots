@@ -1456,6 +1456,10 @@ export class Bots {
     // Not running now: what reached the bot is kept for whoever runs it.
     if (this.closed || !this.started)
       return (await this.save(botId, bot)).reached;
+    // Kept where it is for a server with a model, once it has what it
+    // missed.
+    if (this.placement(botId, bot) === "later")
+      return (await this.save(botId, bot)).reached;
     // Not to a server copies of the bot wait to reach, which would not
     // hear it holds it.
     const servers = this.options
@@ -1470,17 +1474,15 @@ export class Bots {
     );
     const target = least?.id ?? this.options.hostId;
     if (target === this.options.hostId) {
-      // Kept for a server with a model, once it has what it missed.
-      if (this.placement(botId, bot) === "later")
-        return (await this.save(botId, bot)).reached;
       const reached = await this.hold(botId, bot);
       if (!bot.working) this.run(botId, bot);
       return reached;
     }
     this.handTo(bot, target);
-    const { reached } = await this.save(botId, bot);
-    // That server missed it, as a copy before it failed: back here.
-    if (this.options.replica.behindOn(target, botId)) {
+    const { reached, skipped } = await this.save(botId, bot);
+    // That server surely didn't get it, skipped as a copy before failed:
+    // back here. One that failed on its way may have arrived, and runs.
+    if (skipped.includes(target)) {
       this.handTo(bot, this.options.hostId);
       const back = await this.save(botId, bot);
       this.listen();
@@ -1621,13 +1623,14 @@ export class Bots {
           bot.held === this.options.hostId &&
           (bot.reading || bot.inbox.length)
         ) {
+          // Given straight to that server, in one write; or kept here,
+          // waiting for one with a model to have what it missed.
           const where = this.placement(botId, bot);
           if (where === "here") this.run(botId, bot);
-          // Given straight to that server, in one write.
           else if (where === "there") {
             await this.place(botId, bot);
             this.options.onRunning();
-          } else await this.release(botId, bot);
+          }
         } else await this.release(botId, bot);
       });
     }

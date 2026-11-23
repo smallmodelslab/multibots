@@ -407,15 +407,18 @@ export class Replica {
   // what it missed. The
   // file goes as it is when its turn comes, with the version it has then,
   // so at most one waits in memory for each server.
+  // Settles with whether every server has it, and the servers it surely
+  // did not go to, skipped while they wait to be handed what they missed;
+  // a copy that failed on its way may have arrived.
   private send(botId: string, path: string) {
     return Promise.all(
       this.options.servers().map((hostId) => {
         const sent = (this.queues.get(hostId) ?? Promise.resolve())
           .catch(() => {})
-          .then(async () => {
+          .then(async (): Promise<"reached" | "skipped" | "missed"> => {
             if (this.behindOn(hostId, botId)) {
               this.note(this.missed, hostId, botId);
-              return false;
+              return "skipped";
             }
             const copy = await this.copy(botId, path);
             // Not there to go, unless it stays for its size: handed later.
@@ -423,20 +426,25 @@ export class Replica {
             if (!copy) {
               if (!(await this.stays(botId, path)))
                 throw new Error("That file isn't there to send.");
-              return path.includes("/");
+              return path.includes("/") ? "reached" : "missed";
             }
             await this.options.send(hostId, copy);
-            return true;
+            return "reached";
           })
           .catch(() => {
             this.note(this.behind, hostId, botId);
             this.note(this.missed, hostId, botId);
-            return false;
+            return "missed" as const;
           });
         this.queues.set(hostId, sent);
-        return sent;
+        return sent.then((result) => ({ hostId, result }));
       }),
-    ).then((reached) => reached.every(Boolean));
+    ).then((results) => ({
+      reached: results.every(({ result }) => result === "reached"),
+      skipped: results
+        .filter(({ result }) => result === "skipped")
+        .map(({ hostId }) => hostId),
+    }));
   }
 
   // A file written here, recorded as a new version of it, on its way to
@@ -455,7 +463,8 @@ export class Replica {
   // Writes one of a bot's files, as JSON, this server being its writer:
   // the data `value` gives when the change is made, in its term, or nothing
   // when it gives nothing or the bot was deleted meanwhile. Settles with
-  // whether it wrote, and whether every other server online has it.
+  // whether it wrote, whether every other server online has it, and those
+  // it surely did not go to.
   async write(
     botId: string,
     path: string,
@@ -475,8 +484,8 @@ export class Replica {
       return this.mine(botId, path, made.term);
     });
     return sent === null
-      ? { reached: false, wrote: false }
-      : { reached: await sent, wrote: true };
+      ? { reached: false, skipped: [] as string[], wrote: false }
+      : { ...(await sent), wrote: true };
   }
 
   // What changed in the bot's library and whiteboard since they were last

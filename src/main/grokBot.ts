@@ -43,10 +43,9 @@ const base32 = (encoded: string) => {
 // colour; none without Grok Bot.
 export const localGrokBots = async (appData: string): Promise<GrokRecipe[]> => {
   const dir = join(appData, "Grok Bot", "sand-client-persistence");
-  // Each bot once, and bots that say the same as many times as the account
-  // with the most of them has them: each in another account is one of
-  // those.
-  const seen = new Set<string>();
+  // Each bot of an account once, and bots that say the same as many times
+  // as the account with the most of them has them: each in another account
+  // is one of those.
   const shown = new Map<string, number>();
   const recipes: GrokRecipe[] = [];
   for (const file of await readdir(dir).catch(() => [])) {
@@ -58,9 +57,10 @@ export const localGrokBots = async (appData: string): Promise<GrokRecipe[]> => {
         .catch(() => null),
     );
     const here = new Map<string, number>();
+    const seenHere = new Set<string>();
     for (const row of roster.data?.value.rows ?? []) {
-      if (row.isGroup || seen.has(row.id) || !row.name.trim()) continue;
-      seen.add(row.id);
+      if (row.isGroup || seenHere.has(row.id) || !row.name.trim()) continue;
+      seenHere.add(row.id);
       const same = JSON.stringify([row.name.trim(), row.description.trim()]);
       const count = (here.get(same) ?? 0) + 1;
       here.set(same, count);

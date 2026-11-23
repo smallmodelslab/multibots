@@ -66,6 +66,10 @@ export class OwnModels {
   // takes.
   private readonly connecting = new Map<string, AbortController>();
   private readonly unsettled = new Set<string>();
+  // How many context-window lookups began for each model, and the newest
+  // whose answer counted, so an older answer coming late is let go.
+  private readonly asked = new Map<string, number>();
+  private readonly heard = new Map<string, number>();
 
   constructor(
     private readonly file: string,
@@ -191,9 +195,14 @@ export class OwnModels {
   async chatModel(model: OwnModel, signal?: AbortSignal) {
     // Models saved before a window could be given have none.
     if (model.window) return ownChatModel(model);
-    const said = (await listServedModels(model, signal).catch(() => [])).find(
+    const lookup = (this.asked.get(model.id) ?? 0) + 1;
+    this.asked.set(model.id, lookup);
+    const answer = (await listServedModels(model, signal).catch(() => [])).find(
       ({ id }) => id === model.model,
     )?.contextWindow;
+    const said =
+      answer && lookup > (this.heard.get(model.id) ?? 0) ? answer : undefined;
+    if (said) this.heard.set(model.id, lookup);
     // As saved now, which another run may have changed since.
     const latest =
       this.lists.bots.find(
