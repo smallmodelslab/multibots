@@ -355,8 +355,12 @@ export class Replica {
       dirname(file),
       `.${randomBytes(6).toString("hex")}.tmp`,
     );
-    await writeFile(written, bytes);
-    await rename(written, file);
+    try {
+      await writeFile(written, bytes);
+      await rename(written, file);
+    } finally {
+      await rm(written, { force: true });
+    }
   }
 
   // Sends a file as it was just written to every other server, settling

@@ -61,8 +61,11 @@ const listOf = (kind: OwnModelKind): ModelList =>
 // connects its own.
 export class OwnModels {
   private lists: Lists = { bots: ["chatgpt"], voice: ["chatgpt"] };
-  // What stops each connection being checked, by the window's attempt.
+  // What stops each connection being checked, by the window's attempt, and
+  // the models kept but not yet past their cancellation, which no run
+  // takes.
   private readonly connecting = new Map<string, AbortController>();
+  private readonly unsettled = new Set<string>();
 
   constructor(
     private readonly file: string,
@@ -122,11 +125,19 @@ export class OwnModels {
           : { ...saved, kind };
       stop.signal.throwIfAborted();
       const list = listOf(kind);
-      await this.save({ ...this.lists, [list]: [...this.lists[list], model] });
-      // Cancelled while it was saved: let go again.
-      if (stop.signal.aborted) {
-        await this.disconnect(model.id);
-        throw stop.signal.reason;
+      this.unsettled.add(model.id);
+      try {
+        await this.save({
+          ...this.lists,
+          [list]: [...this.lists[list], model],
+        });
+        // Cancelled while it was saved: let go again.
+        if (stop.signal.aborted) {
+          await this.disconnect(model.id);
+          throw stop.signal.reason;
+        }
+      } finally {
+        this.unsettled.delete(model.id);
       }
       return model.id;
     } finally {
@@ -166,8 +177,11 @@ export class OwnModels {
 
   // The bots' models, in the order they try them.
   bots() {
-    return this.lists.bots;
+    return this.lists.bots.filter(this.settled);
   }
+
+  private readonly settled = (entry: Entry) =>
+    entry === "chatgpt" || !this.unsettled.has(entry.id);
 
   // A chat model of the user's for a run: with the context window they
   // gave it, else the one its server says now, saved when it changes for
@@ -192,7 +206,7 @@ export class OwnModels {
   // What voice chats run on, in the user's order: ChatGPT's voice while
   // signed in, and the user's models once there is one of each kind.
   voice(signedIn: boolean) {
-    const { voice } = this.lists;
+    const voice = this.lists.voice.filter(this.settled);
     const transcription = voice.filter(
       (entry): entry is OwnModel =>
         entry !== "chatgpt" && entry.kind === "transcription",

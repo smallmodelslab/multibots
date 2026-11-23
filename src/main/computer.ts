@@ -453,9 +453,9 @@ export class Computer {
   }
 
   // Ends Multibots' own desktop, which closing its stdin does.
+  // Kept as the desktop until it has ended, so no other starts meanwhile.
   private stop() {
     this.desktop?.stdin?.end();
-    this.desktop = null;
   }
 
   private socket(config: string) {

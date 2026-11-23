@@ -1266,26 +1266,28 @@ export class Bots {
         // Another server writes the bot now: the relay sends it there.
         if (!this.mine(botId))
           throw new Error("Another server writes this bot now.");
-        const routine = bot.routines.find((each) => each.id === routineId);
-        if (!routine?.enabled) return Promise.resolve();
-        return this.takeRequest(botId, bot, routine, body, at, id);
+        return this.takeRequest(botId, bot, routineId, body, at, id);
       });
     }
   }
 
+  // One taken before goes to every server however its routine is now; a
+  // new one only while its routine is on.
   private async takeRequest(
     botId: string,
     bot: Record,
-    routine: Routine,
+    routineId: string,
     body: string,
     at: number,
     id: number,
   ) {
-    const taken = bot.taken[routine.id];
+    const taken = bot.taken[routineId];
     if (taken && (at < taken[0] || (at === taken[0] && id <= taken[1]))) {
       if (!(await this.save(botId, bot)).reached) throw new Error(unreached);
       return;
     }
+    const routine = bot.routines.find((each) => each.id === routineId);
+    if (!routine?.enabled) return;
     bot.taken[routine.id] = [at, id];
     const reached = await this.wake(
       botId,
