@@ -514,22 +514,34 @@ const start = async () => {
     computer?.close();
     computer = null;
     hostChanged();
+    // What the bots' shells left running wrote since the last scan goes
+    // too; a bot whose files can't be read keeps them here.
+    let unread: unknown = null;
+    for (const botId of replica.ids())
+      await replica.scan(botId).catch((error: unknown) => {
+        unread ??= error;
+      });
     let kept = !replica.ids().length;
     // Handed again while files change on the way, a few times.
-    for (const { id } of peers.servers())
-      for (let pass = 0; pass < 3; pass += 1)
-        if (await replica.hand(id).catch(() => false)) {
-          kept = true;
-          break;
-        }
-    const left = kept ? await replica.large() : [];
-    if (!kept || left.length) {
+    if (unread === null)
+      for (const { id } of peers.servers())
+        for (let pass = 0; pass < 3; pass += 1)
+          if (await replica.hand(id).catch(() => false)) {
+            kept = true;
+            break;
+          }
+    const left = kept && unread === null ? await replica.large() : [];
+    if (unread !== null || !kept || left.length) {
       await startServer();
-      throw kept
-        ? tooLarge(left)
-        : new Error(
-            "Turn on server mode on another of your computers first, so it keeps your bots.",
-          );
+      throw unread !== null
+        ? new Error(
+            `Your bots' files couldn't all be read, so this computer keeps them: ${unread instanceof Error ? unread.message : String(unread)}`,
+          )
+        : kept
+          ? tooLarge(left)
+          : new Error(
+              "Turn on server mode on another of your computers first, so it keeps your bots.",
+            );
     }
     await replica.clear();
   };

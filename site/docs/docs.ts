@@ -51,11 +51,19 @@ function mark() {
 }
 // The entry for the address's fragment, followed once the jump to it has
 // landed, the frame after: when an entry is followed, its fragment is
-// arrived at by Back or Forward, or the page opens at it.
+// arrived at by Back or Forward, or the page opens at it. Only where the
+// page shows its heading at the top, or as near it as the page's end lets
+// it come; Back can bring back a place the reader scrolled to instead.
 const follow = () => {
-  const entry = entries.find(({ hash }) => hash && hash === location.hash);
+  const index = entries.findIndex(({ hash }) => hash && hash === location.hash);
   requestAnimationFrame(() => {
-    followed = entry ? { at: scrollY, entry } : null;
+    const top = headings[index]?.getBoundingClientRect().top;
+    const end =
+      innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
+    followed =
+      top !== undefined && top >= -2 && (top <= 80 || end)
+        ? { at: scrollY, entry: entries[index]! }
+        : null;
     mark();
   });
 };

@@ -117,8 +117,10 @@ const ConnectForm = ({ onClose }: { onClose: () => void }) => {
   const [contextWindow, setContextWindow] = useState("");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  // The check under way, which Cancel stops.
+  // The check under way, which Cancel stops; it takes the focus meanwhile,
+  // as the fields go disabled, so Escape still reaches the form.
   const attempt = useRef<string | null>(null);
+  const cancelButton = useRef<HTMLButtonElement>(null);
   const served = useServedModels(address, key);
   const models = served.map(({ id }) => id);
   const reported = served.find(
@@ -130,6 +132,7 @@ const ConnectForm = ({ onClose }: { onClose: () => void }) => {
     const checking = crypto.randomUUID();
     attempt.current = checking;
     setBusy(true);
+    cancelButton.current?.focus();
     setProblem(null);
     bridge
       .connectModel(
@@ -265,7 +268,13 @@ const ConnectForm = ({ onClose }: { onClose: () => void }) => {
         </p>
       ) : null}
       <div className="flex justify-end gap-1.5">
-        <Button onClick={cancel} size="sm" type="button" variant="ghost">
+        <Button
+          onClick={cancel}
+          ref={cancelButton}
+          size="sm"
+          type="button"
+          variant="ghost"
+        >
           Cancel
         </Button>
         <Button disabled={busy || !address.trim()} size="sm" type="submit">

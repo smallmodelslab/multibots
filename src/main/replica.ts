@@ -98,14 +98,15 @@ const sameVersion = (a: Version, b: Version) =>
   a[0] === b[0] && a[1] === b[1] && (a[2] ?? 0) === (b[2] ?? 0);
 
 // Where a file that came for a path whose file here is too large to go is
-// kept, beside it, named for the server it came from.
-const beside = (path: string, by: string) => {
+// kept, beside it, named for the server it came from, and numbered after
+// the first, so none is written over.
+const beside = (path: string, by: string, copy = 1) => {
   const folder = path.slice(0, path.lastIndexOf("/") + 1);
   const name = path.slice(folder.length);
   const dot = name.lastIndexOf(".");
   const [stem, extension] =
     dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ""];
-  return `${folder}${stem} (from ${by.slice(0, 8)})${extension}`;
+  return `${folder}${stem} (from ${by.slice(0, 8)}${copy > 1 ? ` ${copy}` : ""})${extension}`;
 };
 
 export class Replica {
@@ -502,7 +503,14 @@ export class Replica {
     const here = await lstat(this.file(botId, path)).catch(absent);
     if (here?.isFile() && here.size > largest) {
       if (data !== null) {
-        const kept = beside(path, v[1]);
+        let kept = beside(path, v[1]);
+        for (let copy = 2; ; copy += 1) {
+          const taken =
+            this.has(botId, kept) ||
+            (await lstat(this.file(botId, kept)).catch(absent));
+          if (!taken) break;
+          kept = beside(path, v[1], copy);
+        }
         await this.put(botId, kept, data);
         void (await this.mine(botId, kept)).sent;
       }
@@ -604,7 +612,13 @@ export class Replica {
       try {
         if (!path.includes("/") && short.has(botId)) continue;
         const copy = await this.copy(botId, path);
-        if (copy && !sameVersion(copy.v, v)) {
+        // A file listed that is not there to go, unless it stays here for
+        // its size, may come back as it was: it goes next pass.
+        const stays =
+          !copy &&
+          ((await lstat(this.file(botId, path)).catch(absent))?.size ?? 0) >
+            largest;
+        if (copy ? !sameVersion(copy.v, v) : !stays) {
           complete = false;
           if (path.includes("/")) short.add(botId);
           continue;
@@ -619,23 +633,33 @@ export class Replica {
   }
 
   // Another server is online again, or for the first time: each takes
-  // what the other wrote while they could not reach each other.
+  // what the other wrote while they could not reach each other. Copies
+  // made meanwhile wait for the handing, so none overtakes what it missed.
   async meet(hostId: string) {
+    this.behind.add(hostId);
     await this.catchUp(hostId);
-    await this.hand(hostId).then(
-      (complete) => {
-        if (!complete) this.behind.add(hostId);
-      },
-      () => {
-        this.behind.add(hostId);
-      },
-    );
+    await this.handMissed(hostId);
+  }
+
+  // Hands a server behind what it missed, again, a few times at most,
+  // while copies made meanwhile skip it or files change on the way, then
+  // sends it copies again; else it is handed again next time.
+  private async handMissed(hostId: string) {
+    try {
+      for (let pass = 0; pass < 5; pass += 1) {
+        this.missed.delete(hostId);
+        if ((await this.hand(hostId)) && !this.missed.has(hostId)) {
+          this.behind.delete(hostId);
+          return;
+        }
+      }
+    } catch {
+      // Handed again next time.
+    }
   }
 
   // Tries again what failed: handing each server a copy failed to reach
-  // what it missed, again, a few times at most, while copies made meanwhile
-  // skip it or files change on the way, then sending it copies again; and
-  // catching up with those it could not.
+  // what it missed, and catching up with those it could not.
   retry() {
     this.retrying ??= this.retryAll().finally(() => {
       this.retrying = null;
@@ -646,18 +670,7 @@ export class Replica {
   private async retryAll() {
     const online = new Set(this.options.servers());
     for (const hostId of [...this.behind])
-      if (online.has(hostId))
-        try {
-          for (let pass = 0; pass < 5; pass += 1) {
-            this.missed.delete(hostId);
-            if ((await this.hand(hostId)) && !this.missed.has(hostId)) {
-              this.behind.delete(hostId);
-              break;
-            }
-          }
-        } catch {
-          // Handed again next time.
-        }
+      if (online.has(hostId)) await this.handMissed(hostId);
     for (const hostId of [...this.uncaught])
       if (online.has(hostId)) await this.catchUp(hostId);
   }

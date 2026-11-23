@@ -109,7 +109,14 @@ const AboutHint = ({
   const [focused, setFocused] = useState(false);
   if (!about) return children;
   return (
-    <Tooltip onOpenChange={setHovered} open={hovered || focused}>
+    <Tooltip
+      onOpenChange={(open) => {
+        setHovered(open);
+        // Dismissed, as with Escape: closed until focused again.
+        if (!open) setFocused(false);
+      }}
+      open={hovered || focused}
+    >
       <TooltipTrigger
         render={cloneElement(children, {
           onBlur: () => setFocused(false),

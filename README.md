@@ -185,7 +185,8 @@ detail:
   `/audio/voices` lists speaks in the server's own when it takes a call
   without one, as Ming's does, else in the first it lists or OpenAI's. A
   chat model's context window is the one the user gives it, else the one
-  its `/models` says at the start of each run, else 128K tokens. A model
+  its `/models` says at the start of each run, else the last it said,
+  else 128K tokens. A model
   that turns down a request for its images and takes it without them gets
   a note in each image's place from then on.
 - **Plugins** (`src/main/plugins.ts`) are the apps bots reach through

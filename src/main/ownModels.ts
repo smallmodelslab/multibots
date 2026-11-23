@@ -17,9 +17,10 @@ import { readSealed, writeSealed } from "./sealed";
 type Saved = OwnServer & {
   id: string;
   model: string;
-  // The context window the user gave a chat model, in tokens; null for the
-  // one its server says.
+  // The context window the user gave a chat model, in tokens, null for the
+  // one its server says; and the one it said when the model was added.
   window: number | null;
+  contextWindow: number | null;
 };
 export type SpeechModel = Saved & { kind: "speech" } & Awaited<
     ReturnType<typeof speechVoices>
@@ -106,7 +107,14 @@ export class OwnModels {
       const id = input.model.trim() || served[0]?.id;
       if (!id)
         throw new Error(`${new URL(server.baseUrl).host} serves no models.`);
-      const saved = { ...server, id: randomUUID(), model: id, window };
+      const saved = {
+        ...server,
+        contextWindow:
+          served.find((each) => each.id === id)?.contextWindow ?? null,
+        id: randomUUID(),
+        model: id,
+        window,
+      };
       const model: OwnModel =
         kind === "speech"
           ? { ...saved, kind, ...(await speechVoices(server, id, stop.signal)) }
