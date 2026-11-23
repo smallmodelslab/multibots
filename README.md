@@ -294,8 +294,8 @@ it. Its download buttons are wrkrsh.com's links to the current installers
 the app. Beside the install guide, a few pages each answer one question people
 ask search and answer engines. `site/public/llms.txt` sums Multibots up for
 the agents that read it, and is served for `/` to clients that ask for
-Markdown; the build makes the sitemap from the pages in `site/vite.config.ts`. The monorepo's CI deploys it on every
-merge.
+Markdown; the build makes the sitemap from the pages in `site/vite.config.ts`.
+The monorepo's CI deploys it on every merge.
 
 Released builds tell PostHog which features are used, whether they worked,
 and what failed (`src/main/analytics.ts`), unless the user turns it off under
