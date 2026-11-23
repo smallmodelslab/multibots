@@ -66,9 +66,13 @@ const header: Plugin = {
 const answer: Plugin = {
   name: "answer",
   transformIndexHtml(html) {
+    if (!html.includes("<article data-answer")) return;
     const page =
-      /<article data-answer>\s*<h1>(.*?)<\/h1>\s*<p>(.*?)<\/p>/s.exec(html);
-    if (!page) return;
+      /<article data-answer[^>]*>\s*<h1[^>]*>(.+?)<\/h1>\s*<p[^>]*>(.+?)<\/p>/s.exec(
+        html,
+      );
+    if (!page)
+      throw new Error("An answer page starts with its h1, then a paragraph.");
     const text = (fragment: string) => {
       const plain = fragment.replace(/\s+/g, " ").trim();
       if (/[<&]/.test(plain))

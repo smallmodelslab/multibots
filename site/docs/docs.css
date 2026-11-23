@@ -48,6 +48,11 @@
   color: var(--ink);
 }
 
+/* Pressed, a destination link dims before the page changes. */
+.pages a:active:not([aria-current]) {
+  color: var(--muted);
+}
+
 .pages a[aria-current] span:first-child {
   font-weight: 700;
   transform: scale(1.05);

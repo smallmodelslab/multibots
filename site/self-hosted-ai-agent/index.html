@@ -48,9 +48,9 @@
           model you host there. Each bot you make is an AI agent with its own
           conversation, files and shell on your computers, and routines that
           wake it on a schedule or when a webhook is called, so it keeps working
-          while you're away. Your laptop reaches it directly over Tailscale.
-          Multibots is free and open source, for Apple silicon Macs and x86-64
-          Linux, and your bots run on no server of ours.
+          while you're away. Your laptop reaches it over Tailscale. Multibots is
+          free and open source, for Apple silicon Macs and x86-64 Linux, and
+          your bots run on no server of ours.
         </p>
 
         <h2 id="where">What runs where</h2>
@@ -61,7 +61,8 @@
           ending in .tmp, symbolic links and files over 200 MB. A computer with
           server mode off keeps and runs no bots: it reaches the ones your
           servers run. Your computers find each other over Tailscale and copy
-          bots between them directly.
+          bots between them, end-to-end encrypted, with no server of ours in
+          between.
         </p>
         <p>
           A bot's work leaves them as what it sends its model, which is ChatGPT
@@ -92,7 +93,9 @@
         <h2 id="can-do">What a bot can do</h2>
         <ul>
           <li>Run any command in a shell on its computer, as you.</li>
-          <li>Search the web, when its run starts on ChatGPT.</li>
+          <li>
+            Use ChatGPT's built-in web search, when its run starts on ChatGPT.
+          </li>
           <li>
             See and use the screen through Multidesktop, and reach your other
             computers once you sign in to Multidesktop.
