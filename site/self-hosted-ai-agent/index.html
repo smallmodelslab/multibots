@@ -44,20 +44,20 @@
         <h1>How do I run an AI agent on my own computer, around the clock?</h1>
         <p>
           Install Multibots on a computer that stays on, such as a Mac mini or a
-          Linux desktop, and sign in to ChatGPT or connect a model you host.
-          Each bot you make is an AI agent with its own conversation, files and
-          shell on your computers, and routines that wake it on a schedule or
-          when a webhook is called, so it keeps working while you're away. Your
-          laptop reaches it directly over Tailscale. Multibots is free and open
-          source, for Apple silicon Macs and 64-bit Linux, and your bots run on
-          no server of ours.
+          Linux desktop, leave it running, and sign in to ChatGPT or connect a
+          model you host there. Each bot you make is an AI agent with its own
+          conversation, files and shell on your computers, and routines that
+          wake it on a schedule or when a webhook is called, so it keeps working
+          while you're away. Your laptop reaches it directly over Tailscale.
+          Multibots is free and open source, for Apple silicon Macs and x86-64
+          Linux, and your bots run on no server of ours.
         </p>
 
         <h2 id="where">What runs where</h2>
         <p>
           Every computer running Multibots is a server unless you turn that off:
           it keeps a copy of every bot, with its conversation, routines and
-          files, and runs them. Packages a bot installs and files over 200 MB
+          files, and runs them. Its node_modules folders and files over 200 MB
           stay on the server that has them. A computer with server mode off only
           shows the bots. Your computers find each other over Tailscale and copy
           bots between them directly.
@@ -79,11 +79,13 @@
           to do something regularly and it sets the routine itself.
         </p>
         <p>
-          Bots run while at least one of your servers is on. A laptop that
-          sleeps hands its bots to your other servers, which go on from each
-          run's last saved step. Each server signs in to ChatGPT or adds its
-          models for itself, so a desktop that stays on, with its own, keeps
-          them working.
+          Bots run while Multibots runs on at least one of your servers. On a
+          Mac it keeps running when you close its window; on Linux, closing the
+          last window quits it, so minimize it instead. A laptop that sleeps
+          hands its bots to your other servers, which go on from the last saved
+          step they received, so a step in flight may run again. Each server
+          signs in to ChatGPT or adds its models for itself, so a desktop that
+          stays on, with its own, keeps them working.
         </p>
 
         <h2 id="can-do">What a bot can do</h2>
