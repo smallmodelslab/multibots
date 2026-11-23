@@ -91,11 +91,12 @@
         <p>
           Add <a href="/local-models/">models you host</a>, or any provider with
           an OpenAI-style API that lists its models at /models and answers chat
-          completions, under Your models, and put them after ChatGPT in Order.
-          Each step of a run goes to the first of them that answers, so a run
-          that loses ChatGPT midway carries on with the next; one a run can't
-          reach at all sits out the rest of that run. To set it all up, follow
-          the <a href="/docs/">install guide</a>.
+          completions with tool calling, under Your models, and put them after
+          ChatGPT in Order. Each step of a run goes to the first of them that
+          answers, so a run that loses ChatGPT midway carries on with the next;
+          a model that can't be set up when a run first needs it, as when
+          ChatGPT can't list its models, sits out the rest of that run. To set
+          it all up, follow the <a href="/docs/">install guide</a>.
         </p>
       </article>
     </div>
