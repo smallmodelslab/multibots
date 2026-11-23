@@ -526,8 +526,22 @@ export class Bots {
   // What the bots this server writes are doing, those doing anything.
   statuses(): [string, Status][] {
     return [...this.bots]
-      .filter(([botId, bot]) => this.mine(botId) && (bot.working || bot.call))
+      .filter(
+        ([botId, bot]) =>
+          this.mine(botId) &&
+          (bot.working || bot.call || this.waits(botId, bot)),
+      )
       .map(([botId, bot]) => [botId, this.status(botId, bot)]);
+  }
+
+  // Whether the bot has something to read that waits for a server with a
+  // model to have what it missed of it.
+  private waits(botId: string, bot: Record) {
+    return (
+      !bot.working &&
+      Boolean(bot.reading || bot.inbox.length) &&
+      this.placement(botId, bot) === "later"
+    );
   }
 
   // Another server says what a bot it writes is doing.
@@ -684,7 +698,12 @@ export class Bots {
   private status(botId: string, bot: Record): Status {
     const writer = this.writer(botId);
     if (writer === this.options.hostId)
-      return { call: bot.call?.id ?? null, working: bot.working };
+      return {
+        call: bot.call?.id ?? null,
+        working:
+          bot.working ??
+          (this.waits(botId, bot) ? "Waiting for a server with a model" : null),
+      };
     const heard = this.heard.get(botId);
     return heard?.by === writer
       ? { call: heard.call, working: heard.working }
@@ -1479,17 +1498,7 @@ export class Bots {
       return reached;
     }
     this.handTo(bot, target);
-    const { reached, skipped } = await this.save(botId, bot);
-    // That server surely didn't get it, skipped as a copy before failed:
-    // back here. One that failed on its way may have arrived, and runs.
-    if (skipped.includes(target)) {
-      this.handTo(bot, this.options.hostId);
-      const back = await this.save(botId, bot);
-      this.listen();
-      this.options.onRunning();
-      if (!bot.working) this.run(botId, bot);
-      return back.reached;
-    }
+    const { reached } = await this.save(botId, bot);
     this.listen();
     this.options.onChange(botId);
     return reached;

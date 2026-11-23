@@ -407,18 +407,15 @@ export class Replica {
   // what it missed. The
   // file goes as it is when its turn comes, with the version it has then,
   // so at most one waits in memory for each server.
-  // Settles with whether every server has it, and the servers it surely
-  // did not go to, skipped while they wait to be handed what they missed;
-  // a copy that failed on its way may have arrived.
   private send(botId: string, path: string) {
     return Promise.all(
       this.options.servers().map((hostId) => {
         const sent = (this.queues.get(hostId) ?? Promise.resolve())
           .catch(() => {})
-          .then(async (): Promise<"reached" | "skipped" | "missed"> => {
+          .then(async () => {
             if (this.behindOn(hostId, botId)) {
               this.note(this.missed, hostId, botId);
-              return "skipped";
+              return false;
             }
             const copy = await this.copy(botId, path);
             // Not there to go, unless it stays for its size: handed later.
@@ -426,25 +423,20 @@ export class Replica {
             if (!copy) {
               if (!(await this.stays(botId, path)))
                 throw new Error("That file isn't there to send.");
-              return path.includes("/") ? "reached" : "missed";
+              return path.includes("/");
             }
             await this.options.send(hostId, copy);
-            return "reached";
+            return true;
           })
           .catch(() => {
             this.note(this.behind, hostId, botId);
             this.note(this.missed, hostId, botId);
-            return "missed" as const;
+            return false;
           });
         this.queues.set(hostId, sent);
-        return sent.then((result) => ({ hostId, result }));
+        return sent;
       }),
-    ).then((results) => ({
-      reached: results.every(({ result }) => result === "reached"),
-      skipped: results
-        .filter(({ result }) => result === "skipped")
-        .map(({ hostId }) => hostId),
-    }));
+    ).then((reached) => reached.every(Boolean));
   }
 
   // A file written here, recorded as a new version of it, on its way to
@@ -463,8 +455,7 @@ export class Replica {
   // Writes one of a bot's files, as JSON, this server being its writer:
   // the data `value` gives when the change is made, in its term, or nothing
   // when it gives nothing or the bot was deleted meanwhile. Settles with
-  // whether it wrote, whether every other server online has it, and those
-  // it surely did not go to.
+  // whether it wrote, and whether every other server online has it.
   async write(
     botId: string,
     path: string,
@@ -484,8 +475,8 @@ export class Replica {
       return this.mine(botId, path, made.term);
     });
     return sent === null
-      ? { reached: false, skipped: [] as string[], wrote: false }
-      : { ...(await sent), wrote: true };
+      ? { reached: false, wrote: false }
+      : { reached: await sent, wrote: true };
   }
 
   // What changed in the bot's library and whiteboard since they were last
@@ -497,7 +488,17 @@ export class Replica {
       const manifest = this.manifests.get(botId) ?? {};
       if (manifest[deleted]) return { changed: 0, sent: null };
       const found = await this.walk(botId, scanned);
+      // Removals first, so a file renamed only in its letters' case
+      // isn't removed after its new name on a server that doesn't tell
+      // them apart.
       const changed: string[] = [];
+      for (const [path, entry] of Object.entries(manifest))
+        if (
+          !("gone" in entry) &&
+          scanned.some((dir) => path.startsWith(`${dir}/`)) &&
+          !found.has(path)
+        )
+          changed.push(path);
       for (const [path, info] of found) {
         const entry = manifest[path];
         if (
@@ -509,13 +510,6 @@ export class Replica {
         )
           changed.push(path);
       }
-      for (const [path, entry] of Object.entries(manifest))
-        if (
-          !("gone" in entry) &&
-          scanned.some((dir) => path.startsWith(`${dir}/`)) &&
-          !found.has(path)
-        )
-          changed.push(path);
       const sending: Promise<unknown>[] = [];
       for (const path of changed)
         sending.push(
