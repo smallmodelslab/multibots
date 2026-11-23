@@ -310,7 +310,9 @@ const unreached =
 export class Bots {
   private readonly bots = new Map<string, Record>();
   // What the bots other servers write are doing, as those servers say.
-  private readonly heard = new Map<string, Status & { by: string }>();
+  // By bot, by the server saying it, as a server that held a bot before
+  // may still say so after the one holding it now.
+  private readonly heard = new Map<string, Map<string, Status>>();
   private timer: NodeJS.Timeout | null = null;
   private scanner: NodeJS.Timeout | null = null;
   // What each bot was last told to be doing.
@@ -514,8 +516,8 @@ export class Bots {
   // webhooks.
   serversChanged() {
     const online = new Set(this.options.servers().map(({ id }) => id));
-    for (const [botId, status] of this.heard)
-      if (!online.has(status.by)) this.heard.delete(botId);
+    for (const from of this.heard.values())
+      for (const by of [...from.keys()]) if (!online.has(by)) from.delete(by);
     if (!this.started) return;
     for (const [botId, bot] of this.bots)
       this.later(botId, async () => {
@@ -548,7 +550,7 @@ export class Bots {
 
   // Another server says what a bot it writes is doing.
   hear(from: string, botId: string, status: Status) {
-    this.heard.set(botId, { ...status, by: from });
+    this.heard.set(botId, new Map(this.heard.get(botId)).set(from, status));
   }
 
   // A file of a bot another server wrote is here now.
@@ -707,8 +709,8 @@ export class Bots {
           bot.working ??
           (this.waits(botId, bot) ? "Waiting for a server with a model" : null),
       };
-    const heard = this.heard.get(botId);
-    return heard?.by === writer
+    const heard = this.heard.get(botId)?.get(writer);
+    return heard
       ? { call: heard.call, working: heard.working }
       : { call: null, working: null };
   }
@@ -1593,7 +1595,9 @@ export class Bots {
   // The bot changed hands: what this server heard or told of what it was
   // doing is of the hands before, unless heard from those it went to.
   private moved(botId: string, to: string | null) {
-    if (this.heard.get(botId)?.by !== to) this.heard.delete(botId);
+    const heard = this.heard.get(botId)?.get(to ?? "");
+    if (heard && to) this.heard.set(botId, new Map([[to, heard]]));
+    else this.heard.delete(botId);
     this.shown.delete(botId);
   }
 

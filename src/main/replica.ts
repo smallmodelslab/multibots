@@ -641,8 +641,15 @@ export class Replica {
         void (await this.mine(botId, kept)).sent;
       }
       // A removal is recorded as one, for the other servers to have from
-      // here too; the file stays, as its size keeps it from going.
-      await this.record(botId, path, v, data === null ? null : undefined);
+      // here too; the file stays, as its size keeps it from going. So is a
+      // file of a name this one has only in another case, where case isn't
+      // told apart, which is kept beside it.
+      await this.record(
+        botId,
+        path,
+        v,
+        data === null || !(await this.spelled(botId, path)) ? null : undefined,
+      );
       return;
     }
     // What a write here lacks of an older one is kept, and sent back on:

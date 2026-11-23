@@ -439,7 +439,14 @@ export const Conversation = ({
     sender: message.role === "user" ? "user" : "bot",
     stamp: message.at - (messages[index - 1]?.at ?? 0) > stretchGapMs,
   }));
-  const offline = host && !host.model;
+  // Another server with a model runs what the bot is sent, though not in
+  // a voice chat, which stays with its server.
+  const hosts = useAppState()?.hosts ?? [];
+  const offline =
+    host &&
+    !host.model &&
+    (bot.call ||
+      !hosts.some((each) => each.online && each.server && each.model));
 
   return (
     <section
