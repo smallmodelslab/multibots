@@ -1302,8 +1302,13 @@ export class Bots {
       if (!(await this.save(botId, bot)).reached) throw new Error(unreached);
       return;
     }
-    if (!still) return;
+    // Let go, it counts as taken, so the relay sending it again, as after
+    // the answer was lost, doesn't run it either.
     bot.taken[routine.id] = [at, id];
+    if (!still) {
+      if (!(await this.save(botId, bot)).reached) throw new Error(unreached);
+      return;
+    }
     const reached = await this.wake(
       botId,
       bot,

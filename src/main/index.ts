@@ -467,7 +467,9 @@ const start = async () => {
     bots = made;
     await made.load();
     met = new Set(peers.servers().map(({ id }) => id));
-    await Promise.all([...met].map((id) => replica.catchUp(id)));
+    // Each server online takes what this one wrote while they were apart
+    // before any copy made since, as one coming online later does.
+    await Promise.all([...met].map((id) => replica.meet(id)));
     serving = true;
     made.start();
     hostChanged();

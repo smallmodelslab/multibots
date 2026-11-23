@@ -103,7 +103,10 @@ addEventListener(
 );
 // A window resized so the entry followed no longer shows lets it go.
 addEventListener("resize", () => {
-  if (followed && !shows(followed.entry)) followed = null;
+  if (followed && !shows(followed.entry)) {
+    followed = null;
+    history.replaceState({ followed: false }, "");
+  }
   mark();
 });
 mark();
