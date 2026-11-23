@@ -90,11 +90,17 @@ const absent = (error: NodeJS.ErrnoException) => {
   throw error;
 };
 
-// Removes a folder that holds only folders, deepest first, one at a time,
-// so one that holds a file, even one made meanwhile, fails it.
+// Removes a folder that holds only folders, and scratch no copy keeps,
+// deepest first, one at a time, so one that holds a file, even one made
+// meanwhile, fails it.
 const removeFolders = async (dir: string) => {
-  for (const entry of await readdir(dir, { withFileTypes: true }))
-    if (entry.isDirectory()) await removeFolders(join(dir, entry.name));
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory() && skipped.has(entry.name))
+      await rm(full, { force: true, recursive: true });
+    else if (entry.isDirectory()) await removeFolders(full);
+    else if (entry.name.endsWith(".tmp")) await rm(full, { force: true });
+  }
   await rmdir(dir);
 };
 
@@ -411,9 +417,13 @@ export class Replica {
             }
             const copy = await this.copy(botId, path);
             // Not there to go, unless it stays for its size: handed later.
-            if (!copy && !(await this.stays(botId, path)))
-              throw new Error("That file isn't there to send.");
-            if (copy) await this.options.send(hostId, copy);
+            // A bot's own file that stays reached no one.
+            if (!copy) {
+              if (!(await this.stays(botId, path)))
+                throw new Error("That file isn't there to send.");
+              return path.includes("/");
+            }
+            await this.options.send(hostId, copy);
             return true;
           })
           .catch(() => {

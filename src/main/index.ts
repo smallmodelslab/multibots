@@ -527,16 +527,22 @@ const start = async () => {
         });
       return changed;
     };
-    let kept = !replica.ids().length;
-    let settled = kept;
+    // With no bots, only what marks bots deleted is left, handed to the
+    // servers online when there are any, so none brings a bot back.
+    const empty = !replica.ids().length;
+    let kept = empty;
+    let settled = empty && !peers.servers().length;
     await scanAll();
     for (let pass = 0; pass < 3 && unread === null && !settled; pass += 1) {
-      kept = false;
+      let handed = false;
       for (const { id } of peers.servers())
-        if ((await replica.hand(id).catch(() => null))?.size === 0) kept = true;
-      if (!kept) break;
+        if ((await replica.hand(id).catch(() => null))?.size === 0)
+          handed = true;
+      if (!handed) break;
+      kept = true;
       settled = (await scanAll()) === 0;
     }
+    if (empty) settled = true;
     const left =
       settled && unread === null
         ? await replica.large().catch((error: unknown) => {

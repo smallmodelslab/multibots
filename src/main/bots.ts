@@ -1522,6 +1522,17 @@ export class Bots {
     bot.call?.close();
   }
 
+  // Whether the bot's next run belongs on another server: this one has no
+  // model left to run it on, another has, and no voice chat holds it here.
+  private elsewhere(bot: Record) {
+    if (bot.call) return false;
+    const servers = this.options.servers();
+    return (
+      !servers.find(({ id }) => id === this.options.hostId)?.ready &&
+      servers.some(({ ready }) => ready)
+    );
+  }
+
   // One run at a time, taken before anything is waited for.
   private run(botId: string, bot: Record) {
     if (bot.working) return;
@@ -1549,6 +1560,7 @@ export class Bots {
       // Letting the bot go waits its turn among what changes it. A run
       // another server took the bot from, which then came back with more to
       // read, starts again instead.
+      // More to read goes to a server with a model once this one has none.
       await this.exclusive(botId, async () => {
         if (
           ended &&
@@ -1556,9 +1568,13 @@ export class Bots {
           this.bots.get(botId) === bot &&
           bot.held === this.options.hostId &&
           (bot.reading || bot.inbox.length)
-        )
-          this.run(botId, bot);
-        else await this.release(botId, bot);
+        ) {
+          if (bot.reading || !this.elsewhere(bot)) this.run(botId, bot);
+          else {
+            await this.release(botId, bot);
+            await this.place(botId, bot);
+          }
+        } else await this.release(botId, bot);
       });
     }
   }
@@ -1577,6 +1593,7 @@ export class Bots {
     // A reply a run before saved shows before another run begins.
     await this.publish(botId, bot, fenced);
     while ((bot.reading || bot.inbox.length) && !fenced() && !this.closed) {
+      if (!bot.reading && this.elsewhere(bot)) break;
       const abort = new AbortController();
       bot.abort = abort;
       setWorking("Thinking");
