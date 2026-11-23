@@ -61,8 +61,8 @@ const header: Plugin = {
 };
 
 // An answer page's heading asks its question and its first paragraph
-// answers it; this hands both to search and answer engines as JSON-LD, so
-// the markup always says what the page says.
+// answers it, both in plain text; this hands both to search and answer
+// engines as JSON-LD, so the markup always says what the page says.
 const answer: Plugin = {
   name: "answer",
   transformIndexHtml(html) {
@@ -70,13 +70,10 @@ const answer: Plugin = {
       /<article data-answer>\s*<h1>(.*?)<\/h1>\s*<p>(.*?)<\/p>/s.exec(html);
     if (!page) return;
     const text = (fragment: string) => {
-      const plain = fragment
-        .replace(/<[^>]+>/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-      if (/&(?!amp;)/.test(plain))
-        throw new Error(`Spell out the entity in "${plain}".`);
-      return plain.replaceAll("&amp;", "&");
+      const plain = fragment.replace(/\s+/g, " ").trim();
+      if (/[<&]/.test(plain))
+        throw new Error(`Keep markup and entities out of "${plain}".`);
+      return plain;
     };
     const data = {
       "@context": "https://schema.org",
