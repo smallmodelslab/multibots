@@ -28,15 +28,6 @@ const entries = headings.map((heading) => {
 });
 document.querySelector(".contents")!.append(list);
 
-// Following the current page's link in the header does nothing, rather than
-// reload the page and lose the reader's place (UI.md, Navigation).
-document
-  .querySelector('.pages [aria-current="page"]')
-  ?.addEventListener("click", (event) => {
-    const { altKey, ctrlKey, metaKey, shiftKey } = event as MouseEvent;
-    if (!altKey && !ctrlKey && !metaKey && !shiftKey) event.preventDefault();
-  });
-
 // The section being read: the last heading within 80px of the top, the
 // first before any, and the last once the page is scrolled to its end.
 let current: HTMLAnchorElement | undefined;

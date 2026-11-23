@@ -40,9 +40,9 @@ ${urls.join("\n")}
 };
 
 // The docs pages' header: after the brand, every docs page as a text link,
-// the current one marked as the contents list marks its section, each title
-// stacked on a hidden bold copy that keeps its room (md-components/
-// DOCS-PAGE.md in wrkrsh/monorepo).
+// the current one marked as the contents list marks its section and going
+// nowhere, each title stacked on a hidden bold copy that keeps its room
+// (md-components/DOCS-PAGE.md in wrkrsh/monorepo).
 const header: Plugin = {
   name: "header",
   transformIndexHtml(html, { path }) {
@@ -50,7 +50,7 @@ const header: Plugin = {
     const here = path.replace(/index\.html$/, "");
     const links = pages.flatMap(({ path, title }) =>
       title
-        ? `<a href="${path}"${path === here ? ' aria-current="page"' : ""}><span>${title}</span><span aria-hidden="true">${title}</span></a>`
+        ? `<a ${path === here ? 'aria-current="page"' : `href="${path}"`}><span>${title}</span><span aria-hidden="true">${title}</span></a>`
         : [],
     );
     return html.replace(

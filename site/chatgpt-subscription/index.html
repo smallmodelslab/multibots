@@ -92,9 +92,10 @@
           Add <a href="/local-models/">models you host</a>, or any provider with
           an OpenAI-style API that lists its models at /models and answers chat
           completions, under Your models, and put them after ChatGPT in Order.
-          Each chat model call goes to the first that answers, so a run that
-          loses ChatGPT midway carries on with the next. To set it all up,
-          follow the <a href="/docs/">install guide</a>.
+          Each step of a run goes to the first of them that answers, so a run
+          that loses ChatGPT midway carries on with the next; one a run can't
+          reach at all sits out the rest of that run. To set it all up, follow
+          the <a href="/docs/">install guide</a>.
         </p>
       </article>
     </div>
