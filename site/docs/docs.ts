@@ -57,18 +57,16 @@ function mark() {
 // page's end lets it come. Its place in history remembers when the reader
 // scrolled away, so Back or Forward to it, or the page opened at its
 // fragment, follows it again unless they did; else what shows is marked.
+const shows = (entry: HTMLAnchorElement) => {
+  const top = headings[entries.indexOf(entry)]!.getBoundingClientRect().top;
+  const end =
+    innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
+  return top >= -2 && (top <= 80 || end);
+};
 const pin = (entry: HTMLAnchorElement | undefined) =>
   requestAnimationFrame(() => {
     clicked = false;
-    const top = entry
-      ? headings[entries.indexOf(entry)]!.getBoundingClientRect().top
-      : null;
-    const end =
-      innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
-    followed =
-      entry && top !== null && top >= -2 && (top <= 80 || end)
-        ? { at: scrollY, entry }
-        : null;
+    followed = entry && shows(entry) ? { at: scrollY, entry } : null;
     if (followed) history.replaceState({ followed: true }, "");
     mark();
   });
@@ -103,5 +101,9 @@ addEventListener(
   },
   { passive: true },
 );
-addEventListener("resize", mark);
+// A window resized so the entry followed no longer shows lets it go.
+addEventListener("resize", () => {
+  if (followed && !shows(followed.entry)) followed = null;
+  mark();
+});
 mark();

@@ -88,8 +88,8 @@ export class OwnModels {
             model: entry.model,
           };
     return {
-      bots: this.lists.bots.map(of),
-      voice: this.lists.voice.map(of),
+      bots: this.lists.bots.filter(this.settled).map(of),
+      voice: this.lists.voice.filter(this.settled).map(of),
     };
   }
 

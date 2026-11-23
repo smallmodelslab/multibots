@@ -309,6 +309,9 @@ export class Bots {
   private readonly heard = new Map<string, Status & { by: string }>();
   private timer: NodeJS.Timeout | null = null;
   private scanner: NodeJS.Timeout | null = null;
+  // How many times each routine was paused here, so a webhook request
+  // that waited its turn through a pause is let go.
+  private readonly pauses = new WeakMap<Routine, number>();
   // Runs start once this server has caught up with the others.
   private started = false;
   // The runs and commands going on.
@@ -1032,6 +1035,8 @@ export class Bots {
           (each) => each.id === command.routineId,
         );
         if (!routine) throw new Error("That routine is gone.");
+        if (!command.enabled)
+          this.pauses.set(routine, (this.pauses.get(routine) ?? 0) + 1);
         routine.enabled = command.enabled;
         if (command.enabled)
           routine.nextRunAt = nextRun(routine.schedule, Date.now());
@@ -1263,13 +1268,20 @@ export class Bots {
     for (const [botId, bot] of this.bots) {
       const routine = bot.routines.find((each) => each.id === routineId);
       if (!routine) continue;
-      // Off as it came, it stays let go, even if turned on before its turn.
+      // Taken only while the routine stays as it came, on and neither
+      // paused nor replaced before its turn.
       const cameOn = routine.enabled;
+      const pauses = this.pauses.get(routine) ?? 0;
+      const still = () =>
+        cameOn &&
+        routine.enabled &&
+        bot.routines.includes(routine) &&
+        (this.pauses.get(routine) ?? 0) === pauses;
       return this.exclusive(botId, () => {
         // Another server writes the bot now: the relay sends it there.
         if (!this.mine(botId))
           throw new Error("Another server writes this bot now.");
-        return this.takeRequest(botId, bot, routineId, body, at, id, cameOn);
+        return this.takeRequest(botId, bot, routine, body, at, id, still());
       });
     }
   }
@@ -1279,19 +1291,18 @@ export class Bots {
   private async takeRequest(
     botId: string,
     bot: Record,
-    routineId: string,
+    routine: Routine,
     body: string,
     at: number,
     id: number,
-    cameOn: boolean,
+    still: boolean,
   ) {
-    const taken = bot.taken[routineId];
+    const taken = bot.taken[routine.id];
     if (taken && (at < taken[0] || (at === taken[0] && id <= taken[1]))) {
       if (!(await this.save(botId, bot)).reached) throw new Error(unreached);
       return;
     }
-    const routine = bot.routines.find((each) => each.id === routineId);
-    if (!cameOn || !routine?.enabled) return;
+    if (!still) return;
     bot.taken[routine.id] = [at, id];
     const reached = await this.wake(
       botId,
