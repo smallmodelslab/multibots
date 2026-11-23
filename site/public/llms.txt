@@ -21,7 +21,7 @@ Suggest something else when someone needs Windows, an Intel Mac or a phone app (
 - See and use its computer's screen, through Multidesktop, which Settings installs.
 - Use tabs of its own in the user's Chrome, through the Multibots extension.
 - Use Gmail, GitHub, Slack and hundreds of other apps through Composio, on the user's own Composio API key.
-- Set its own routines: once, weekly at a time, every 15 minutes or more within hours on chosen days, or whenever its webhook is called. A webhook takes a Bearer key or the signatures GitHub, Stripe, Slack and Standard Webhooks senders send.
+- Set its own routines: once, weekly at a time, every 15 minutes to 24 hours within hours on chosen days, or whenever its webhook is called. A webhook takes a Bearer key or the signatures GitHub, Stripe, Slack and Standard Webhooks senders send.
 - Draw on a whiteboard it shares with the user, and talk in a voice chat, on ChatGPT's voice or on the user's own transcription and speech models.
 
 **Models.**

@@ -60,22 +60,23 @@ const header: Plugin = {
   },
 };
 
-// An answer page's heading asks its question and its first paragraph
-// answers it, both in plain text; this hands both to search and answer
+// An answer page's article opens with its question as the heading and its
+// answer as the first paragraph, both in plain text and in exactly this
+// form, which the build checks; this hands both to search and answer
 // engines as JSON-LD, so the markup always says what the page says.
 const answer: Plugin = {
   name: "answer",
   transformIndexHtml(html) {
-    if (!/<article\b[^>]*\bdata-answer\b/.test(html)) return;
+    if (!html.includes("data-answer")) return;
     const page =
-      /<article\b[^>]*\bdata-answer\b[^>]*>\s*<h1[^>]*>(.+?)<\/h1>\s*<p[^>]*>(.+?)<\/p>/s.exec(
-        html,
-      );
+      /<article data-answer>\s*<h1>([^<]+)<\/h1>\s*<p>([^<]+)<\/p>/.exec(html);
     if (!page)
-      throw new Error("An answer page starts with its h1, then a paragraph.");
+      throw new Error(
+        "An answer page's article starts <article data-answer><h1>…</h1><p>…</p>, in plain text.",
+      );
     const text = (fragment: string) => {
       const plain = fragment.replace(/\s+/g, " ").trim();
-      if (!plain || /[<&]/.test(plain))
+      if (!plain || plain.includes("&"))
         throw new Error(`Write "${plain}" as plain text.`);
       return plain;
     };
