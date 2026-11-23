@@ -7,6 +7,7 @@ import {
   readFile,
   rename,
   rm,
+  rmdir,
   writeFile,
 } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
@@ -357,6 +358,8 @@ export class Replica {
     );
     try {
       await writeFile(written, bytes);
+      // A folder the file took the place of goes once its files have.
+      if ((await lstat(file).catch(absent))?.isDirectory()) await rmdir(file);
       await rename(written, file);
     } finally {
       await rm(written, { force: true });
@@ -640,9 +643,18 @@ export class Replica {
       .flatMap(([botId, manifest]) =>
         Object.entries(manifest)
           .filter(([path, entry]) => newer(entry.v, theirs[botId]?.[path]))
-          .map(([path, entry]) => ({ botId, path, v: entry.v })),
+          .map(([path, entry]) => ({
+            botId,
+            gone: "gone" in entry,
+            path,
+            v: entry.v,
+          })),
       )
-      .sort((a, b) => byFolder(a.path, b.path));
+      // Removals first, so a file or folder that took another's place
+      // finds it gone.
+      .sort(
+        (a, b) => byFolder(a.path, b.path) || Number(b.gone) - Number(a.gone),
+      );
     const failures: unknown[] = [];
     // A file written since the list was made waits for the next pass, as
     // it may refer to library files this one leaves out; a bot whose

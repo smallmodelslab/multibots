@@ -207,9 +207,11 @@ const ownCall = async ({ bot, microphone, onEnd, place, update }: Placing) => {
         await new Promise((done) => setTimeout(done, 2_000));
         return null;
       });
+      // Ended there: what it said already plays to its end first.
       if (heard?.ended) {
         if (!ended) {
           toastError("The voice chat ended.");
+          await playing;
           endVoiceChat();
         }
         return;

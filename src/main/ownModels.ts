@@ -131,13 +131,15 @@ export class OwnModels {
           ...this.lists,
           [list]: [...this.lists[list], model],
         });
-        // Cancelled while it was saved: let go again.
-        if (stop.signal.aborted) {
-          await this.disconnect(model.id);
-          throw stop.signal.reason;
-        }
+        stop.signal.throwIfAborted();
+      } catch (error) {
+        // Cancelled while it was saved, or not saved: let go again.
+        await this.disconnect(model.id).catch(() => {});
+        throw error;
       } finally {
+        // What runs on it, and what other computers hear, now counts it.
         this.unsettled.delete(model.id);
+        this.onChange();
       }
       return model.id;
     } finally {

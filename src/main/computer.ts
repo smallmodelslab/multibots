@@ -419,21 +419,30 @@ export class Computer {
         "0s",
       ]);
     // Multibots' own desktop goes on running the release it started with:
-    // ended, and once it has, the next look starts the new one at once.
+    // ended, and once it has, a look starts the new one at once.
     const old = this.desktop;
     if (!failure && !this.service && old) {
-      this.stop();
-      if (old.exitCode === null && old.signalCode === null)
-        await new Promise((done) => {
-          old.once("close", done);
-          setTimeout(done, 10_000);
-        });
-      this.started = 0;
+      if (old.exitCode === null && old.signalCode === null) {
+        const ended = new Promise<void>((done) =>
+          old.once("close", () => {
+            this.started = 0;
+            done();
+            void this.poll();
+          }),
+        );
+        this.stop();
+        await Promise.race([
+          ended,
+          new Promise((done) => setTimeout(done, 10_000)),
+        ]);
+      } else this.started = 0;
     }
     this.installing = false;
     this.onChange();
     await this.poll();
-    if (failure || !this.multidesktop().current)
+    // Installed is what counts; the screen is ready once the new desktop
+    // answers.
+    if (failure || !newest((await installedVersion()) ?? ""))
       throw new Error(failure ?? "Multidesktop could not be installed.");
   }
 

@@ -102,7 +102,7 @@ const parting = (about: string, others: string[]) => {
     at = Math.max(at, same);
   }
   if (at < 40) return about;
-  return `…${about.slice(Math.max(about.lastIndexOf(" ", at) + 1, at - 20))}`;
+  return `…${about.slice(Math.max(about.lastIndexOf(" ", at) + 1, at - 12))}`;
 };
 
 // What a Grok Bot bot is for, all of it in a hint over its card on hover,
