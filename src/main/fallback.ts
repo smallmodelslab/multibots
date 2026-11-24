@@ -1,3 +1,5 @@
+import type { UserContent } from "ai";
+
 import type { CallableModel } from "./codex";
 
 type Options = Parameters<CallableModel["model"]["doGenerate"]>[0];
@@ -97,17 +99,26 @@ export const fits = <M extends { role: string }>(
   });
 };
 
-// How many of the oldest of what waits for a bot one run reads: as many as
-// fit the largest window together, one at least.
-export const batchOf = (waiting: unknown[]) => {
-  let size = 0;
+// What one run reads of what waits for a bot, as one message's content: as
+// many of the oldest as fit the largest window together, one at least, and
+// how many that is. Each is sized as the parts it becomes, which errs large.
+export const batchOf = (waiting: UserContent[]) => {
+  const parts = (content: UserContent) =>
+    typeof content === "string"
+      ? [{ text: content, type: "text" as const }]
+      : content;
+  let size = sizeOf({ content: [], role: "user" });
   let count = 0;
   for (const each of waiting) {
-    size += sizeOf(each);
+    size += sizeOf(parts(each));
     if (count && size > contextBudget) break;
     count += 1;
   }
-  return count;
+  const read = waiting.slice(0, count);
+  return {
+    content: read.length === 1 ? read[0]! : read.flatMap(parts),
+    count,
+  };
 };
 
 // How many of a bot's oldest turns no model is sent again: none until it

@@ -803,7 +803,7 @@ export class Bots {
           webhooks: Object.fromEntries(
             bot.routines.flatMap((routine) => {
               const webhook = bot.webhooks[routine.id];
-              return webhook
+              return webhook && routine.schedule.kind === "webhook"
                 ? [[routine.id, this.options.webhooks.view(webhook)]]
                 : [];
             }),
@@ -1073,7 +1073,11 @@ export class Bots {
       case "routine.webhook": {
         const bot = this.bot(command.botId);
         const webhook = bot.webhooks[command.routineId];
-        if (!webhook) throw new Error("That routine is gone.");
+        const routine = bot.routines.find(
+          (each) => each.id === command.routineId,
+        );
+        if (!webhook || routine?.schedule.kind !== "webhook")
+          throw new Error("That routine no longer has a webhook.");
         const changed = this.options.webhooks.change(
           webhook,
           command.sender,
@@ -1274,11 +1278,14 @@ export class Bots {
   // webhook routine without its webhook, only a webhook no routine has,
   // which nothing listens to and the next save lets go.
   private async writeRoutines(botId: string, bot: Record) {
-    const hooked = hookedIds(bot);
+    // The routines as they are now, saved whatever changes while their
+    // webhooks are: a change since has its own save.
+    const { routines } = bot;
+    const hooked = hookedIds({ routines });
     const added = [...hooked].filter((id) => !bot.webhooks[id]);
     for (const id of added) bot.webhooks[id] = this.options.webhooks.make();
     if (added.length) await this.write(botId, files.webhooks, bot.webhooks);
-    await this.write(botId, files.routines, bot.routines);
+    await this.write(botId, files.routines, routines);
     // Not one a change since needs, which its own save adds.
     const needed = hookedIds(bot);
     const gone = Object.entries(bot.webhooks).filter(
@@ -1788,22 +1795,11 @@ export class Bots {
       // it reads is one message, which goes to every model whole (`fits`),
       // so none of it is left out unseen.
       if (!bot.reading) {
-        const read = bot.inbox.splice(
-          0,
-          batchOf(bot.inbox.map(({ content }) => content)),
+        const { content, count } = batchOf(
+          bot.inbox.map(({ content }) => content),
         );
-        bot.reading = read.map(({ id }) => id);
-        bot.context.push({
-          content:
-            read.length === 1
-              ? read[0]!.content
-              : read.flatMap(({ content }) =>
-                  typeof content === "string"
-                    ? [{ text: content, type: "text" as const }]
-                    : content,
-                ),
-          role: "user",
-        });
+        bot.reading = bot.inbox.splice(0, count).map(({ id }) => id);
+        bot.context.push({ content, role: "user" });
       }
       await this.archive(botId, bot);
       // Where this run's steps go in its context.
