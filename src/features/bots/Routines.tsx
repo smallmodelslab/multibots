@@ -3,7 +3,11 @@ import { senders, type Sender } from "@wrkrsh/webhooks";
 import { Check, Copy, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 
-import { describeTrigger } from "../../shared/schedule";
+import {
+  describeSource,
+  describeTrigger,
+  webhookWait,
+} from "../../shared/schedule";
 import type { Bot, BotDetail, Routine, Webhook } from "../../shared/types";
 import { botKey, call, messageOf, patch, refresh } from "../data";
 import { Hint } from "../shell/Hint";
@@ -74,6 +78,7 @@ const RoutineDialog = ({
   webhook: Webhook | undefined;
 }) => {
   const [open, setOpen] = useState(false);
+  const wait = webhookWait(routine, webhook);
   return (
     <WizardDialog
       onOpenChange={setOpen}
@@ -83,8 +88,14 @@ const RoutineDialog = ({
         <button className="details-row glow min-w-0 flex-1" type="button">
           <span className="flex min-w-0 flex-col">
             <span className="truncate">{routine.title}</span>
-            <span className="text-muted-foreground">
-              {describeTrigger(routine, webhook)}
+            {/* What it waits for stays whole; a long sender is cut short. */}
+            <span className="flex min-w-0 text-muted-foreground">
+              <span className="truncate">
+                {describeSource(routine, webhook)}
+              </span>
+              {wait ? (
+                <span className="shrink-0 whitespace-pre"> · {wait}</span>
+              ) : null}
             </span>
           </span>
         </button>

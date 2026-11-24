@@ -240,25 +240,36 @@ export const describeSchedule = (
   return when ? `${every}, ${when}` : every;
 };
 
-// A routine's line in a list: when it runs, or for a webhook who calls it
-// and what it waits for before it takes their requests, as "Webhook ·
-// GitHub" or "Webhook · Stripe · needs its secret".
+// What a webhook routine waits for before it takes its sender's requests,
+// or null once it takes them.
+export const webhookWait = (routine: Routine, webhook: Webhook | undefined) =>
+  routine.schedule.kind !== "webhook" || !webhook
+    ? null
+    : webhook.secret === null
+      ? "needs its secret"
+      : webhook.registered
+        ? null
+        : "not registered yet";
+
+// What wakes a routine: when it runs, or for a webhook who calls it, as
+// "Webhook · GitHub".
+export const describeSource = (
+  routine: Routine,
+  webhook: Webhook | undefined,
+) =>
+  routine.schedule.kind !== "webhook"
+    ? describeSchedule(routine.schedule, routine.nextRunAt)
+    : webhook
+      ? `Webhook · ${senders[webhook.sender].label}`
+      : "Webhook";
+
+// A routine's line in a list: what wakes it, and what a webhook waits for,
+// as "Webhook · Stripe · needs its secret".
 export const describeTrigger = (
   routine: Routine,
   webhook: Webhook | undefined,
 ) => {
-  if (routine.schedule.kind !== "webhook")
-    return describeSchedule(routine.schedule, routine.nextRunAt);
-  if (!webhook) return "Webhook";
-  return [
-    "Webhook",
-    senders[webhook.sender].label,
-    webhook.secret === null
-      ? "needs its secret"
-      : webhook.registered
-        ? ""
-        : "not registered yet",
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const wait = webhookWait(routine, webhook);
+  const source = describeSource(routine, webhook);
+  return wait ? `${source} · ${wait}` : source;
 };

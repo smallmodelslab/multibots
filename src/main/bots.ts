@@ -1788,16 +1788,19 @@ export class Bots {
       const abort = new AbortController();
       bot.abort = abort;
       setWorking("Thinking");
-      // It reads its inbox, as much as fits the largest window, the rest
-      // waiting its turn as what comes during the run does; or after a
-      // restart what it was reading, which is in its context already. What
-      // it reads is one message, which goes to every model whole (`fits`),
-      // so none of it is left out unseen.
+      // It reads its inbox, as much as fits the largest window, and once
+      // its model is had, as much as fits that model's, the rest waiting its
+      // turn as what comes during the run does; or after a restart what it
+      // was reading, which is in its context already. What it reads is one
+      // message, which goes to every model whole (`fits`), so none of it is
+      // left out unseen.
+      let taken: RunState["inbox"] = [];
       if (!bot.reading) {
         const { content, count } = batchOf(
           bot.inbox.map(({ content }) => content),
         );
-        bot.reading = bot.inbox.splice(0, count).map(({ id }) => id);
+        taken = bot.inbox.splice(0, count);
+        bot.reading = taken.map(({ id }) => id);
         bot.context.push({ content, role: "user" });
       }
       await this.archive(botId, bot);
@@ -1830,6 +1833,16 @@ export class Bots {
             ),
             this.options.plugins.forBots(abort.signal),
           ]);
+        const fitting = batchOf(
+          taken.map(({ content }) => content),
+          contextWindow,
+        );
+        if (fitting.count < taken.length && !abort.signal.aborted) {
+          bot.inbox.unshift(...taken.slice(fitting.count));
+          bot.reading = bot.reading!.slice(0, fitting.count);
+          bot.context[start - 1] = { content: fitting.content, role: "user" };
+          if (!(await this.save(botId, bot, fenced)).wrote) break;
+        }
         const result = await generateText({
           ...model,
           abortSignal: abort.signal,

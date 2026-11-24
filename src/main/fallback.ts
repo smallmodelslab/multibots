@@ -75,11 +75,15 @@ const leftOut = {
 // as the largest. When what came since the user's newest message is too
 // long on its own, as a long run's tool calls, its oldest tools' results
 // are left out until it fits.
+// What a model of `contextWindow` tokens is sent, in characters.
+const budgetOf = (contextWindow: number) =>
+  Math.min(contextBudget, contextWindow * 2 || contextBudget);
+
 export const fits = <M extends { role: string }>(
   context: M[],
   contextWindow: number,
 ) => {
-  const budget = Math.min(contextBudget, contextWindow * 2 || contextBudget);
+  const budget = budgetOf(contextWindow);
   const fitted = context.slice(newest(context, budget));
   let over = sizeOf(fitted) - budget;
   if (over <= 0) return fitted;
@@ -100,9 +104,11 @@ export const fits = <M extends { role: string }>(
 };
 
 // What one run reads of what waits for a bot, as one message's content: as
-// many of the oldest as fit the largest window together, one at least, and
-// how many that is. Each is sized as the parts it becomes, which errs large.
-export const batchOf = (waiting: UserContent[]) => {
+// many of the oldest as fit a model's window together (the largest, without
+// one), one at least, and how many that is. Each is sized as the parts it
+// becomes, which errs large.
+export const batchOf = (waiting: UserContent[], contextWindow = 0) => {
+  const budget = budgetOf(contextWindow);
   const parts = (content: UserContent) =>
     typeof content === "string"
       ? [{ text: content, type: "text" as const }]
@@ -111,7 +117,7 @@ export const batchOf = (waiting: UserContent[]) => {
   let count = 0;
   for (const each of waiting) {
     size += sizeOf(parts(each));
-    if (count && size > contextBudget) break;
+    if (count && size > budget) break;
     count += 1;
   }
   const read = waiting.slice(0, count);
