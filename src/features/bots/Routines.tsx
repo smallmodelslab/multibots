@@ -291,7 +291,7 @@ const PastedSecret = ({
         type="password"
         value={draft}
       />
-      <Hint label={why}>
+      <Hint label={why ?? `Save the ${label.toLowerCase()}`}>
         <Button
           disabled={why !== null}
           focusableWhenDisabled

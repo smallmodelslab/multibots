@@ -1443,8 +1443,9 @@ export class Bots {
   // wakes outside them. A one-off waits while no server has a model to run
   // it on, and one whose time passes while it is off is let go.
   private wakeDue() {
-    // How late a time is, it is judged by now, not once the bot's turn
-    // comes, which a long change of it can hold up.
+    // What is due, and how late, is judged by now, not once the bot's turn
+    // comes, which a long change of it can hold up; what comes due since
+    // waits for the next tick.
     const seen = Date.now();
     for (const [botId, bot] of this.bots)
       this.later(botId, async () => {
@@ -1455,7 +1456,7 @@ export class Bots {
           (routine) =>
             routine.enabled &&
             routine.nextRunAt !== null &&
-            routine.nextRunAt <= now &&
+            routine.nextRunAt <= seen &&
             (routine.schedule.kind !== "once" || model),
         );
         const fresh = due.filter(
@@ -2004,7 +2005,10 @@ export class Bots {
         // quit, or another server taking the bot over, leaves it, to be read
         // again.
         if (!abort.signal.aborted) {
-          take();
+          if (this.preparing.has(bot)) {
+            take();
+            await this.archive(botId, bot);
+          }
           this.options.analytics.capture("bot replied", { succeeded: false });
           this.options.analytics.captureError(
             "bot reply",
