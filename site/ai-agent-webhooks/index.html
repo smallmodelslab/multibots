@@ -77,8 +77,9 @@
         </p>
         <ul>
           <li>
-            Any (Bearer key): once the routine is ready, POST to the URL with
-            the key it shows as Authorization: Bearer &lt;key&gt;.
+            Any (Bearer key): once the routine is ready, POST what the bot
+            should read, such as JSON, to the URL, with the key it shows as
+            Authorization: Bearer &lt;key&gt;.
           </li>
           <li>
             GitHub: once the routine is ready, in GitHub's webhook settings,
@@ -103,10 +104,10 @@
         <p>
           The relay turns away calls without the key or the sender's signature,
           and answers Slack's URL check and GitHub's ping itself. It takes
-          bodies up to 64 KiB and passes on the body alone, not the call's
-          headers. Multibots hands it to the bot with the routine's instructions
-          and when the call came, marked as data from whoever called, never
-          instructions to it.
+          bodies up to 64 KiB and passes on the body alone, as UTF-8 text, not
+          the call's headers. Multibots hands it to the bot with the routine's
+          instructions and when the call came, marked as data from whoever
+          called, never instructions to it.
         </p>
 
         <h2 id="away">While your computers sleep</h2>
