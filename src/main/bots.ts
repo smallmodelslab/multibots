@@ -1443,6 +1443,9 @@ export class Bots {
   // wakes outside them. A one-off waits while no server has a model to run
   // it on, and one whose time passes while it is off is let go.
   private wakeDue() {
+    // How late a time is, it is judged by now, not once the bot's turn
+    // comes, which a long change of it can hold up.
+    const seen = Date.now();
     for (const [botId, bot] of this.bots)
       this.later(botId, async () => {
         if (!this.mine(botId)) return;
@@ -1459,8 +1462,8 @@ export class Bots {
           ({ id, nextRunAt, schedule }) =>
             (bot.taken[dueOf(id)]?.[0] ?? -1) < nextRunAt! &&
             (schedule.kind !== "every" ||
-              now - nextRunAt! <= lateMs ||
-              within(schedule, now)),
+              seen - nextRunAt! <= lateMs ||
+              within(schedule, seen)),
         );
         const missed = bot.routines.filter(
           ({ enabled, schedule }) =>
@@ -1843,7 +1846,6 @@ export class Bots {
         );
       };
       this.preparing.add(bot);
-      await this.archive(botId, bot);
       // Where this run's steps go in its context, once it has what it reads.
       let start = bot.context.length;
       const { computer } = this.options;
@@ -1877,6 +1879,7 @@ export class Bots {
         if (abort.signal.aborted) break;
         take(contextWindow);
         if (!bot.reading) break;
+        await this.archive(botId, bot);
         start = bot.context.length;
         if (!(await this.save(botId, bot, fenced)).wrote) break;
         const result = await generateText({
