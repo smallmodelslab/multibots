@@ -70,10 +70,9 @@
         <h2 id="webhook">Wake it from a webhook</h2>
         <p>
           Ask for a routine that runs whenever its webhook is called, then open
-          it under Routines. It is ready once its switch is on and its line
-          under Routines no longer says needs its secret or not registered yet.
-          Copy its URL, pick its sender, and set the sender up as the routine
-          says:
+          it under Routines. Copy its URL, pick its sender, and set the sender
+          up as the routine says, letting it call only once the routine is
+          ready:
         </p>
         <ul>
           <li>
@@ -87,8 +86,9 @@
             Secret, with content type application/json.
           </li>
           <li>
-            Stripe: add the URL as a webhook endpoint, then paste Stripe's
-            signing secret into the routine and save it.
+            Stripe: add the URL as a webhook endpoint, paste Stripe's signing
+            secret into the routine and save it, and send test events once the
+            routine is ready.
           </li>
           <li>
             Slack: paste your Slack app's signing secret into the routine and
@@ -97,10 +97,16 @@
           </li>
           <li>
             Standard Webhooks, which Clerk, Resend, Polar, OpenAI and others
-            send: add the URL as an endpoint there, then paste its signing
-            secret into the routine and save it.
+            send: add the URL as an endpoint there, paste its signing secret
+            into the routine and save it, and send test events once the routine
+            is ready.
           </li>
         </ul>
+        <p>
+          The routine is ready once its switch is on and its line under Routines
+          no longer says needs its secret or not registered yet, which it can
+          say again after you pick a sender or save a secret.
+        </p>
         <p>
           The relay turns away calls without the key or the sender's signature,
           and answers Slack's URL check and GitHub's ping itself. It takes
