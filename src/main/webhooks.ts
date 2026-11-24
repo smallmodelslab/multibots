@@ -51,17 +51,20 @@ export class Webhooks {
 
   constructor(
     private readonly options: {
-      // A request for a routine's webhook: what it carried, when it came
-      // and its id at the relay, both newer for each new request. The relay
-      // holds it until this has kept it, and sends it again otherwise.
+      // A request for a routine's webhook, named by the secret it is
+      // listened with, so one for a webhook since replaced is told apart:
+      // what it carried, when it came and its id at the relay, both newer
+      // for each new request. The relay holds it until this has kept it,
+      // and sends it again otherwise.
       onRequest: (
         routineId: string,
+        listen: string,
         body: string,
         at: number,
         id: number,
       ) => Promise<void>;
-      // The relay took a routine's webhook as it is.
-      onRegistered: (routineId: string) => void;
+      // The relay took a routine's webhook as it was saved then.
+      onRegistered: (routineId: string, saved: SavedWebhook) => void;
     },
   ) {}
 
@@ -95,9 +98,12 @@ export class Webhooks {
     pasted?: string,
   ): SavedWebhook | null {
     const secret = pasted?.trim();
+    // Sent to the relay in a header, which carries visible ASCII alone.
     if (
       secret !== undefined &&
-      (senders[sender].ours || !secret || secret.length > 1024)
+      (senders[sender].ours ||
+        !/^[\x21-\x7e]+$/.test(secret) ||
+        secret.length > 1024)
     )
       throw new Error(`That is not ${senders[sender].label}'s secret.`);
     if (secret === undefined && sender === saved.sender) return null;
@@ -115,19 +121,34 @@ export class Webhooks {
     };
   }
 
-  // A deleted routine's webhook goes from the relay too, which in any case
-  // forgets one nothing listened to for a month.
-  delete(routineId: string, saved: SavedWebhook) {
-    void fetch(urlOf(saved.listen), {
-      headers: { authorization: `Bearer ${saved.listen}` },
-      method: "DELETE",
-    }).catch((error: unknown) =>
+  // A deleted routine's webhook goes from the relay too, tried again while
+  // the relay is busy or can't be reached, each time a little later, up to
+  // an hour, while the app runs; the relay in any case forgets one nothing
+  // listened to for a month.
+  delete(routineId: string, saved: SavedWebhook, wait = 60_000) {
+    const failed = (error: unknown, retryMs?: number) =>
       logError("webhooks", "A webhook could not be deleted at its relay.", {
         error,
         relay,
+        retryMs,
         routineId,
-      }),
-    );
+      });
+    const retry = (error: unknown) => {
+      failed(error, wait);
+      setTimeout(
+        () => this.delete(routineId, saved, Math.min(wait * 2, 3_600_000)),
+        wait,
+      ).unref();
+    };
+    void fetch(urlOf(saved.listen), {
+      headers: { authorization: `Bearer ${saved.listen}` },
+      method: "DELETE",
+    }).then(({ ok, status }) => {
+      if (ok) return;
+      const error = new Error(`The relay answered ${status}.`);
+      if (status === 429 || status >= 500) retry(error);
+      else failed(error);
+    }, retry);
   }
 
   // Listens to these webhooks, by routine, and to no others; one whose
@@ -161,14 +182,26 @@ export class Webhooks {
     let wait = 1000;
     let drop = () => {};
     const connect = () => {
-      // Node's WebSocket takes headers, which the DOM's type knows nothing of.
-      const socket = new WebSocket(urlOf(saved.listen).replace(/^http/, "ws"), {
-        headers: {
-          authorization: `Bearer ${saved.listen}`,
-          "x-sender": saved.sender,
-          ...(saved.secret === null ? {} : { "x-secret": saved.secret }),
-        },
-      } as unknown as string[]);
+      let socket: WebSocket;
+      try {
+        // Node's WebSocket takes headers, which the DOM's type knows
+        // nothing of.
+        socket = new WebSocket(urlOf(saved.listen).replace(/^http/, "ws"), {
+          headers: {
+            authorization: `Bearer ${saved.listen}`,
+            "x-sender": saved.sender,
+            ...(saved.secret === null ? {} : { "x-secret": saved.secret }),
+          },
+        } as unknown as string[]);
+      } catch (error) {
+        // A secret a header can't carry, saved before they were turned
+        // down, never connects: the routine stays not registered.
+        logError("webhooks", "A webhook's secret can't be sent to its relay.", {
+          error,
+          routineId,
+        });
+        return;
+      }
       let opened = false;
       let heard = Date.now();
       const beat = setInterval(() => {
@@ -195,11 +228,12 @@ export class Webhooks {
       socket.onopen = () => {
         opened = true;
         wait = 1000;
-        if (!saved.registered) this.options.onRegistered(routineId);
+        if (!saved.registered) this.options.onRegistered(routineId, saved);
       };
       socket.onmessage = ({ data }) => {
         heard = Date.now();
-        if (data !== "pong") void this.take(routineId, socket, String(data));
+        if (data !== "pong")
+          void this.take(routineId, saved.listen, socket, String(data));
       };
       socket.onclose = () => drop();
     };
@@ -216,7 +250,12 @@ export class Webhooks {
   // time a little later, up to five minutes, while its connection lasts
   // and the relay still holds it: the relay sends a request again only to
   // a new connection.
-  private async take(routineId: string, socket: WebSocket, data: string) {
+  private async take(
+    routineId: string,
+    listen: string,
+    socket: WebSocket,
+    data: string,
+  ) {
     let request: { at: number; body: string; id: number };
     try {
       request = JSON.parse(data) as typeof request;
@@ -230,7 +269,7 @@ export class Webhooks {
     const { at, body, id } = request;
     for (let wait = 15_000; ; wait = Math.min(wait * 2, 300_000))
       try {
-        await this.options.onRequest(routineId, body, at, id);
+        await this.options.onRequest(routineId, listen, body, at, id);
         if (socket.readyState === WebSocket.OPEN)
           socket.send(JSON.stringify({ ack: id }));
         return;

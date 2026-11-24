@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { describeTrigger } from "../../shared/schedule";
 import type { Bot, BotDetail, Routine, Webhook } from "../../shared/types";
-import { botKey, call, messageOf, patch } from "../data";
+import { botKey, call, messageOf, patch, refresh } from "../data";
 import { Hint } from "../shell/Hint";
 import { toastError } from "../shell/Toasts";
 import { WizardTop } from "../shell/WizardTop";
@@ -51,7 +51,10 @@ export const Routines = ({ bot, detail }: { bot: Bot; detail: BotDetail }) => (
               enabled,
               routineId: routine.id,
               type: "routine.enable",
-            }).catch((error: unknown) => toastError(messageOf(error)));
+            }).catch((error: unknown) => {
+              refresh(botKey(bot.id));
+              toastError(messageOf(error));
+            });
           }}
         />
       </li>
@@ -80,7 +83,7 @@ const RoutineDialog = ({
         <button className="details-row glow min-w-0 flex-1" type="button">
           <span className="flex min-w-0 flex-col">
             <span className="truncate">{routine.title}</span>
-            <span className="truncate text-muted-foreground">
+            <span className="text-muted-foreground">
               {describeTrigger(routine, webhook)}
             </span>
           </span>
@@ -90,12 +93,14 @@ const RoutineDialog = ({
       <div className="relative flex max-h-[calc(100vh-64px)] flex-col gap-5 overflow-y-auto p-5">
         <WizardTop />
         <header className="flex flex-col gap-0.5 pr-8">
-          <h2 className="m-0 text-[15px] font-semibold">{routine.title}</h2>
+          <h2 className="m-0 text-[15px] font-semibold wrap-anywhere">
+            {routine.title}
+          </h2>
           <p className="m-0 text-muted-foreground">
             {describeTrigger(routine, webhook)}
           </p>
         </header>
-        <p className="m-0 whitespace-pre-wrap select-text">
+        <p className="m-0 whitespace-pre-wrap wrap-anywhere select-text">
           {routine.instructions}
         </p>
         {webhook ? (
@@ -184,7 +189,9 @@ const WebhookValue = ({
   value: string;
 }) => {
   const [shown, setShown] = useState(!secret);
-  const [copied, setCopied] = useState(false);
+  // What was copied, so a value changed since, as by a new sender, isn't
+  // shown as copied.
+  const [copied, setCopied] = useState<string | null>(null);
   return (
     <>
       <span className="text-muted-foreground">{label}</span>
@@ -211,18 +218,18 @@ const WebhookValue = ({
             </button>
           </Hint>
         ) : null}
-        <Hint label={copied ? "Copied" : "Copy"}>
+        <Hint label={copied === value ? "Copied" : "Copy"}>
           <button
             aria-label={`Copy the ${name}`}
             className="icon-button"
             onClick={() =>
               void navigator.clipboard
                 .writeText(value)
-                .then(() => setCopied(true))
+                .then(() => setCopied(value))
             }
             type="button"
           >
-            {copied ? (
+            {copied === value ? (
               <Check aria-hidden size={16} strokeWidth={1.5} />
             ) : (
               <Copy aria-hidden size={16} strokeWidth={1.5} />
@@ -245,7 +252,19 @@ const PastedSecret = ({
   saved: string | null;
 }) => {
   const [draft, setDraft] = useState(saved ?? "");
+  // One saved elsewhere since, as on another computer, takes the place of
+  // a draft not edited here, so Save can't put back the one before.
+  const [shownSaved, setShownSaved] = useState(saved);
+  if (saved !== shownSaved) {
+    setShownSaved(saved);
+    if (draft.trim() === (shownSaved ?? "")) setDraft(saved ?? "");
+  }
   const pasted = draft.trim();
+  const why = !pasted
+    ? `Paste the ${label.toLowerCase()} to save it`
+    : pasted === saved
+      ? "Saved"
+      : null;
   return (
     <>
       <span className="text-muted-foreground">{label}</span>
@@ -254,22 +273,24 @@ const PastedSecret = ({
         className="h-7 font-mono text-xs md:text-xs"
         onChange={(event) => setDraft(event.currentTarget.value)}
         onKeyDown={(event) => {
-          if (event.key === "Enter" && pasted && pasted !== saved)
-            onSave(pasted);
+          if (event.key === "Enter" && why === null) onSave(pasted);
         }}
         placeholder="Paste it here"
         spellCheck={false}
         type="password"
         value={draft}
       />
-      <Button
-        disabled={!pasted || pasted === saved}
-        onClick={() => onSave(pasted)}
-        size="sm"
-        variant="secondary"
-      >
-        Save
-      </Button>
+      <Hint label={why}>
+        <Button
+          disabled={why !== null}
+          focusableWhenDisabled
+          onClick={() => onSave(pasted)}
+          size="sm"
+          variant="secondary"
+        >
+          Save
+        </Button>
+      </Hint>
     </>
   );
 };

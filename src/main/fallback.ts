@@ -97,6 +97,19 @@ export const fits = <M extends { role: string }>(
   });
 };
 
+// How many of the oldest of what waits for a bot one run reads: as many as
+// fit the largest window together, one at least.
+export const batchOf = (waiting: unknown[]) => {
+  let size = 0;
+  let count = 0;
+  for (const each of waiting) {
+    size += sizeOf(each);
+    if (count && size > contextBudget) break;
+    count += 1;
+  }
+  return count;
+};
+
 // How many of a bot's oldest turns no model is sent again: none until it
 // holds twice what fits the largest window, then all before what does.
 export const unsent = (context: { role: string }[]) =>

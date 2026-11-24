@@ -39,7 +39,7 @@ export const senders: Record<
     secret: "Signing secret",
     ours: false,
     setup:
-      "Paste your Slack app's signing secret (Basic Information) here first, then the URL as its Event Subscriptions Request URL.",
+      "Paste your Slack app's signing secret (Basic Information) here and save it, then, once this routine no longer says not registered yet, add the URL as its Event Subscriptions Request URL.",
   },
   standard: {
     label: "Standard Webhooks",

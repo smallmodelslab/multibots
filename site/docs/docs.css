@@ -17,19 +17,25 @@
 }
 
 /* The docs pages, after the brand: plain text links, the current one bold
-   and grown from its centre, as the contents list marks its section. */
+   and grown from its centre, as the contents list marks its section. On a
+   narrow screen they wrap as words do, into lines of even length, so none
+   is left alone on the last. */
 .pages {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 1.25rem;
   font-size: 0.9375rem;
+  line-height: 1.64;
+  text-wrap: balance;
 }
 
 .pages a {
-  display: grid;
+  display: inline-grid;
+  margin-right: 1.25rem;
   color: color-mix(in srgb, var(--ink) 78%, var(--paper));
   text-decoration: none;
   transition: color 150ms;
+}
+
+.pages a:last-child {
+  margin-right: 0;
 }
 
 .pages a span {

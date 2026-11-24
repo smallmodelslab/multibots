@@ -127,11 +127,15 @@
           The relay holds the calls it accepts, up to 100 to a webhook or 1 MiB
           of them, for seven days at most, until your computers take them. A
           call that reaches the bot while its routine is off is let go, not kept
-          for later. Routines run while Multibots runs on one of your servers
-          with ChatGPT signed in or a
-          <a href="/local-models/">chat model of yours</a> added, and a
-          scheduled one that comes due while your computers sleep may run late,
-          when they wake, even outside the hours you gave it; see
+          for later, and so is a one-off whose time passes while it is off.
+        </p>
+        <p>
+          Routines run while Multibots runs on one of your servers with ChatGPT
+          signed in or a <a href="/local-models/">chat model of yours</a> added;
+          a one-off that comes due while none has either waits for one. A
+          scheduled routine that comes due while your computers sleep may run
+          late, when they wake, but one that repeats within hours waits for its
+          next time within them; see
           <a href="/self-hosted-ai-agent/#away"
             >keeping bots working while you're away</a
           >.

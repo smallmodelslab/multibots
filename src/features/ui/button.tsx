@@ -4,20 +4,22 @@ import { cn } from "@/lib/utils";
 
 // Every button takes its light from the pointer (`.glow` in the theme): its
 // fill brightens on hover, the edges nearest the pointer shine, and a press
-// grows light in the fill. Destructive is red text, never a red fill.
+// grows light in the fill. Destructive is red text, never a red fill. One
+// disabled but focusable (`focusableWhenDisabled`), for its hint, dims as a
+// disabled one does and takes no light.
 const buttonVariants = cva(
-  "glow group/button inline-flex shrink-0 items-center justify-center rounded-lg text-[13px] font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "glow group/button inline-flex shrink-0 items-center justify-center rounded-lg text-[13px] font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-disabled:cursor-default aria-disabled:opacity-50 aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground [--glow-color:var(--accent-text)] hover:bg-primary/85",
+          "bg-primary text-primary-foreground [--glow-color:var(--accent-text)] not-aria-disabled:hover:bg-primary/85",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--bubble),var(--text)_5%)] aria-expanded:bg-secondary",
+          "bg-secondary text-secondary-foreground not-aria-disabled:hover:bg-[color-mix(in_oklch,var(--bubble),var(--text)_5%)] aria-expanded:bg-secondary",
         ghost:
-          "hover:bg-(--hover) hover:text-foreground aria-expanded:bg-(--hover) aria-expanded:text-foreground",
-        destructive: "text-destructive hover:bg-(--hover)",
-        link: "text-primary underline-offset-4 hover:underline",
+          "not-aria-disabled:hover:bg-(--hover) not-aria-disabled:hover:text-foreground aria-expanded:bg-(--hover) aria-expanded:text-foreground",
+        destructive: "text-destructive not-aria-disabled:hover:bg-(--hover)",
+        link: "text-primary underline-offset-4 not-aria-disabled:hover:underline",
       },
       size: {
         default:

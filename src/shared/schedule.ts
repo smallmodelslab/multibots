@@ -90,7 +90,11 @@ const zonedMoment = (
   return shows(before) || !shows(after) ? before : after;
 };
 
-const within = (schedule: Extract<Schedule, { kind: "every" }>, at: number) => {
+// Whether `at` falls within the hours and days a routine repeats in.
+export const within = (
+  schedule: Extract<Schedule, { kind: "every" }>,
+  at: number,
+) => {
   const shown = wallClock(at, schedule.timeZone);
   const minutes = shown.hour * 60 + shown.minute;
   return (

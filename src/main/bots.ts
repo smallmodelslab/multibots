@@ -32,7 +32,7 @@ import {
 } from "@wrkrsh/whiteboard/scene";
 import { senders } from "@wrkrsh/webhooks";
 
-import { nextRun } from "../shared/schedule";
+import { nextRun, within } from "../shared/schedule";
 import {
   accessoriesSchema,
   defaultAccessories,
@@ -58,7 +58,7 @@ import type { capture, captureError } from "./analytics";
 import type { Chatgpt } from "./chatgpt";
 import type { Browser } from "./browser";
 import type { Computer, Repls } from "./computer";
-import { fallback, fits, inOrder, unsent } from "./fallback";
+import { batchOf, fallback, fits, inOrder, unsent } from "./fallback";
 import { fromRecipe } from "./grokBot";
 import type { OwnModels } from "./ownModels";
 import type { Plugins } from "./plugins";
@@ -289,6 +289,11 @@ const errorText = (error: unknown) =>
 // inbox: the routines it sets then stay paused, as the bot in Grok Bot may
 // still run them.
 const importSetup = "grok-bot-setup:";
+
+// How late a routine that repeats within hours may run outside them, as
+// when its time came just before their end; later, as after the computer
+// slept, it waits for its next time.
+const lateMs = 60_000;
 
 // Where a routine's schedule's runs taken are kept, apart from its
 // webhook's requests, whose times come from the relay's clock.
@@ -1071,6 +1076,12 @@ export class Bots {
           (each) => each.id === command.routineId,
         );
         if (!routine) throw new Error("That routine is gone.");
+        if (
+          command.enabled &&
+          routine.schedule.kind === "once" &&
+          routine.schedule.at <= Date.now()
+        )
+          throw new Error("Its time has passed. Ask the bot to set it again.");
         if (!command.enabled)
           this.pauses.set(routine, (this.pauses.get(routine) ?? 0) + 1);
         routine.enabled = command.enabled;
@@ -1232,23 +1243,28 @@ export class Bots {
     if (message.role !== "user") bot.call?.speak(message.text);
   }
 
-  // Each webhook routine has its webhook, and no other routine one.
+  // Each webhook routine has its webhook, and no other routine one. A new
+  // one's webhook is saved before its routine, and one no routine needs
+  // goes only once the routines are saved, so a save cut short leaves no
+  // webhook routine without its webhook, only a webhook no routine has,
+  // which the next save lets go.
   async saveRoutines(botId: string, bot: Record) {
     const hooked = new Set(
       bot.routines
         .filter((routine) => routine.schedule.kind === "webhook")
         .map((routine) => routine.id),
     );
-    const before = Object.keys(bot.webhooks).join();
-    for (const [id, webhook] of Object.entries(bot.webhooks))
-      if (!hooked.has(id)) {
-        this.options.webhooks.delete(id, webhook);
-        delete bot.webhooks[id];
-      }
-    for (const id of hooked) bot.webhooks[id] ??= this.options.webhooks.make();
-    if (Object.keys(bot.webhooks).join() !== before)
-      await this.write(botId, files.webhooks, bot.webhooks);
+    const added = [...hooked].filter((id) => !bot.webhooks[id]);
+    for (const id of added) bot.webhooks[id] = this.options.webhooks.make();
+    if (added.length) await this.write(botId, files.webhooks, bot.webhooks);
     await this.write(botId, files.routines, bot.routines);
+    const gone = Object.entries(bot.webhooks).filter(([id]) => !hooked.has(id));
+    if (gone.length) {
+      for (const [id] of gone) delete bot.webhooks[id];
+      await this.write(botId, files.webhooks, bot.webhooks);
+      for (const [id, webhook] of gone)
+        this.options.webhooks.delete(id, webhook);
+    }
     this.listen();
     this.options.onChange(botId);
   }
@@ -1283,11 +1299,19 @@ export class Bots {
     this.listen();
   }
 
-  // The relay took a routine's webhook as it is.
-  async registered(routineId: string) {
+  // The relay took a routine's webhook as it was saved then, which says
+  // nothing of one with another sender or secret since.
+  async registered(routineId: string, as: SavedWebhook) {
     for (const [botId, bot] of this.bots) {
       const webhook = bot.webhooks[routineId];
-      if (!webhook || webhook.registered) continue;
+      if (
+        !webhook ||
+        webhook.registered ||
+        webhook.listen !== as.listen ||
+        webhook.sender !== as.sender ||
+        webhook.secret !== as.secret
+      )
+        continue;
       webhook.registered = true;
       await this.write(botId, files.webhooks, bot.webhooks);
       this.options.onChange(botId);
@@ -1299,25 +1323,34 @@ export class Bots {
   // on every server online, so none loses it when this one goes. One taken
   // before, whose answer the relay missed, settles once what took it is
   // saved there; one that comes while the routine is off, or was turned off
-  // while the request waited its turn, is let go.
-  async webhookCalled(routineId: string, body: string, at: number, id: number) {
+  // while the request waited its turn, is let go, and so is one to a
+  // webhook the routine no longer has (`listen`), as once it is replaced.
+  async webhookCalled(
+    routineId: string,
+    listen: string,
+    body: string,
+    at: number,
+    id: number,
+  ) {
     for (const [botId, bot] of this.bots) {
       const routine = bot.routines.find((each) => each.id === routineId);
       if (!routine) continue;
-      // Taken only while the routine stays as it came, on and neither
-      // paused nor replaced before its turn.
+      // Taken only while the routine stays as it came, on, woken by a
+      // webhook, and neither paused nor replaced before its turn.
       const cameOn = routine.enabled;
       const pauses = this.pauses.get(routine) ?? 0;
       const still = () =>
         cameOn &&
         routine.enabled &&
+        routine.schedule.kind === "webhook" &&
         bot.routines.includes(routine) &&
         (this.pauses.get(routine) ?? 0) === pauses;
-      return this.exclusive(botId, () => {
+      return this.exclusive(botId, async () => {
         // Another server writes the bot now: the relay sends it there.
         if (!this.mine(botId))
           throw new Error("Another server writes this bot now.");
-        return this.takeRequest(botId, bot, routine, body, at, id, still());
+        if (bot.webhooks[routineId]?.listen !== listen) return;
+        await this.takeRequest(botId, bot, routine, body, at, id, still());
       });
     }
   }
@@ -1363,21 +1396,33 @@ export class Bots {
   // together: each is saved in its inbox, taken in the same write, and its
   // next time in its routines, while this server still writes it, before
   // it may go to another server to run. One taken already, by a server
-  // that went before saving its next time, only moves on.
+  // that went before saving its next time, only moves on, as does one that
+  // repeats within hours whose time came while the computer slept, once it
+  // wakes outside them. A one-off waits while no server has a model to run
+  // it on, and one whose time passes while it is off is let go.
   private wakeDue() {
     for (const [botId, bot] of this.bots)
       this.later(botId, async () => {
         if (!this.mine(botId)) return;
         const now = Date.now();
+        const model = this.options.servers().some(({ ready }) => ready);
         const due = bot.routines.filter(
           (routine) =>
             routine.enabled &&
             routine.nextRunAt !== null &&
-            routine.nextRunAt <= now,
+            routine.nextRunAt <= now &&
+            (routine.schedule.kind !== "once" || model),
         );
         const fresh = due.filter(
-          (routine) =>
-            (bot.taken[dueOf(routine.id)]?.[0] ?? -1) < routine.nextRunAt!,
+          ({ id, nextRunAt, schedule }) =>
+            (bot.taken[dueOf(id)]?.[0] ?? -1) < nextRunAt! &&
+            (schedule.kind !== "every" ||
+              now - nextRunAt! <= lateMs ||
+              within(schedule, now)),
+        );
+        const missed = bot.routines.filter(
+          ({ enabled, schedule }) =>
+            !enabled && schedule.kind === "once" && schedule.at <= now,
         );
         if (fresh.length) {
           bot.inbox.push(
@@ -1390,13 +1435,14 @@ export class Bots {
             bot.taken[dueOf(routine.id)] = [routine.nextRunAt!, 0];
           await this.save(botId, bot);
         }
-        if (due.length) {
+        if (due.length || missed.length) {
           for (const routine of due)
             routine.nextRunAt = nextRun(routine.schedule, now);
           // A one-off is done once it has run.
           bot.routines = bot.routines.filter(
             (routine) =>
-              routine.schedule.kind !== "once" || routine.nextRunAt !== null,
+              !missed.includes(routine) &&
+              (routine.schedule.kind !== "once" || routine.nextRunAt !== null),
           );
           await this.saveRoutines(botId, bot);
         }
@@ -1706,15 +1752,28 @@ export class Bots {
       const abort = new AbortController();
       bot.abort = abort;
       setWorking("Thinking");
-      // It reads its inbox, or after a restart what it was reading, which
-      // is in its context already.
+      // It reads its inbox, as much as fits the largest window, the rest
+      // waiting its turn as what comes during the run does; or after a
+      // restart what it was reading, which is in its context already. What
+      // it reads is one message, which goes to every model whole (`fits`),
+      // so none of it is left out unseen.
       if (!bot.reading) {
-        bot.reading = bot.inbox.map(({ id }) => id);
-        bot.context.push(
-          ...bot.inbox
-            .splice(0)
-            .map(({ content }): ModelMessage => ({ content, role: "user" })),
+        const read = bot.inbox.splice(
+          0,
+          batchOf(bot.inbox.map(({ content }) => content)),
         );
+        bot.reading = read.map(({ id }) => id);
+        bot.context.push({
+          content:
+            read.length === 1
+              ? read[0]!.content
+              : read.flatMap(({ content }) =>
+                  typeof content === "string"
+                    ? [{ text: content, type: "text" as const }]
+                    : content,
+                ),
+          role: "user",
+        });
       }
       await this.archive(botId, bot);
       // Where this run's steps go in its context.
@@ -1952,7 +2011,7 @@ export class Bots {
         ? `The user is in a voice chat with you, and your reply is read aloud: answer in a few short spoken sentences, without Markdown, lists, links or code.${saved.voice.language ? ` Answer in ${saved.voice.language}.` : ""}`
         : "Your reply is a chat message to the user: plain, short and direct, in Markdown when it helps.",
       `The user sees the recap you write with write_recap at the end of your conversation, after your replies too. Write one when you start on something that takes more than a few steps, and again whenever what you have in progress changes, so it always says what that is.${recap ? ` Your recap now: ${JSON.stringify(recap)}` : ""}`,
-      `Routines wake you on a schedule, or when their webhook is called. Set one with set_routine when the user wants something done later or regularly, or whenever something elsewhere that can call a webhook happens. The user opens a webhook routine among your details to copy its URL and pick who calls it; tell them which to pick: ${senderChoices} You never see a webhook's secrets. Times are in ${timeZone}; it is now ${new Date().toString()}.`,
+      `Routines wake you on a schedule, or when their webhook is called. Set one with set_routine when the user wants something done later or regularly, or whenever something elsewhere that can call a webhook happens. The user opens a webhook routine among your details to copy its URL and pick who calls it; tell them which to pick: ${senderChoices} You never see a webhook's secrets. Times are in ${timeZone}; a routine you replace keeps its own timeZone, if it has one. It is now ${new Date().toString()}.`,
       `Your routines: ${JSON.stringify(routines.map(({ id, title, instructions, schedule, enabled }) => ({ enabled, id, instructions, schedule, title })))}`,
     ]
       .filter(Boolean)

@@ -309,10 +309,10 @@ const start = async () => {
   ];
   // The webhooks of the bots this server writes.
   const webhooks = new Webhooks({
-    onRegistered: (routineId) => void bots?.registered(routineId),
-    onRequest: async (routineId, body, at, id) => {
+    onRegistered: (routineId, saved) => void bots?.registered(routineId, saved),
+    onRequest: async (routineId, listen, body, at, id) => {
       if (!bots) throw new Error("Not a server.");
-      await bots.webhookCalled(routineId, body, at, id);
+      await bots.webhookCalled(routineId, listen, body, at, id);
     },
   });
   const replica = new Replica({

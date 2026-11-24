@@ -177,8 +177,17 @@ const dayNumbers = (names: z.infer<typeof days>) =>
     .map((name) => days.element.options.indexOf(name))
     .sort((a, b) => a - b);
 
-const scheduleOf = (input: z.infer<typeof scheduleInput>): Schedule => {
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+// Whether two schedules are one, whatever order their fields were kept in.
+const sameSchedule = (a: Schedule, b: Schedule) => {
+  const fields = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort();
+  return JSON.stringify(a, fields) === JSON.stringify(b, fields);
+};
+
+// A schedule's times are in `timeZone`.
+const scheduleOf = (
+  input: z.infer<typeof scheduleInput>,
+  timeZone: string,
+): Schedule => {
   if (input.kind === "webhook") return input;
   if (input.kind === "once") {
     const at = Date.parse(input.at);
@@ -547,33 +556,45 @@ ${usageText}`,
           .boolean()
           .optional()
           .describe(
-            "false to leave it paused, for the user to turn on among your details",
+            "false to leave it paused, for the user to turn on among your details; left out, one you replace stays as it is",
           ),
       }),
-      execute: async ({
-        enabled = true,
-        id,
-        instructions,
-        schedule,
-        title,
-      }) => {
-        const parsed = scheduleOf(schedule);
+      // One replaced keeps its time zone, and its next time while its
+      // schedule stays the same.
+      execute: async ({ enabled, id, instructions, schedule, title }) => {
+        const current = routines();
+        const replaced = id
+          ? current.find((each) => each.id === id)
+          : undefined;
+        if (id && !replaced) throw new Error(`No routine has the id ${id}.`);
+        if (!replaced && current.length >= 20)
+          throw new Error("A bot has at most 20 routines.");
+        const parsed = scheduleOf(
+          schedule,
+          replaced && "timeZone" in replaced.schedule
+            ? replaced.schedule.timeZone
+            : Intl.DateTimeFormat().resolvedOptions().timeZone,
+        );
+        const now = Date.now();
         const routine: Routine = {
-          enabled: enabled && !routinesPaused,
-          id: id ?? randomUUID(),
+          enabled:
+            (enabled ?? (replaced ? replaced.enabled : true)) &&
+            !routinesPaused,
+          id: replaced?.id ?? randomUUID(),
           instructions,
-          nextRunAt: nextRun(parsed, Date.now()),
+          nextRunAt:
+            replaced &&
+            replaced.nextRunAt !== null &&
+            replaced.nextRunAt > now &&
+            sameSchedule(replaced.schedule, parsed)
+              ? replaced.nextRunAt
+              : nextRun(parsed, now),
           schedule: parsed,
           title,
         };
-        const current = routines();
-        if (id && !current.some((each) => each.id === id))
-          throw new Error(`No routine has the id ${id}.`);
-        if (!id && current.length >= 20)
-          throw new Error("A bot has at most 20 routines.");
         return change(
-          id
-            ? current.map((each) => (each.id === id ? routine : each))
+          replaced
+            ? current.map((each) => (each === replaced ? routine : each))
             : [...current, routine],
         );
       },

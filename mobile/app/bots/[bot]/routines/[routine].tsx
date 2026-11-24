@@ -34,7 +34,9 @@ const WebhookValue = ({
   value: string;
 }) => {
   const [shown, setShown] = useState(!secret);
-  const [copied, setCopied] = useState(false);
+  // What was copied, so a value changed since, as by a new sender, isn't
+  // shown as copied.
+  const [copied, setCopied] = useState<string | null>(null);
   return (
     <Row>
       <Text style={{ color: colors.label, fontSize: 17 }}>{label}</Text>
@@ -65,10 +67,16 @@ const WebhookValue = ({
         accessibilityLabel={`Copy the ${name}`}
         hitSlop={8}
         onPress={() =>
-          Clipboard.setStringAsync(value).then(() => setCopied(true), showError)
+          Clipboard.setStringAsync(value).then(
+            () => setCopied(value),
+            showError,
+          )
         }
       >
-        <Icon color={colors.blue} name={copied ? "checkmark" : "doc.on.doc"} />
+        <Icon
+          color={colors.blue}
+          name={copied === value ? "checkmark" : "doc.on.doc"}
+        />
       </Pressable>
     </Row>
   );
@@ -85,6 +93,13 @@ const PastedSecret = ({
   saved: string | null;
 }) => {
   const [draft, setDraft] = useState(saved ?? "");
+  // One saved elsewhere since, as on another computer, takes the place of
+  // a draft not edited here, so Save can't put back the one before.
+  const [shownSaved, setShownSaved] = useState(saved);
+  if (saved !== shownSaved) {
+    setShownSaved(saved);
+    if (draft.trim() === (shownSaved ?? "")) setDraft(saved ?? "");
+  }
   const pasted = draft.trim();
   const changed = pasted !== "" && pasted !== saved;
   return (

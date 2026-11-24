@@ -58,9 +58,9 @@
   transition: opacity 160ms ease;
 }
 
-.glow:hover:not(:disabled)::after,
-.icon-button:hover:not(:disabled)::after,
-.spot:hover:not(:disabled)::after {
+.glow:hover:not(:disabled, [aria-disabled="true"])::after,
+.icon-button:hover:not(:disabled, [aria-disabled="true"])::after,
+.spot:hover:not(:disabled, [aria-disabled="true"])::after {
   opacity: calc(0.6 / var(--glow-damping));
 }
 
@@ -87,9 +87,9 @@
   transition: --press 420ms ease-out;
 }
 
-.glow:active:not(:disabled)::before,
-.icon-button:active:not(:disabled)::before,
-.spot:active:not(:disabled)::before {
+.glow:active:not(:disabled, [aria-disabled="true"])::before,
+.icon-button:active:not(:disabled, [aria-disabled="true"])::before,
+.spot:active:not(:disabled, [aria-disabled="true"])::before {
   --press: 1;
   transition-duration: 140ms;
 }
@@ -121,7 +121,7 @@
   z-index: -1;
 }
 
-.glow-fill:hover:not(:disabled)::after {
+.glow-fill:hover:not(:disabled, [aria-disabled="true"])::after {
   opacity: calc(0.5 / var(--glow-damping));
 }
 
