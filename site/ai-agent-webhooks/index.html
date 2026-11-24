@@ -69,6 +69,12 @@
 
         <h2 id="webhook">Wake it from a webhook</h2>
         <p>
+          Whoever calls a webhook can try to steer its bot through what they
+          send, though the bot is told it is data, and the bot's shell runs any
+          command as you, unsandboxed and without asking. Connect only senders
+          you trust, and keep each key and secret to its sender.
+        </p>
+        <p>
           Ask for a routine that runs whenever its webhook is called, then open
           it under Routines. Copy its URL, pick its sender, and set the sender
           up as the routine says, letting it call only once the routine is
@@ -118,13 +124,12 @@
 
         <h2 id="away">While your computers sleep</h2>
         <p>
-          The relay holds up to 100 calls to a webhook, or 1 MiB of them, for
-          seven days at most, until your computers take them, so calls that come
-          while they sleep wait for them. A call that reaches the bot while its
-          routine is off is let go, not kept for later. Scheduled routines run
-          while Multibots runs on one of your servers, and one that comes due
-          while your computers sleep may run late, when they wake, even outside
-          the hours you gave it; see
+          The relay holds the calls it accepts, up to 100 to a webhook or 1 MiB
+          of them, for seven days at most, until your computers take them. A
+          call that reaches the bot while its routine is off is let go, not kept
+          for later. Scheduled routines run while Multibots runs on one of your
+          servers, and one that comes due while your computers sleep may run
+          late, when they wake, even outside the hours you gave it; see
           <a href="/self-hosted-ai-agent/#away"
             >keeping bots working while you're away</a
           >.
@@ -137,12 +142,9 @@
 
         <h2 id="before">Before you start</h2>
         <p>
-          A call's body comes from whoever calls the webhook, and though the bot
-          is told it is data, it can try to steer the bot, whose shell runs any
-          command as you, unsandboxed and without asking. Keep each key and
-          secret to its sender. Calls, and each webhook's sender and secret,
-          pass through our relay; the <a href="/privacy/">privacy page</a> says
-          what it keeps and for how long. Then follow the
+          Calls, and each webhook's sender and secret, pass through our relay;
+          the <a href="/privacy/">privacy page</a> says what it keeps and for
+          how long. To set it all up, follow the
           <a href="/docs/">install guide</a>.
         </p>
       </article>
