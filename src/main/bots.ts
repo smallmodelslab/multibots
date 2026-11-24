@@ -1291,11 +1291,14 @@ export class Bots {
     const gone = Object.entries(bot.webhooks).filter(
       ([id]) => !hooked.has(id) && !needed.has(id),
     );
+    // Gone from the relay even if the write fails, which leaves a stray
+    // the next start lets go.
     if (gone.length) {
-      for (const [id] of gone) delete bot.webhooks[id];
-      await this.write(botId, files.webhooks, bot.webhooks);
-      for (const [id, webhook] of gone)
+      for (const [id, webhook] of gone) {
+        delete bot.webhooks[id];
         this.options.webhooks.delete(id, webhook);
+      }
+      await this.write(botId, files.webhooks, bot.webhooks);
     }
     this.listen();
     this.options.onChange(botId);

@@ -98,11 +98,11 @@ export class Webhooks {
     pasted?: string,
   ): SavedWebhook | null {
     const secret = pasted?.trim();
-    // Sent to the relay in a header, which carries visible ASCII alone.
+    // Sent to the relay in a header, which carries printable ASCII alone.
     if (
       secret !== undefined &&
       (senders[sender].ours ||
-        !/^[\x21-\x7e]+$/.test(secret) ||
+        !/^[\x20-\x7e]+$/.test(secret) ||
         secret.length > 1024)
     )
       throw new Error(`That is not ${senders[sender].label}'s secret.`);
