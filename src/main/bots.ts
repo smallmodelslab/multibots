@@ -598,11 +598,14 @@ export class Bots {
       case files.conversation:
         Object.assign(bot, await this.readConversation(botId));
         break;
+      // Either may complete what a webhook needs to be listened to.
       case files.routines:
         bot.routines = await readJson(this.folder(botId, files.routines), []);
+        this.listen();
         break;
       case files.webhooks:
         bot.webhooks = await readJson(this.folder(botId, files.webhooks), {});
+        this.listen();
         break;
       case files.whiteboard:
         bot.whiteboard = await readJson(
@@ -915,12 +918,13 @@ export class Bots {
         return message;
       }
       // What its run took stays read, not read again after a restart.
-      // Not running, as while it waits for a server with a model, what it
-      // would read is let go, and so is the bot.
+      // Not running, as while it waits for a server with a model, or not
+      // reading yet, as while its run's model is had, what it would read is
+      // let go, and so is the bot.
       case "bot.stop": {
         const bot = this.bot(command.botId);
         bot.abort?.abort();
-        const queued = !bot.working && bot.inbox.length > 0;
+        const queued = (!bot.working || !bot.reading) && bot.inbox.length > 0;
         if (queued) bot.inbox = [];
         if (bot.reading || queued) {
           bot.reading = null;
@@ -1788,29 +1792,27 @@ export class Bots {
       const abort = new AbortController();
       bot.abort = abort;
       setWorking("Thinking");
-      // It reads its inbox, as much as fits the largest window, and once
-      // its model is had, as much as fits that model's, the rest waiting its
-      // turn as what comes during the run does; or after a restart what it
-      // was reading, which is in its context already. What it reads is one
-      // message, which goes to every model whole (`fits`), so none of it is
-      // left out unseen.
-      let taken: RunState["inbox"] = [];
-      if (!bot.reading) {
+      // It reads, once its model is had, as much of its inbox as fits that
+      // model's window, the rest waiting its turn as what comes during the
+      // run does; or after a restart what it was reading, which is in its
+      // context already. What it reads is one message, which goes to every
+      // model whole (`fits`), so none of it is left out unseen.
+      const take = (contextWindow?: number) => {
+        if (bot.reading || !bot.inbox.length) return;
         const { content, count } = batchOf(
           bot.inbox.map(({ content }) => content),
+          contextWindow,
         );
-        taken = bot.inbox.splice(0, count);
-        bot.reading = taken.map(({ id }) => id);
+        bot.reading = bot.inbox.splice(0, count).map(({ id }) => id);
         bot.context.push({ content, role: "user" });
-      }
+      };
       await this.archive(botId, bot);
-      // Where this run's steps go in its context.
-      const start = bot.context.length;
+      // Where this run's steps go in its context, once it has what it reads.
+      let start = bot.context.length;
       const { computer } = this.options;
       // Started by the computer tool, if the run uses it.
       let repls = null as Repls | null;
       try {
-        if (!(await this.save(botId, bot, fenced)).wrote) break;
         // Only its files are copied: a folder they leave empty is made here.
         await mkdir(this.folder(botId, "files"), { recursive: true });
         const [{ about, contextWindow, tools: hosted, ...model }, plugins] =
@@ -1833,16 +1835,12 @@ export class Bots {
             ),
             this.options.plugins.forBots(abort.signal),
           ]);
-        const fitting = batchOf(
-          taken.map(({ content }) => content),
-          contextWindow,
-        );
-        if (fitting.count < taken.length && !abort.signal.aborted) {
-          bot.inbox.unshift(...taken.slice(fitting.count));
-          bot.reading = bot.reading!.slice(0, fitting.count);
-          bot.context[start - 1] = { content: fitting.content, role: "user" };
-          if (!(await this.save(botId, bot, fenced)).wrote) break;
-        }
+        // Stopped while its model was had, it reads nothing.
+        if (abort.signal.aborted) break;
+        take(contextWindow);
+        if (!bot.reading) break;
+        start = bot.context.length;
+        if (!(await this.save(botId, bot, fenced)).wrote) break;
         const result = await generateText({
           ...model,
           abortSignal: abort.signal,
@@ -1957,10 +1955,12 @@ export class Bots {
         );
         this.options.analytics.capture("bot replied", { succeeded: true });
       } catch (error) {
-        // It failed in the open. A stop clears what it read itself; a quit,
-        // or another server taking the bot over, leaves it, to be read
+        // It failed in the open, answering what it read, or would have, as
+        // when no model can be had. A stop clears what it read itself; a
+        // quit, or another server taking the bot over, leaves it, to be read
         // again.
         if (!abort.signal.aborted) {
+          take();
           this.options.analytics.capture("bot replied", { succeeded: false });
           this.options.analytics.captureError(
             "bot reply",
