@@ -1831,10 +1831,17 @@ export class Bots {
           return;
         }
         if (!bot.inbox.length) return;
+        // What a bot brought from Grok Bot sets up in a run of its own, as
+        // the routines it sets then stay paused.
+        const setup = bot.inbox.findIndex(({ id }) =>
+          id.startsWith(importSetup),
+        );
         const read = bot.inbox.splice(
           0,
           batchOf(
-            bot.inbox.map(({ content }) => content),
+            bot.inbox
+              .slice(0, setup === 0 ? 1 : setup > 0 ? setup : undefined)
+              .map(({ content }) => content),
             contextWindow,
           ),
         );

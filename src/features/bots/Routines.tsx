@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Switch } from "../ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 // What the bot set itself to do later, each with what wakes it. The bot
 // writes them; the user switches each off and on here, and opens one to
@@ -291,17 +292,24 @@ const PastedSecret = ({
         type="password"
         value={draft}
       />
-      <Hint label={why ?? `Save the ${label.toLowerCase()}`}>
-        <Button
-          disabled={why !== null}
-          focusableWhenDisabled
-          onClick={() => onSave(pasted)}
-          size="sm"
-          variant="secondary"
-        >
-          Save
-        </Button>
-      </Hint>
+      {/* Why it can't save, only while it can't: one tooltip throughout,
+          so the button keeps its focus as that changes. */}
+      <Tooltip disabled={why === null}>
+        <TooltipTrigger
+          render={
+            <Button
+              disabled={why !== null}
+              focusableWhenDisabled
+              onClick={() => onSave(pasted)}
+              size="sm"
+              variant="secondary"
+            >
+              Save
+            </Button>
+          }
+        />
+        <TooltipContent>{why}</TooltipContent>
+      </Tooltip>
     </>
   );
 };
