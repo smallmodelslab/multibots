@@ -339,8 +339,10 @@ export class Bots {
   private readonly runs = new Set<Promise<unknown>>();
   // Each bot's changes, made one at a time (`exclusive`).
   private readonly locks = new Map<string, Promise<unknown>>();
-  // The bots whose run is having its model, not reading yet.
-  private readonly preparing = new WeakSet<Record>();
+  // The bots whose run is having its model, not reading yet, with what
+  // waited when it began: all it may read, what came since waiting for the
+  // next run.
+  private readonly preparing = new WeakMap<Record, Set<string>>();
   // Each bot's routine saves, one at a time, apart from its changes, as a
   // run's tools save routines too.
   private readonly routineSaves = new Map<string, Promise<unknown>>();
@@ -925,11 +927,15 @@ export class Bots {
       case "bot.stop": {
         const bot = this.bot(command.botId);
         bot.abort?.abort();
-        const queued =
-          (!bot.working || (this.preparing.has(bot) && !bot.reading)) &&
-          bot.inbox.length > 0;
-        if (queued) bot.inbox = [];
-        if (bot.reading || queued) {
+        const waited = this.preparing.get(bot);
+        const letGo = !bot.working
+          ? bot.inbox
+          : waited && !bot.reading
+            ? bot.inbox.filter(({ id }) => waited.has(id))
+            : [];
+        if (letGo.length)
+          bot.inbox = bot.inbox.filter((each) => !letGo.includes(each));
+        if (bot.reading || letGo.length) {
           bot.reading = null;
           const { reached } = await this.save(command.botId, bot);
           this.changed(command.botId, bot);
@@ -1806,6 +1812,7 @@ export class Bots {
       // model can't hold while it has yet to start. What it reads goes to
       // every model whole (`fits`), so none of it is left out unseen.
       const take = (contextWindow?: number) => {
+        const waited = this.preparing.get(bot) ?? new Set();
         this.preparing.delete(bot);
         if (bot.reading) {
           const count = bot.reading.length;
@@ -1832,17 +1839,20 @@ export class Bots {
           return;
         }
         if (!bot.inbox.length) return;
-        // What a bot brought from Grok Bot sets up in a run of its own, as
-        // the routines it sets then stay paused.
-        const setup = bot.inbox.findIndex(({ id }) =>
-          id.startsWith(importSetup),
-        );
+        // What came since the run began waits for the next one. What a bot
+        // brought from Grok Bot sets up in a run of its own, as the routines
+        // it sets then stay paused.
+        let end = bot.inbox.findIndex(({ id }) => !waited.has(id));
+        if (end === -1) end = bot.inbox.length;
+        const setup = bot.inbox
+          .slice(0, end)
+          .findIndex(({ id }) => id.startsWith(importSetup));
+        if (setup >= 0) end = setup || 1;
+        if (!end) return;
         const read = bot.inbox.splice(
           0,
           batchOf(
-            bot.inbox
-              .slice(0, setup === 0 ? 1 : setup > 0 ? setup : undefined)
-              .map(({ content }) => content),
+            bot.inbox.slice(0, end).map(({ content }) => content),
             contextWindow,
           ),
         );
@@ -1854,7 +1864,7 @@ export class Bots {
           })),
         );
       };
-      this.preparing.add(bot);
+      this.preparing.set(bot, new Set(bot.inbox.map(({ id }) => id)));
       // Where this run's steps go in its context, once it has what it reads.
       let start = bot.context.length;
       const { computer } = this.options;
