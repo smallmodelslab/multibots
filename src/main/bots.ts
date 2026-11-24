@@ -474,11 +474,7 @@ export class Bots {
       );
       for (const routine of missed)
         routine.nextRunAt = nextRun(routine.schedule, now);
-      // A webhook a save cut short left without its routine goes too.
-      const hooked = hookedIds(bot);
-      const stray = Object.keys(bot.webhooks).some((id) => !hooked.has(id));
-      if (missed.length || stray)
-        this.later(botId, () => this.saveRoutines(botId, bot));
+      if (missed.length) this.later(botId, () => this.saveRoutines(botId, bot));
       if (bot.held !== this.options.hostId)
         this.later(botId, () => this.publish(botId, bot));
       else if (bot.reading || bot.inbox.length) this.run(botId, bot);
@@ -1292,7 +1288,7 @@ export class Bots {
       ([id]) => !hooked.has(id) && !needed.has(id),
     );
     // Gone from the relay even if the write fails, which leaves a stray
-    // the next start lets go.
+    // nothing listens to, for the next save to let go.
     if (gone.length) {
       for (const [id, webhook] of gone) {
         delete bot.webhooks[id];
