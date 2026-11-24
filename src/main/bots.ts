@@ -926,7 +926,8 @@ export class Bots {
         const bot = this.bot(command.botId);
         bot.abort?.abort();
         const queued =
-          (!bot.working || this.preparing.has(bot)) && bot.inbox.length > 0;
+          (!bot.working || (this.preparing.has(bot) && !bot.reading)) &&
+          bot.inbox.length > 0;
         if (queued) bot.inbox = [];
         if (bot.reading || queued) {
           bot.reading = null;
@@ -2011,11 +2012,11 @@ export class Bots {
         // when no model can be had. A stop clears what it read itself; a
         // quit, or another server taking the bot over, leaves it, to be read
         // again.
+        if (!abort.signal.aborted && this.preparing.has(bot)) {
+          take();
+          await this.archive(botId, bot);
+        }
         if (!abort.signal.aborted) {
-          if (this.preparing.has(bot)) {
-            take();
-            await this.archive(botId, bot);
-          }
           this.options.analytics.capture("bot replied", { succeeded: false });
           this.options.analytics.captureError(
             "bot reply",
