@@ -47,24 +47,27 @@ const sizeOf = (message: unknown) =>
       : (value as unknown);
   }).length;
 
-// Where the newest turns that fit `budget` begin. The newest message of the
-// user's goes even when it alone is too long, for the model to answer or
-// turn down.
-const newest = (context: { role: string }[], budget: number) => {
+// Where the newest turns that fit `budget` begin. The newest `batch`
+// messages of the user's, what a run reads, go even when they alone are too
+// long, for the model to answer or turn down.
+const newest = (context: { role: string }[], budget: number, batch = 1) => {
   let size = 0;
   let start = context.length;
+  let users = 0;
   for (let index = context.length - 1; index >= 0; index -= 1) {
     size += sizeOf(context[index]);
-    if (size > budget) break;
-    if (context[index]!.role === "user") start = index;
+    if (size > budget && users >= batch) break;
+    if (context[index]!.role === "user") {
+      start = index;
+      users += 1;
+    }
   }
-  return start < context.length
-    ? start
-    : Math.max(
-        0,
-        context.findLastIndex((message) => message.role === "user"),
-      );
+  return start < context.length ? start : 0;
 };
+
+// What a model of `contextWindow` tokens is sent, in characters.
+const budgetOf = (contextWindow: number) =>
+  Math.min(contextBudget, contextWindow * 2 || contextBudget);
 
 const leftOut = {
   type: "text",
@@ -72,19 +75,16 @@ const leftOut = {
 } as const;
 
 // The newest turns that fit the model, a window it does not say counting
-// as the largest. When what came since the user's newest message is too
-// long on its own, as a long run's tool calls, its oldest tools' results
-// are left out until it fits.
-// What a model of `contextWindow` tokens is sent, in characters.
-const budgetOf = (contextWindow: number) =>
-  Math.min(contextBudget, contextWindow * 2 || contextBudget);
-
+// as the largest, the newest `batch` of the user's whole. When what came
+// since those is too long on its own, as a long run's tool calls, its
+// oldest tools' results are left out until it fits.
 export const fits = <M extends { role: string }>(
   context: M[],
   contextWindow: number,
+  batch = 1,
 ) => {
   const budget = budgetOf(contextWindow);
-  const fitted = context.slice(newest(context, budget));
+  const fitted = context.slice(newest(context, budget, batch));
   let over = sizeOf(fitted) - budget;
   if (over <= 0) return fitted;
   return fitted.map((message) => {
@@ -103,44 +103,39 @@ export const fits = <M extends { role: string }>(
   });
 };
 
-// What one run reads of what waits for a bot, as one message's content: as
-// many of the oldest as fit a model's window together (the largest, without
-// one), one at least, and how many that is. Each is sized as the parts it
-// becomes, which errs large.
+// How many of what waits for a bot one run reads: as many of the oldest as
+// fit a model's window together (the largest, without one), one at least.
 export const batchOf = (waiting: UserContent[], contextWindow = 0) => {
   const budget = budgetOf(contextWindow);
-  const parts = (content: UserContent) =>
-    typeof content === "string"
-      ? [{ text: content, type: "text" as const }]
-      : content;
-  let size = sizeOf({ content: [], role: "user" });
+  let size = 0;
   let count = 0;
-  for (const each of waiting) {
-    size += sizeOf(parts(each));
+  for (const content of waiting) {
+    size += sizeOf({ content, role: "user" });
     if (count && size > budget) break;
     count += 1;
   }
-  const read = waiting.slice(0, count);
-  return {
-    content: read.length === 1 ? read[0]! : read.flatMap(parts),
-    count,
-  };
+  return count;
 };
 
 // How many of a bot's oldest turns no model is sent again: none until it
-// holds twice what fits the largest window, then all before what does.
-export const unsent = (context: { role: string }[]) =>
-  sizeOf(context) > 2 * contextBudget ? newest(context, contextBudget) : 0;
+// holds twice what fits the largest window, then all before what does, the
+// newest `batch` of the user's kept.
+export const unsent = (context: { role: string }[], batch = 1) =>
+  sizeOf(context) > 2 * contextBudget
+    ? newest(context, contextBudget, batch)
+    : 0;
 
 // The bots' models in the user's order, as one: each call goes to the first
 // that answers, with its own options and as much of the conversation as fits
-// it. The first that can be had leads: the run is told about it, fits its
-// context to it and offers the tools its provider runs. The rest are had
-// only once a call reaches them, so one that can't be, or is slow to, holds
-// up nothing before it. A run stopped (`signal`) stops waiting for one.
+// it, the newest `batch()` messages of the user's whole. The first that can
+// be had leads: the run is told about it, fits its context to it and offers
+// the tools its provider runs. The rest are had only once a call reaches
+// them, so one that can't be, or is slow to, holds up nothing before it. A
+// run stopped (`signal`) stops waiting for one.
 export const fallback = async (
   models: Fallback[],
   signal: AbortSignal,
+  batch: () => number,
 ): Promise<CallableModel> => {
   const stopped = new Promise<never>((_, fail) => {
     const stop = () => fail(signal.reason);
@@ -187,6 +182,7 @@ export const fallback = async (
                   ...fits(
                     options.prompt.filter(({ role }) => role !== "system"),
                     model.contextWindow,
+                    batch(),
                   ),
                 ]
               : options.prompt,

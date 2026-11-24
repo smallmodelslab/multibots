@@ -198,8 +198,7 @@ const rendezvous = (botId: string, servers: string[]) =>
     .sort((a, b) => (a.rank < b.rank ? 1 : -1))[0]?.id;
 
 // An image the user sent stands in the context as its path in the bot's
-// folder, read in only for the newest few the model sees, the last of a
-// message first, as a batch is one message.
+// folder, read in only for the newest few the model sees.
 // Stored in saved model contexts, including conversations from before the rename.
 const imageMark = "openbots-file:";
 const imageTypes = new Set([
@@ -217,7 +216,7 @@ const withImages = async (messages: ModelMessage[], folder: string) => {
       if (message.role !== "user" || typeof message.content === "string")
         return message;
       const content = await Promise.all(
-        message.content.toReversed().map(async (part) => {
+        message.content.map(async (part) => {
           if (
             part.type !== "image" ||
             typeof part.image !== "string" ||
@@ -234,7 +233,7 @@ const withImages = async (messages: ModelMessage[], folder: string) => {
             : { text: `[image ${path}, since deleted]`, type: "text" as const };
         }),
       );
-      return { ...message, content: content.toReversed() };
+      return { ...message, content };
     }),
   );
   return shown.toReversed();
@@ -340,6 +339,8 @@ export class Bots {
   private readonly runs = new Set<Promise<unknown>>();
   // Each bot's changes, made one at a time (`exclusive`).
   private readonly locks = new Map<string, Promise<unknown>>();
+  // The bots whose run is having its model, not reading yet.
+  private readonly preparing = new WeakSet<Record>();
   // Each bot's routine saves, one at a time, apart from its changes, as a
   // run's tools save routines too.
   private readonly routineSaves = new Map<string, Promise<unknown>>();
@@ -924,7 +925,8 @@ export class Bots {
       case "bot.stop": {
         const bot = this.bot(command.botId);
         bot.abort?.abort();
-        const queued = (!bot.working || !bot.reading) && bot.inbox.length > 0;
+        const queued =
+          (!bot.working || this.preparing.has(bot)) && bot.inbox.length > 0;
         if (queued) bot.inbox = [];
         if (bot.reading || queued) {
           bot.reading = null;
@@ -1794,18 +1796,53 @@ export class Bots {
       setWorking("Thinking");
       // It reads, once its model is had, as much of its inbox as fits that
       // model's window, the rest waiting its turn as what comes during the
-      // run does; or after a restart what it was reading, which is in its
-      // context already. What it reads is one message, which goes to every
-      // model whole (`fits`), so none of it is left out unseen.
+      // run does; or after a restart, or on another server, what it was
+      // reading, which is in its context already, giving back what this
+      // model can't hold while it has yet to start. What it reads goes to
+      // every model whole (`fits`), so none of it is left out unseen.
       const take = (contextWindow?: number) => {
-        if (bot.reading || !bot.inbox.length) return;
-        const { content, count } = batchOf(
-          bot.inbox.map(({ content }) => content),
-          contextWindow,
+        this.preparing.delete(bot);
+        if (bot.reading) {
+          const count = bot.reading.length;
+          const begun = bot.context.slice(-count);
+          if (
+            contextWindow === undefined ||
+            begun.length < count ||
+            begun.some(({ role }) => role !== "user")
+          )
+            return;
+          const fitting = batchOf(
+            begun.map(({ content }) => content as UserContent),
+            contextWindow,
+          );
+          if (fitting === count) return;
+          bot.context.splice(bot.context.length - count + fitting);
+          bot.inbox.unshift(
+            ...begun.slice(fitting).map(({ content }, index) => ({
+              content: content as UserContent,
+              id: bot.reading![fitting + index]!,
+            })),
+          );
+          bot.reading = bot.reading.slice(0, fitting);
+          return;
+        }
+        if (!bot.inbox.length) return;
+        const read = bot.inbox.splice(
+          0,
+          batchOf(
+            bot.inbox.map(({ content }) => content),
+            contextWindow,
+          ),
         );
-        bot.reading = bot.inbox.splice(0, count).map(({ id }) => id);
-        bot.context.push({ content, role: "user" });
+        bot.reading = read.map(({ id }) => id);
+        bot.context.push(
+          ...read.map(({ content }): ModelMessage => ({
+            content,
+            role: "user",
+          })),
+        );
       };
+      this.preparing.add(bot);
       await this.archive(botId, bot);
       // Where this run's steps go in its context, once it has what it reads.
       let start = bot.context.length;
@@ -1832,6 +1869,7 @@ export class Bots {
                     },
               ),
               abort.signal,
+              () => bot.reading?.length ?? 1,
             ),
             this.options.plugins.forBots(abort.signal),
           ]);
@@ -1845,13 +1883,16 @@ export class Bots {
           ...model,
           abortSignal: abort.signal,
           messages: await withImages(
-            fits(bot.context, contextWindow),
+            fits(bot.context, contextWindow, bot.reading?.length),
             this.folder(botId, "files"),
           ),
           // What the run said and its tools gave counts toward the
           // model's window too.
           prepareStep: ({ messages }) => ({
-            messages: withScreens(fits(messages, contextWindow), shownScreens),
+            messages: withScreens(
+              fits(messages, contextWindow, bot.reading?.length),
+              shownScreens,
+            ),
           }),
           stopWhen: stepCountIs(100),
           system: this.instructions(botId, bot, about, plugins.about),
@@ -1980,6 +2021,7 @@ export class Bots {
           );
         }
       } finally {
+        this.preparing.delete(bot);
         bot.abort = null;
         repls?.close();
       }
@@ -1993,7 +2035,7 @@ export class Bots {
   // is still this run's, not one another server's takeover brought.
   private async archive(botId: string, bot: Record) {
     const { context } = bot;
-    const cut = unsent(context);
+    const cut = unsent(context, bot.reading?.length);
     if (!cut) return;
     await this.options.replica.write(
       botId,
