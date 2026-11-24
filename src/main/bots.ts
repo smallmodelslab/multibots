@@ -198,7 +198,8 @@ const rendezvous = (botId: string, servers: string[]) =>
     .sort((a, b) => (a.rank < b.rank ? 1 : -1))[0]?.id;
 
 // An image the user sent stands in the context as its path in the bot's
-// folder, read in only for the newest few the model sees.
+// folder, read in only for the newest few the model sees, the last of a
+// message first, as a batch is one message.
 // Stored in saved model contexts, including conversations from before the rename.
 const imageMark = "openbots-file:";
 const imageTypes = new Set([
@@ -216,7 +217,7 @@ const withImages = async (messages: ModelMessage[], folder: string) => {
       if (message.role !== "user" || typeof message.content === "string")
         return message;
       const content = await Promise.all(
-        message.content.map(async (part) => {
+        message.content.toReversed().map(async (part) => {
           if (
             part.type !== "image" ||
             typeof part.image !== "string" ||
@@ -233,7 +234,7 @@ const withImages = async (messages: ModelMessage[], folder: string) => {
             : { text: `[image ${path}, since deleted]`, type: "text" as const };
         }),
       );
-      return { ...message, content };
+      return { ...message, content: content.toReversed() };
     }),
   );
   return shown.toReversed();
@@ -290,6 +291,14 @@ const errorText = (error: unknown) =>
 // still run them.
 const importSetup = "grok-bot-setup:";
 
+// The routines a webhook wakes, by id.
+const hookedIds = (bot: Pick<Record, "routines">) =>
+  new Set(
+    bot.routines
+      .filter((routine) => routine.schedule.kind === "webhook")
+      .map((routine) => routine.id),
+  );
+
 // How late a routine that repeats within hours may run outside them, as
 // when its time came just before their end; later, as after the computer
 // slept, it waits for its next time.
@@ -331,6 +340,9 @@ export class Bots {
   private readonly runs = new Set<Promise<unknown>>();
   // Each bot's changes, made one at a time (`exclusive`).
   private readonly locks = new Map<string, Promise<unknown>>();
+  // Each bot's routine saves, one at a time, apart from its changes, as a
+  // run's tools save routines too.
+  private readonly routineSaves = new Map<string, Promise<unknown>>();
   // This server is stopping: no run starts or goes on, and what one was
   // reading stays saved for the next server.
   private closed = false;
@@ -462,7 +474,11 @@ export class Bots {
       );
       for (const routine of missed)
         routine.nextRunAt = nextRun(routine.schedule, now);
-      if (missed.length) this.later(botId, () => this.saveRoutines(botId, bot));
+      // A webhook a save cut short left without its routine goes too.
+      const hooked = hookedIds(bot);
+      const stray = Object.keys(bot.webhooks).some((id) => !hooked.has(id));
+      if (missed.length || stray)
+        this.later(botId, () => this.saveRoutines(botId, bot));
       if (bot.held !== this.options.hostId)
         this.later(botId, () => this.publish(botId, bot));
       else if (bot.reading || bot.inbox.length) this.run(botId, bot);
@@ -1243,22 +1259,31 @@ export class Bots {
     if (message.role !== "user") bot.call?.speak(message.text);
   }
 
+  // Saves the bot's routines as they are when the save before has ended.
+  saveRoutines(botId: string, bot: Record) {
+    const saved = (this.routineSaves.get(botId) ?? Promise.resolve())
+      .catch(() => {})
+      .then(() => this.writeRoutines(botId, bot));
+    this.routineSaves.set(botId, saved);
+    return saved;
+  }
+
   // Each webhook routine has its webhook, and no other routine one. A new
   // one's webhook is saved before its routine, and one no routine needs
   // goes only once the routines are saved, so a save cut short leaves no
   // webhook routine without its webhook, only a webhook no routine has,
-  // which the next save lets go.
-  async saveRoutines(botId: string, bot: Record) {
-    const hooked = new Set(
-      bot.routines
-        .filter((routine) => routine.schedule.kind === "webhook")
-        .map((routine) => routine.id),
-    );
+  // which nothing listens to and the next save lets go.
+  private async writeRoutines(botId: string, bot: Record) {
+    const hooked = hookedIds(bot);
     const added = [...hooked].filter((id) => !bot.webhooks[id]);
     for (const id of added) bot.webhooks[id] = this.options.webhooks.make();
     if (added.length) await this.write(botId, files.webhooks, bot.webhooks);
     await this.write(botId, files.routines, bot.routines);
-    const gone = Object.entries(bot.webhooks).filter(([id]) => !hooked.has(id));
+    // Not one a change since needs, which its own save adds.
+    const needed = hookedIds(bot);
+    const gone = Object.entries(bot.webhooks).filter(
+      ([id]) => !hooked.has(id) && !needed.has(id),
+    );
     if (gone.length) {
       for (const [id] of gone) delete bot.webhooks[id];
       await this.write(botId, files.webhooks, bot.webhooks);
@@ -1276,7 +1301,12 @@ export class Bots {
         this.started && !this.closed
           ? [...this.bots]
               .filter(([botId]) => this.mine(botId))
-              .flatMap(([, bot]) => Object.entries(bot.webhooks))
+              .flatMap(([, bot]) => {
+                const hooked = hookedIds(bot);
+                return Object.entries(bot.webhooks).filter(([id]) =>
+                  hooked.has(id),
+                );
+              })
           : [],
       ),
     );
