@@ -53,7 +53,7 @@ export const MultidesktopSetting = ({
         }
         detail={
           windows ? (
-            "Bots can't use the screen on Windows yet."
+            "Not on Windows yet. Install it on a Mac or Linux server to let its bots use the screen."
           ) : error ? (
             <span className="text-destructive">{error}</span>
           ) : version && current ? (

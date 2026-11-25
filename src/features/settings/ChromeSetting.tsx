@@ -35,7 +35,7 @@ export const ChromeSetting = ({ chrome }: { chrome: ChromeState }) => {
       }
       detail={
         windows ? (
-          "Bots can't use Chrome on Windows yet."
+          "Not on Windows yet. Set it up on a Mac or Linux server to let its bots use Chrome."
         ) : error ? (
           <span className="text-destructive">{error}</span>
         ) : chrome.connected ? (
