@@ -20,9 +20,11 @@ const host = document.querySelector<HTMLElement>(".bot")!;
 const corner = document.querySelector<HTMLAnchorElement>(".corner")!;
 const buttons = document.querySelector<HTMLElement>(".actions")!;
 // Windows and Linux visitors see their download first, and get it from the
-// corner; everyone else, the Mac's.
+// corner; everyone else, the Mac's. It comes first in the page, too, so
+// focus and screen readers reach it first.
 if (platform === "windows" || platform === "linux") {
   buttons.classList.add(platform);
+  buttons.prepend(buttons.querySelector(`.${platform}`)!);
   corner.dataset.download = platform;
   corner.href = `https://wrkrsh.com/download/multibots/${platform}`;
 }

@@ -231,7 +231,6 @@ p a {
 }
 
 .button {
-  order: 1;
   padding: 0.85em 0;
   color: var(--muted);
   font-weight: 550;
@@ -242,7 +241,6 @@ p a {
 .actions:not(.windows, .linux) .mac,
 .actions.windows .windows,
 .actions.linux .linux {
-  order: 0;
   padding: 0.85em 1.5em;
   border-radius: 999px;
   background: var(--ink);
