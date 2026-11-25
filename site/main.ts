@@ -24,7 +24,9 @@ const buttons = document.querySelector<HTMLElement>(".actions")!;
 // focus and screen readers reach it first.
 if (platform === "windows" || platform === "linux") {
   buttons.classList.add(platform);
+  const focused = document.activeElement;
   buttons.prepend(buttons.querySelector(`.${platform}`)!);
+  if (focused instanceof HTMLElement) focused.focus();
   corner.dataset.download = platform;
   corner.href = `https://wrkrsh.com/download/multibots/${platform}`;
 }

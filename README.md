@@ -109,8 +109,8 @@ detail:
   call goes to the first that answers (`src/main/fallback.ts`), so a run that loses ChatGPT
   midway carries on with the next. A model further down is had only when a
   call reaches it, and gets as much of the conversation as fits its own
-  window. It has a shell on its server, and through Multidesktop on the
-  user's other computers, web search on ChatGPT, and tools to set and delete
+  window. It has a shell on its server, and, from a Mac or Linux, through
+  Multidesktop on the user's other computers, web search on ChatGPT, and tools to set and delete
   its routines (`src/main/tools.ts`). A run sends the
   newest turns that fit, at most about half the first model's window, and
   leaves out its oldest tools' results once its own steps would not;
