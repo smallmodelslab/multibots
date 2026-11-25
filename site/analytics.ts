@@ -23,7 +23,7 @@ if (location.hostname === "multibots.ca") {
       });
     else if (link?.hostname === "github.com")
       send("github link clicked", { href: link.href });
-    else if (link?.getAttribute("href") === "/docs/")
+    else if (link?.origin === location.origin && link.pathname === "/docs/")
       send("docs link clicked", {});
   };
   document.addEventListener("click", clicked);

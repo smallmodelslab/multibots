@@ -7,6 +7,8 @@
   --shift: 0px;
   --shrink: 0.6;
   --under: calc(50svh - var(--rise) + var(--box) * 0.19 * var(--shrink));
+  /* Narrow, focus scrolls what it reaches out from under the bot's band. */
+  scroll-padding-top: calc(var(--under) + 1rem);
 }
 
 .story {
@@ -273,6 +275,7 @@ p a {
   :root {
     --rise: 0px;
     --shift: min(25vw, 17rem);
+    scroll-padding-top: 0;
   }
 
   .actor {
@@ -308,5 +311,10 @@ p a {
 @media (prefers-reduced-motion: reduce) {
   .bot {
     animation: none;
+  }
+
+  .mark,
+  .mark path {
+    transition: none;
   }
 }

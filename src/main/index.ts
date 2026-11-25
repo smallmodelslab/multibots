@@ -15,6 +15,7 @@ import {
 import { execFileSync, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { setTimeout as delay } from "node:timers/promises";
 import { hostname, userInfo } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -749,12 +750,12 @@ const start = async () => {
 
   // Stops every bot's run, with what its shell started, the webhooks, the
   // desktop and then the peers: peering stays open until the runs have
-  // saved, and sent on, their steps.
+  // saved, and sent on, their steps, for up to ten seconds.
   const shutDown = async () => {
     const settled = bots?.close();
     computer?.close();
     void browser.close();
-    await settled;
+    await Promise.race([settled, delay(10_000)]);
     peers.close();
   };
   app.on("before-quit", () => void shutDown());
