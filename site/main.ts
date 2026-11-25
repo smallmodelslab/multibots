@@ -21,12 +21,20 @@ const corner = document.querySelector<HTMLAnchorElement>(".corner")!;
 const buttons = document.querySelector<HTMLElement>(".actions")!;
 // Windows and Linux visitors see their download first, and get it from the
 // corner; everyone else, the Mac's. It comes first in the page, too, so
-// focus and screen readers reach it first, unless someone is already tabbing
-// through the downloads.
+// focus and screen readers reach it first; someone already tabbing through
+// the downloads sees the change once they leave them.
 if (platform === "windows" || platform === "linux") {
-  buttons.classList.add(platform);
-  if (!buttons.contains(document.activeElement))
+  const promote = () => {
+    buttons.classList.add(platform);
     buttons.prepend(buttons.querySelector(`.${platform}`)!);
+  };
+  if (!buttons.contains(document.activeElement)) promote();
+  else
+    buttons.addEventListener("focusout", function left(event) {
+      if (buttons.contains(event.relatedTarget as Node | null)) return;
+      buttons.removeEventListener("focusout", left);
+      promote();
+    });
   corner.dataset.download = platform;
   corner.href = `https://wrkrsh.com/download/multibots/${platform}`;
 }
