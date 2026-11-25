@@ -69,6 +69,8 @@ const runShell = (
       if (windows) {
         spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], {
           windowsHide: true,
+        }).on("error", (error) => {
+          stopped = `${why}, but it could not be ended: ${error.message}`;
         });
         return;
       }
@@ -93,9 +95,8 @@ const runShell = (
     let tail = "";
     let total = 0;
     let settled = false;
-    const take = (chunk: Buffer) => {
+    const take = (text: string) => {
       if (settled) return;
-      let text = chunk.toString();
       total += text.length;
       const room = half - head.length;
       if (room > 0) {
@@ -104,8 +105,9 @@ const runShell = (
       }
       tail = (tail + text).slice(-half);
     };
-    child.stdout.on("data", take);
-    child.stderr.on("data", take);
+    // Each stream decoded on its own, so no character is split.
+    child.stdout.setEncoding("utf8").on("data", take);
+    child.stderr.setEncoding("utf8").on("data", take);
     const settle = (exitCode: number | null) => {
       if (settled) return;
       settled = true;
@@ -121,7 +123,7 @@ const runShell = (
       });
     };
     child.on("error", (error) => {
-      take(Buffer.from(`\n${error.message}`));
+      take(`\n${error.message}`);
       // It never started.
       if (!child.pid) settle(null);
     });
@@ -488,7 +490,16 @@ export const botTools = ({
         return runShell(
           computer
             ? remoteShell(computer, command)
-            : { args: [...shell.args, command], file: shell.path },
+            : {
+                // PowerShell writes UTF-8, as the output is read.
+                args: [
+                  ...shell.args,
+                  windows
+                    ? `[Console]::OutputEncoding = [Text.Encoding]::UTF8; ${command}`
+                    : command,
+                ],
+                file: shell.path,
+              },
           folder,
           timeoutSeconds,
           abortSignal,

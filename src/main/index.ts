@@ -691,7 +691,9 @@ const start = async () => {
   act("disconnect-plugin", (slug: string) => plugins.disconnect(slug));
   act("allow-screen", () => computer?.allow());
   act("install-multidesktop", () => computer?.install());
-  act("set-up-chrome", async () => {
+  // One setup at a time: a second click joins the one under way.
+  let settingUpChrome: Promise<void> | null = null;
+  const setUpChrome = async () => {
     const folder = await browser.setUp();
     shell.showItemInFolder(join(folder, "manifest.json"));
     spawn(
@@ -703,7 +705,14 @@ const start = async () => {
     )
       .on("error", () => {})
       .unref();
-  });
+  };
+  act(
+    "set-up-chrome",
+    () =>
+      (settingUpChrome ??= setUpChrome().finally(() => {
+        settingUpChrome = null;
+      })),
+  );
   act("sign-in-multidesktop", () => computer?.signIn());
   ipcMain.handle("multibots:grok-bots", () =>
     localGrokBots(app.getPath("appData")),
@@ -721,7 +730,8 @@ const start = async () => {
   // copy in the data folder, which only the user reads, kept until the app
   // starts again.
   const opened = join(home, "opened");
-  await rm(opened, { force: true, recursive: true });
+  // A copy an app still holds open, as Windows won't remove, stays.
+  await rm(opened, { force: true, recursive: true }).catch(() => {});
   act(
     "open-file",
     async (botId: string, path: string) => {
@@ -738,14 +748,15 @@ const start = async () => {
   );
 
   // Stops every bot's run, with what its shell started, the webhooks, the
-  // peers and the desktop.
+  // peers and the desktop, settling once the runs have saved their steps.
   const shutDown = () => {
-    void bots?.close();
+    const settled = bots?.close();
     peers.close();
     computer?.close();
     void browser.close();
+    return settled;
   };
-  app.on("before-quit", shutDown);
+  app.on("before-quit", () => void shutDown());
   setMenu();
   createWindow();
   // A restart into an update exits without quitting, so it shuts down here.
@@ -755,7 +766,7 @@ const start = async () => {
       if (menuChanged) setMenu();
     },
     prepareToRestart: async () => {
-      shutDown();
+      await shutDown();
       return true;
     },
     reload: async () => {

@@ -185,10 +185,20 @@
   padding: calc(var(--under) + 3.5rem) 1.25rem 0;
 }
 
+/* The last step grows with its words in a short window. */
+.step:last-child {
+  height: auto;
+  min-height: 100svh;
+}
+
 .say {
   max-width: 38rem;
   text-align: center;
   opacity: var(--seen, 1);
+}
+
+.faded .say {
+  pointer-events: none;
 }
 
 h1,

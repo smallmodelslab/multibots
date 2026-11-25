@@ -762,7 +762,8 @@ export class Bots {
           const info = await stat(path);
           found.push({
             modifiedAt: info.mtimeMs,
-            path: relative(root, path),
+            // "/" between folders on every system, as replication sends.
+            path: relative(root, path).split(sep).join("/"),
             size: info.size,
           });
         }

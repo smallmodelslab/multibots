@@ -12,13 +12,14 @@ import {
   type Outfit,
 } from "./bot";
 
-const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const motion = matchMedia("(prefers-reduced-motion: reduce)");
+const reduced = () => motion.matches;
 const wide = matchMedia("(min-width: 50rem)");
 const steps = [...document.querySelectorAll<HTMLElement>(".step")];
 const host = document.querySelector<HTMLElement>(".bot")!;
 const corner = document.querySelector<HTMLAnchorElement>(".corner")!;
 const buttons = document.querySelector<HTMLElement>(".actions")!;
-const bot = createBot(host, reduced);
+const bot = createBot(host, motion);
 const dressed: Outfit = { hue: 215, hat: "cap", glasses: "round" };
 const outfits: Outfit[] = [
   { hue: 330, hat: "party", glasses: "none" },
@@ -166,7 +167,7 @@ function speak(step: HTMLElement) {
 }
 
 let active = -1;
-let introDone = reduced;
+let introDone = reduced();
 function activate(index: number) {
   active = index;
   side = index % 2 ? -1 : 1;
@@ -183,12 +184,12 @@ function activate(index: number) {
   const act = acts[step.dataset.act!]!;
   // Before "yours" the bot is plain; from there on it keeps its outfit. With
   // reduced motion it only takes each step's outfit, without acting.
-  const montage = index === yours && !reduced;
+  const montage = index === yours && !reduced();
   void bot.play(async (bot) => {
     if (!montage) bot.dress(index < yours ? plain : dressed);
     const color = montage ? {} : { color: index < yours ? 0 : 1 };
     await bot.to({ ...rest, open: 1, ...color }, 220);
-    if (!reduced) await act(bot);
+    if (!reduced()) await act(bot);
   });
 }
 
@@ -197,7 +198,7 @@ let rising: Animation | undefined;
 function wake() {
   if (document.body.classList.contains("awake")) return;
   document.body.classList.add("awake");
-  if (!reduced)
+  if (!reduced())
     rising = host.animate([{ transform: "none", offset: 0 }], {
       duration: 1200,
       easing: "cubic-bezier(0.45, 0, 0.15, 1)",
@@ -215,10 +216,14 @@ function onScroll() {
   let distance = Infinity;
   let shown = 0;
   steps.forEach((step, index) => {
-    const away = Math.abs(step.getBoundingClientRect().top) / innerHeight;
+    const top = step.getBoundingClientRect().top;
+    const away = Math.abs(top) / innerHeight;
     const t = Math.max(0, Math.min(1, (away - 0.12) / 0.38));
-    const seen = 1 - t * t * (3 - 2 * t);
+    // The last step stays once scrolled into, however short the window.
+    const seen = step === steps.at(-1) && top < 0 ? 1 : 1 - t * t * (3 - 2 * t);
     step.style.setProperty("--seen", String(seen));
+    // Words faded out take no clicks.
+    step.classList.toggle("faded", seen === 0);
     if (step.contains(buttons)) shown = seen;
     if (away < distance) [nearest, distance] = [index, away];
   });
@@ -226,21 +231,31 @@ function onScroll() {
   const place = buttons.getBoundingClientRect();
   if (place.top < 0 || place.bottom > innerHeight) shown = 0;
   corner.style.opacity = String(1 - shown);
-  corner.inert = shown > 0.5;
+  corner.inert = shown === 1;
   const first = steps[0]!.getBoundingClientRect();
   const at = -first.top / first.height;
   host.style.setProperty(
     "--x",
-    String(reduced ? side : Math.cos(Math.PI * at)),
+    String(reduced() ? side : Math.cos(Math.PI * at)),
   );
 }
 addEventListener("scroll", () => (queued ||= requestAnimationFrame(onScroll)), {
   passive: true,
 });
 addEventListener("resize", onScroll);
+// Reduce Motion turned on or off while the page is open takes effect at once.
+motion.addEventListener("change", () => {
+  rising?.finish();
+  if (reduced()) {
+    introDone = true;
+    wake();
+  }
+  if (active >= 0) activate(active);
+  onScroll();
+});
 document.documentElement.classList.add("js");
 onScroll();
-if (reduced) {
+if (reduced()) {
   wake();
 } else if (active === 0) {
   void bot.play(async (bot) => {

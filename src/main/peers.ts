@@ -76,7 +76,7 @@ const tailscaleStatus = async (): Promise<Status | "missing"> => {
         command,
         ["status", "--json"],
         // No console window flashes up on Windows.
-        { timeout: 10_000, windowsHide: true },
+        { maxBuffer: 64 * 1024 * 1024, timeout: 10_000, windowsHide: true },
         (error, stdout) => done(error && !stdout ? null : stdout),
       ),
     );
@@ -409,9 +409,11 @@ export class Peers {
       if (!response.ok) return;
       const info = (await response.json()) as Info;
       if (info.id === this.options.self().id || this.peers.has(info.id)) return;
+      // A peer that never answers with its events doesn't hold startup.
+      const late = setTimeout(() => stop.abort(), 5000);
       const events = await ask(address, code, "/events", {
         signal: stop.signal,
-      });
+      }).finally(() => clearTimeout(late));
       if (!events.ok || !events.body || code !== this.code) {
         stop.abort();
         return;

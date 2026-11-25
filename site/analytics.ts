@@ -5,7 +5,29 @@
 // cookieless setting turns on. A download click names the build clicked,
 // `os`, and the visitor's own system, `platform` (platform.ts).
 
+type Click = [event: string, properties: Record<string, unknown>];
+
 if (location.hostname === "multibots.ca") {
+  // Clicks are heard from the start, and those made before PostHog has
+  // loaded are sent once it has.
+  const early: Click[] = [];
+  let send = (...click: Click) => void early.push(click);
+  // A link opened with the middle button fires auxclick, not click.
+  const clicked = (event: MouseEvent) => {
+    if (event.button > 1) return;
+    const link = (event.target as Element).closest("a");
+    if (link?.dataset.download)
+      send("download clicked", {
+        os: link.dataset.download,
+        platform: document.documentElement.dataset.platform,
+      });
+    else if (link?.hostname === "github.com")
+      send("github link clicked", { href: link.href });
+    else if (link?.getAttribute("href") === "/docs/")
+      send("docs link clicked", {});
+  };
+  document.addEventListener("click", clicked);
+  document.addEventListener("auxclick", clicked);
   void import("posthog-js").then(({ default: posthog }) => {
     posthog.init("phc_oFwEfJVgTTkyJDj6xCPSCb2bbSjb7suJYan9AyfJBqpr", {
       api_host: "/antenna",
@@ -24,26 +46,8 @@ if (location.hostname === "multibots.ca") {
         return event;
       },
     });
-    // A link opened with the middle button fires auxclick, not click.
-    const clicked = (event: MouseEvent) => {
-      if (event.button > 1) return;
-      const link = (event.target as Element).closest("a");
-      const options = { transport: "sendBeacon" } as const;
-      if (link?.dataset.download)
-        posthog.capture(
-          "download clicked",
-          {
-            os: link.dataset.download,
-            platform: document.documentElement.dataset.platform,
-          },
-          options,
-        );
-      else if (link?.hostname === "github.com")
-        posthog.capture("github link clicked", { href: link.href }, options);
-      else if (link?.getAttribute("href") === "/docs/")
-        posthog.capture("docs link clicked", {}, options);
-    };
-    document.addEventListener("click", clicked);
-    document.addEventListener("auxclick", clicked);
+    send = (event, properties) =>
+      void posthog.capture(event, properties, { transport: "sendBeacon" });
+    for (const click of early.splice(0)) send(...click);
   });
 }

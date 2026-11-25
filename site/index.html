@@ -68,18 +68,14 @@
     <script type="module" src="./main.ts"></script>
   </head>
   <body>
-    <a
-      class="corner"
-      data-download="mac"
-      href="https://wrkrsh.com/download/multibots/mac"
-      >Download</a
-    >
+    <a class="corner" href="/docs/#download">Download</a>
     <script>
-      // Windows and Linux visitors get their own download here (platform.ts),
-      // before anything after it shows; everyone else gets the Mac's.
+      // A Mac, Windows or Linux visitor gets their own download here
+      // (platform.ts), before anything after it shows; phones, other
+      // systems and pages without JavaScript get the list of downloads.
       {
         const platform = document.documentElement.dataset.platform;
-        if (platform === "windows" || platform === "linux") {
+        if (["mac", "windows", "linux"].includes(platform)) {
           const corner = document.currentScript.previousElementSibling;
           corner.dataset.download = platform;
           corner.href = `https://wrkrsh.com/download/multibots/${platform}`;

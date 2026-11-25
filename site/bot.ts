@@ -75,7 +75,9 @@ const marks: Record<Mark, string> = {
     '<path d="M124 52q9 18 0 36"/><path d="M137 42q14 28 0 56"/><path d="M4 52q-9 18 0 36"/><path d="M-9 42q-14 28 0 56"/>',
 };
 
-export function createBot(host: HTMLElement, reduced: boolean) {
+export function createBot(host: HTMLElement, motion: MediaQueryList) {
+  // Reduce Motion as it is now: it can change while the page is open.
+  const reduced = () => motion.matches;
   const root = svg("svg", { viewBox: "-48 -60 224 224", class: "face" });
   const body = svg("g");
   const shape = svg("path", { d: head, class: "head" });
@@ -141,7 +143,7 @@ export function createBot(host: HTMLElement, reduced: boolean) {
     }
     if (recolor) paint();
     // Free eyes follow the pointer while it moves, else look around.
-    if (!held && !reduced && !tweens.has("gx")) {
+    if (!held && !reduced() && !tweens.has("gx")) {
       const box = host.getBoundingClientRect();
       const target =
         pointer && now - pointer.at < 4000
@@ -162,10 +164,12 @@ export function createBot(host: HTMLElement, reduced: boolean) {
       pose.gx += (target.x - pose.gx) * k;
       pose.gy += (target.y - pose.gy) * k;
     }
-    if (!held && !reduced && pose.open > 0.8 && now > nextBlink) blink(now);
+    if (!held && !reduced() && pose.open > 0.8 && now > nextBlink) blink(now);
 
     const awake = smooth(0, 0.5, pose.open);
-    const breath = reduced ? 0 : Math.sin(now / 560) * (0.022 - awake * 0.014);
+    const breath = reduced()
+      ? 0
+      : Math.sin(now / 560) * (0.022 - awake * 0.014);
     const chatter = now < talkUntil ? Math.abs(Math.sin(now / 95)) : 0;
     const open = Math.max(
       0,
@@ -205,7 +209,7 @@ export function createBot(host: HTMLElement, reduced: boolean) {
     );
     lids.style.opacity = String(1 - smooth(0.05, 0.18, open));
 
-    frame = !reduced && !document.hidden ? requestAnimationFrame(draw) : 0;
+    frame = !reduced() && !document.hidden ? requestAnimationFrame(draw) : 0;
   };
   const wake = () => {
     if (!frame) frame = requestAnimationFrame(draw);
@@ -222,25 +226,25 @@ export function createBot(host: HTMLElement, reduced: boolean) {
         from: pose[key],
         to: value,
         start: now,
-        ms: reduced ? 0 : ms,
+        ms: reduced() ? 0 : ms,
         ease: curve,
       });
     if ("gx" in patch || "gy" in patch) held = true;
-    if (reduced) draw(now);
+    if (reduced()) draw(now);
     else wake();
     return wait(ms);
   };
   const talk = (ms: number) => {
-    talkUntil = performance.now() + (reduced ? 0 : ms);
+    talkUntil = performance.now() + (reduced() ? 0 : ms);
     wake();
   };
   const wait = (ms: number) =>
-    new Promise<void>((done) => setTimeout(done, reduced ? 0 : ms));
+    new Promise<void>((done) => setTimeout(done, reduced() ? 0 : ms));
   // A mark shown again restarts its own timer, so a stopped script's timer
   // never hides the next script's mark.
   const markTimers: Partial<Record<Mark, ReturnType<typeof setTimeout>>> = {};
   const mark = (name: Mark, ms: number) => {
-    if (reduced) return;
+    if (reduced()) return;
     const group = markGroups[name];
     group.classList.add("on");
     clearTimeout(markTimers[name]);
@@ -283,8 +287,13 @@ export function createBot(host: HTMLElement, reduced: boolean) {
       pointer = { x: event.clientX, y: event.clientY, at: performance.now() };
   });
   document.addEventListener("visibilitychange", wake);
+  // Turned on, the bot stops moving at once; off, it moves again.
+  motion.addEventListener("change", () => {
+    cancelAnimationFrame(frame);
+    draw(performance.now());
+  });
   dress(plain);
-  if (reduced) {
+  if (reduced()) {
     Object.assign(pose, { open: 1 });
     held = false;
   }
