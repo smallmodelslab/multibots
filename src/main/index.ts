@@ -748,13 +748,14 @@ const start = async () => {
   );
 
   // Stops every bot's run, with what its shell started, the webhooks, the
-  // peers and the desktop, settling once the runs have saved their steps.
-  const shutDown = () => {
+  // desktop and then the peers: peering stays open until the runs have
+  // saved, and sent on, their steps.
+  const shutDown = async () => {
     const settled = bots?.close();
-    peers.close();
     computer?.close();
     void browser.close();
-    return settled;
+    await settled;
+    peers.close();
   };
   app.on("before-quit", () => void shutDown());
   setMenu();

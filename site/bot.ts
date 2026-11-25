@@ -289,6 +289,8 @@ export function createBot(host: HTMLElement, motion: MediaQueryList) {
   document.addEventListener("visibilitychange", wake);
   // Turned on, the bot stops moving at once; off, it moves again.
   motion.addEventListener("change", () => {
+    blinkStarted = -Infinity;
+    talkUntil = 0;
     cancelAnimationFrame(frame);
     draw(performance.now());
   });

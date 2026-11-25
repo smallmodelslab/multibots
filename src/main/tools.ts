@@ -70,7 +70,10 @@ const runShell = (
         spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], {
           windowsHide: true,
         }).on("error", (error) => {
-          stopped = `${why}, but it could not be ended: ${error.message}`;
+          // Without taskkill, the shell alone ends, and the call with it.
+          stopped = `${why}; taskkill failed (${error.message}), so what it started may still run`;
+          child.kill();
+          settle(null);
         });
         return;
       }
@@ -490,16 +493,7 @@ export const botTools = ({
         return runShell(
           computer
             ? remoteShell(computer, command)
-            : {
-                // PowerShell writes UTF-8, as the output is read.
-                args: [
-                  ...shell.args,
-                  windows
-                    ? `[Console]::OutputEncoding = [Text.Encoding]::UTF8; ${command}`
-                    : command,
-                ],
-                file: shell.path,
-              },
+            : { args: [...shell.args, command], file: shell.path },
           folder,
           timeoutSeconds,
           abortSignal,

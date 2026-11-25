@@ -219,8 +219,13 @@ function onScroll() {
     const top = step.getBoundingClientRect().top;
     const away = Math.abs(top) / innerHeight;
     const t = Math.max(0, Math.min(1, (away - 0.12) / 0.38));
-    // The last step stays once scrolled into, however short the window.
-    const seen = step === steps.at(-1) && top < 0 ? 1 : 1 - t * t * (3 - 2 * t);
+    // The last step stays once scrolled into, however short the window,
+    // and a step shows while keyboard focus is in it.
+    const seen =
+      (step === steps.at(-1) && top < 0) ||
+      step.contains(document.activeElement)
+        ? 1
+        : 1 - t * t * (3 - 2 * t);
     step.style.setProperty("--seen", String(seen));
     // Words faded out take no clicks.
     step.classList.toggle("faded", seen === 0);
@@ -229,9 +234,12 @@ function onScroll() {
   });
   if (nearest !== active) activate(nearest);
   const place = buttons.getBoundingClientRect();
-  if (place.top < 0 || place.bottom > innerHeight) shown = 0;
+  // Narrow, the bot's band covers what scrolls under it.
+  const under = wide.matches ? 0 : host.getBoundingClientRect().bottom;
+  if (place.top < under || place.bottom > innerHeight) shown = 0;
   corner.style.opacity = String(1 - shown);
-  corner.inert = shown === 1;
+  // It takes clicks until it has faded out.
+  corner.inert = shown === 1 && getComputedStyle(corner).opacity === "0";
   const first = steps[0]!.getBoundingClientRect();
   const at = -first.top / first.height;
   host.style.setProperty(
@@ -243,6 +251,9 @@ addEventListener("scroll", () => (queued ||= requestAnimationFrame(onScroll)), {
   passive: true,
 });
 addEventListener("resize", onScroll);
+corner.addEventListener("transitionend", onScroll);
+addEventListener("focusin", onScroll);
+addEventListener("focusout", () => queueMicrotask(onScroll));
 // Reduce Motion turned on or off while the page is open takes effect at once.
 motion.addEventListener("change", () => {
   rising?.finish();
