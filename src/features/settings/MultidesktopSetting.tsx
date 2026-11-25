@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import type { MultidesktopState } from "../../shared/types";
 import { bridge, messageOf } from "../data";
@@ -29,6 +29,7 @@ export const MultidesktopSetting = ({
       .catch((failure: unknown) => setSignInError(messageOf(failure)));
   };
   const windows = bridge.platform === "win32";
+  const detailId = useId();
   return (
     <>
       <SettingRow
@@ -39,7 +40,13 @@ export const MultidesktopSetting = ({
               Installing
             </span>
           ) : current ? null : (
-            <Button disabled={windows} onClick={install} size="sm">
+            <Button
+              aria-describedby={windows ? detailId : undefined}
+              disabled={windows}
+              focusableWhenDisabled
+              onClick={install}
+              size="sm"
+            >
               {error ? "Try again" : version ? "Update" : "Install"}
             </Button>
           )
@@ -59,6 +66,7 @@ export const MultidesktopSetting = ({
             "Lets bots on this server see and use its screen."
           )
         }
+        detailId={detailId}
         label="Multidesktop"
       />
       {version ? (

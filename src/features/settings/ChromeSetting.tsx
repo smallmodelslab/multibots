@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import type { ChromeState } from "../../shared/types";
 import { bridge, messageOf } from "../data";
@@ -17,11 +17,18 @@ export const ChromeSetting = ({ chrome }: { chrome: ChromeState }) => {
       .catch((failure: unknown) => setError(messageOf(failure)));
   };
   const windows = bridge.platform === "win32";
+  const detailId = useId();
   return (
     <SettingRow
       action={
         chrome.connected ? null : (
-          <Button disabled={windows} onClick={setUp} size="sm">
+          <Button
+            aria-describedby={windows ? detailId : undefined}
+            disabled={windows}
+            focusableWhenDisabled
+            onClick={setUp}
+            size="sm"
+          >
             {chrome.setUp ? "Set up again" : "Set up"}
           </Button>
         )
@@ -39,6 +46,7 @@ export const ChromeSetting = ({ chrome }: { chrome: ChromeState }) => {
           "Lets bots on this server use tabs of their own in your Chrome."
         )
       }
+      detailId={detailId}
       label="Chrome"
     />
   );
