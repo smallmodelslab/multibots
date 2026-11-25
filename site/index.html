@@ -66,6 +66,8 @@
       media="(prefers-color-scheme: dark)"
     />
     <script type="module" src="./main.ts"></script>
+    <!-- Download links marked data-email-updates first offer the mailing list. -->
+    <script src="https://wrkrsh.com/email-updates/popup.js" defer></script>
   </head>
   <body>
     <a class="corner" href="/docs/#download">Download</a>
@@ -78,6 +80,7 @@
         if (["mac", "windows", "linux"].includes(platform)) {
           const corner = document.currentScript.previousElementSibling;
           corner.dataset.download = platform;
+          corner.dataset.emailUpdates = "multibots";
           corner.href = `https://wrkrsh.com/download/multibots/${platform}`;
         }
       }
@@ -174,18 +177,21 @@
             <a
               class="button mac"
               data-download="mac"
+              data-email-updates="multibots"
               href="https://wrkrsh.com/download/multibots/mac"
               >Download for macOS</a
             >
             <a
               class="button windows"
               data-download="windows"
+              data-email-updates="multibots"
               href="https://wrkrsh.com/download/multibots/windows"
               >Download for Windows</a
             >
             <a
               class="button linux"
               data-download="linux"
+              data-email-updates="multibots"
               href="https://wrkrsh.com/download/multibots/linux"
               >Download for Linux</a
             >
