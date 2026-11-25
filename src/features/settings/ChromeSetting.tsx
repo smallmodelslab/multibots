@@ -16,17 +16,20 @@ export const ChromeSetting = ({ chrome }: { chrome: ChromeState }) => {
       .setUpChrome()
       .catch((failure: unknown) => setError(messageOf(failure)));
   };
+  const windows = bridge.platform === "win32";
   return (
     <SettingRow
       action={
         chrome.connected ? null : (
-          <Button onClick={setUp} size="sm">
+          <Button disabled={windows} onClick={setUp} size="sm">
             {chrome.setUp ? "Set up again" : "Set up"}
           </Button>
         )
       }
       detail={
-        error ? (
+        windows ? (
+          "Bots can't use Chrome on Windows yet."
+        ) : error ? (
           <span className="text-destructive">{error}</span>
         ) : chrome.connected ? (
           "Connected. Bots use tabs of their own, signed in where you are."

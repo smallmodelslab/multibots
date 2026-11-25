@@ -29,6 +29,20 @@ export default {
         "Multibots listens while you talk with a bot in a voice chat.",
     },
   },
+  win: {
+    icon: "icon.ico",
+    target: ["nsis"],
+    // Releases sign through Azure Trusted Signing with the hook the release
+    // workflow names, and updates then only install what the same publisher
+    // signed.
+    ...(process.env.MULTIBOTS_WINDOWS_SIGN && {
+      signtoolOptions: {
+        sign: process.env.MULTIBOTS_WINDOWS_SIGN,
+        publisherName: process.env.AZURE_SIGNING_PUBLISHER,
+        signingHashAlgorithms: ["sha256"],
+      },
+    }),
+  },
   linux: {
     icon: "icon.png",
     executableName: "multibots",

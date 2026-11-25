@@ -28,6 +28,7 @@ export const MultidesktopSetting = ({
       .signInMultidesktop()
       .catch((failure: unknown) => setSignInError(messageOf(failure)));
   };
+  const windows = bridge.platform === "win32";
   return (
     <>
       <SettingRow
@@ -38,13 +39,15 @@ export const MultidesktopSetting = ({
               Installing
             </span>
           ) : current ? null : (
-            <Button onClick={install} size="sm">
+            <Button disabled={windows} onClick={install} size="sm">
               {error ? "Try again" : version ? "Update" : "Install"}
             </Button>
           )
         }
         detail={
-          error ? (
+          windows ? (
+            "Bots can't use the screen on Windows yet."
+          ) : error ? (
             <span className="text-destructive">{error}</span>
           ) : version && current ? (
             `Version ${version}`
