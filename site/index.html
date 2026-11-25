@@ -182,6 +182,21 @@
               >Download for Linux</a
             >
           </div>
+          <script>
+            // Windows and Linux visitors' download comes first, before the
+            // page shows, so nothing moves under a pointer or focus, and the
+            // corner gives it; everyone else gets the Mac's.
+            {
+              const platform = document.documentElement.dataset.platform;
+              if (platform === "windows" || platform === "linux") {
+                const actions = document.currentScript.previousElementSibling;
+                actions.prepend(actions.querySelector(`.${platform}`));
+                const corner = document.querySelector(".corner");
+                corner.dataset.download = platform;
+                corner.href = `https://wrkrsh.com/download/multibots/${platform}`;
+              }
+            }
+          </script>
         </div>
       </section>
     </main>

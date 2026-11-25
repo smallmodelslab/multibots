@@ -1,4 +1,5 @@
 import { defineConfig, type Plugin } from "vite";
+import { markPlatform } from "./platform.ts";
 
 // multibots.ca: `bun run site` from multibots/, built into site/dist.
 
@@ -101,10 +102,22 @@ const answer: Plugin = {
   },
 };
 
+// Every page learns the visitor's system (platform.ts) before it shows.
+const platform: Plugin = {
+  name: "platform",
+  transformIndexHtml: () => [
+    {
+      tag: "script",
+      children: `(${markPlatform})();`,
+      injectTo: "head-prepend",
+    },
+  ],
+};
+
 export default defineConfig({
   // The app's Tailwind setup (postcss.config.mjs) is not the site's.
   css: { postcss: {} },
-  plugins: [sitemap, header, answer],
+  plugins: [platform, sitemap, header, answer],
   build: {
     emptyOutDir: true,
     rollupOptions: { input: pages.map(({ source }) => source) },

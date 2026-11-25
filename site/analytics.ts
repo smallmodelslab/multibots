@@ -3,8 +3,7 @@
 // It keeps nothing in the browser: PostHog tells visitors apart by a hash of
 // their address and browser that changes daily, which the project's
 // cookieless setting turns on. A download click names the build clicked,
-// `os`, and the visitor's own system, `platform`.
-import { platform } from "./platform";
+// `os`, and the visitor's own system, `platform` (platform.ts).
 
 if (location.hostname === "multibots.ca") {
   void import("posthog-js").then(({ default: posthog }) => {
@@ -33,7 +32,10 @@ if (location.hostname === "multibots.ca") {
       if (link?.dataset.download)
         posthog.capture(
           "download clicked",
-          { os: link.dataset.download, platform },
+          {
+            os: link.dataset.download,
+            platform: document.documentElement.dataset.platform,
+          },
           options,
         );
       else if (link?.hostname === "github.com")

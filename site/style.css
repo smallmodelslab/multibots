@@ -237,10 +237,10 @@ p a {
   text-decoration: none;
 }
 
-/* The visitor's platform leads. */
-.actions:not(.windows, .linux) .mac,
-.actions.windows .windows,
-.actions.linux .linux {
+/* The visitor's platform leads (platform.ts). */
+:root:not([data-platform="windows"], [data-platform="linux"]) .actions .mac,
+[data-platform="windows"] .actions .windows,
+[data-platform="linux"] .actions .linux {
   padding: 0.85em 1.5em;
   border-radius: 999px;
   background: var(--ink);

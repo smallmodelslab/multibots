@@ -3,7 +3,6 @@ import "@wrkrsh/pencil/pencil.css";
 import "./base.css";
 import "./style.css";
 import "./analytics";
-import { platform } from "./platform";
 import {
   createBot,
   ease,
@@ -19,25 +18,6 @@ const steps = [...document.querySelectorAll<HTMLElement>(".step")];
 const host = document.querySelector<HTMLElement>(".bot")!;
 const corner = document.querySelector<HTMLAnchorElement>(".corner")!;
 const buttons = document.querySelector<HTMLElement>(".actions")!;
-// Windows and Linux visitors see their download first, and get it from the
-// corner; everyone else, the Mac's. It comes first in the page, too, so
-// focus and screen readers reach it first; someone already tabbing through
-// the downloads sees the change once they leave them.
-if (platform === "windows" || platform === "linux") {
-  const promote = () => {
-    buttons.classList.add(platform);
-    buttons.prepend(buttons.querySelector(`.${platform}`)!);
-  };
-  if (!buttons.contains(document.activeElement)) promote();
-  else
-    buttons.addEventListener("focusout", function left(event) {
-      if (buttons.contains(event.relatedTarget as Node | null)) return;
-      buttons.removeEventListener("focusout", left);
-      promote();
-    });
-  corner.dataset.download = platform;
-  corner.href = `https://wrkrsh.com/download/multibots/${platform}`;
-}
 const bot = createBot(host, reduced);
 const dressed: Outfit = { hue: 215, hat: "cap", glasses: "round" };
 const outfits: Outfit[] = [
