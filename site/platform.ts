@@ -15,6 +15,6 @@ export const platform =
         ? "windows"
         : reported === "macOS" || /Mac/.test(agent)
           ? "mac"
-          : reported === "Linux" || /Linux|X11/.test(agent)
+          : reported === "Linux" || /Linux/.test(agent)
             ? "linux"
             : "other";

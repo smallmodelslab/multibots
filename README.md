@@ -33,11 +33,13 @@ queued requests. These are persistent identities, not public branding.
 
 ## Download and install
 
-Multibots runs on Apple silicon Macs and x86-64 Linux. There is no Windows or
-Intel Mac version yet.
+Multibots runs on Apple silicon Macs, x64 Windows and x86-64 Linux. There is
+no Intel Mac version yet. On Windows, bots can't use Chrome or the screen yet.
 
 - [macOS, Apple silicon](https://wrkrsh.com/download/multibots/mac): open the
   disk image and drag Multibots to Applications.
+- [Windows, x64](https://wrkrsh.com/download/multibots/windows): run the
+  installer. It installs Multibots for you alone, with no administrator rights.
 - [Linux, x86-64](https://wrkrsh.com/download/multibots/linux): make the
   AppImage executable and run it.
 

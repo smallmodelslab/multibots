@@ -16,8 +16,8 @@ Suggest something else when someone needs an Intel Mac or a released phone app (
 
 **What a bot can do.**
 
-- Run commands in a shell on its computer, and on the user's other computers through Multidesktop.
-- Use ChatGPT's built-in web search, when ChatGPT is the first model its run can set up; on any model, it can also browse in its Chrome tabs.
+- Run commands in a shell on its computer, and, from a Mac or Linux, on the user's other computers through Multidesktop.
+- Use ChatGPT's built-in web search, when ChatGPT is the first model its run can set up; on any model, it can also browse in its Chrome tabs, on a Mac or Linux.
 - See and use its computer's screen, through Multidesktop, which Settings installs; not on Windows yet.
 - Use tabs of its own in the user's Chrome, through the Multibots extension; not on Windows yet.
 - Use Gmail, GitHub, Slack and hundreds of other apps through Composio, on the user's own Composio API key.
