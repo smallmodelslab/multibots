@@ -194,18 +194,22 @@
               >Download for Linux</a
             >
           </div>
-          <script>
-            // Windows and Linux visitors' download comes first, as the row
-            // parses, so nothing moves under a pointer or focus.
-            {
-              const platform = document.documentElement.dataset.platform;
-              if (platform === "windows" || platform === "linux") {
-                const actions = document.currentScript.previousElementSibling;
-                actions.prepend(actions.querySelector(`.${platform}`));
-              }
-            }
-          </script>
         </div>
+        <script>
+          // Windows and Linux visitors' download comes first, as the row
+          // parses, so nothing moves under a pointer or focus. It stays out
+          // of .say, whose words time the bot's speech (main.ts).
+          {
+            const platform = document.documentElement.dataset.platform;
+            if (platform === "windows" || platform === "linux") {
+              const actions =
+                document.currentScript.previousElementSibling.querySelector(
+                  ".actions",
+                );
+              actions.prepend(actions.querySelector(`.${platform}`));
+            }
+          }
+        </script>
       </section>
     </main>
   </body>
