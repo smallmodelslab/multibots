@@ -74,6 +74,18 @@
       href="https://wrkrsh.com/download/multibots/mac"
       >Download</a
     >
+    <script>
+      // Windows and Linux visitors get their own download here (platform.ts),
+      // before anything after it shows; everyone else gets the Mac's.
+      {
+        const platform = document.documentElement.dataset.platform;
+        if (platform === "windows" || platform === "linux") {
+          const corner = document.currentScript.previousElementSibling;
+          corner.dataset.download = platform;
+          corner.href = `https://wrkrsh.com/download/multibots/${platform}`;
+        }
+      }
+    </script>
     <main class="story">
       <div class="actor" aria-hidden="true"><div class="bot"></div></div>
 
@@ -159,7 +171,7 @@
           <p>
             Free and
             <a href="https://github.com/smallmodelslab/multibots">open source</a
-            >, for Apple silicon Macs, Windows and 64-bit Linux, with an
+            >, for Apple silicon Macs, Windows and x86-64 Linux, with an
             <a href="/docs/">install guide</a>. <a href="/privacy/">Privacy</a>.
           </p>
           <div class="actions">
@@ -183,17 +195,13 @@
             >
           </div>
           <script>
-            // Windows and Linux visitors' download comes first, before the
-            // page shows, so nothing moves under a pointer or focus, and the
-            // corner gives it; everyone else gets the Mac's.
+            // Windows and Linux visitors' download comes first, as the row
+            // parses, so nothing moves under a pointer or focus.
             {
               const platform = document.documentElement.dataset.platform;
               if (platform === "windows" || platform === "linux") {
                 const actions = document.currentScript.previousElementSibling;
                 actions.prepend(actions.querySelector(`.${platform}`));
-                const corner = document.querySelector(".corner");
-                corner.dataset.download = platform;
-                corner.href = `https://wrkrsh.com/download/multibots/${platform}`;
               }
             }
           </script>
