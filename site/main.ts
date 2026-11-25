@@ -3,6 +3,7 @@ import "@wrkrsh/pencil/pencil.css";
 import "./base.css";
 import "./style.css";
 import "./analytics";
+import { platform } from "./platform";
 import {
   createBot,
   ease,
@@ -18,6 +19,13 @@ const steps = [...document.querySelectorAll<HTMLElement>(".step")];
 const host = document.querySelector<HTMLElement>(".bot")!;
 const corner = document.querySelector<HTMLAnchorElement>(".corner")!;
 const buttons = document.querySelector<HTMLElement>(".actions")!;
+// Windows and Linux visitors see their download first, and get it from the
+// corner; everyone else, the Mac's.
+if (platform === "windows" || platform === "linux") {
+  buttons.classList.add(platform);
+  corner.dataset.download = platform;
+  corner.href = `https://wrkrsh.com/download/multibots/${platform}`;
+}
 const bot = createBot(host, reduced);
 const dressed: Outfit = { hue: 215, hat: "cap", glasses: "round" };
 const outfits: Outfit[] = [
@@ -247,11 +255,4 @@ if (reduced) {
     await intro(bot);
     introDone = true;
   });
-}
-
-// Linux visitors see their download first, and get it from the corner.
-if (/Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent)) {
-  document.querySelector(".actions")?.classList.add("linux");
-  corner.dataset.download = "linux";
-  corner.href = "https://wrkrsh.com/download/multibots/linux";
 }

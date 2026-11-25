@@ -239,7 +239,8 @@ p a {
 }
 
 /* The visitor's platform leads. */
-.actions:not(.linux) .mac,
+.actions:not(.windows, .linux) .mac,
+.actions.windows .windows,
 .actions.linux .linux {
   order: 0;
   padding: 0.85em 1.5em;

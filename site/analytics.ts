@@ -2,7 +2,10 @@
 // (docs/analytics.md in wrkrsh/monorepo). Only the production site loads it.
 // It keeps nothing in the browser: PostHog tells visitors apart by a hash of
 // their address and browser that changes daily, which the project's
-// cookieless setting turns on.
+// cookieless setting turns on. A download click names the build clicked,
+// `os`, and the visitor's own system, `platform`.
+import { platform } from "./platform";
+
 if (location.hostname === "multibots.ca") {
   void import("posthog-js").then(({ default: posthog }) => {
     posthog.init("phc_oFwEfJVgTTkyJDj6xCPSCb2bbSjb7suJYan9AyfJBqpr", {
@@ -30,7 +33,7 @@ if (location.hostname === "multibots.ca") {
       if (link?.dataset.download)
         posthog.capture(
           "download clicked",
-          { os: link.dataset.download },
+          { os: link.dataset.download, platform },
           options,
         );
       else if (link?.hostname === "github.com")
