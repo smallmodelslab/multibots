@@ -148,8 +148,9 @@ detail:
   element by element. The bot looks with `view_whiteboard`, its elements as
   text and an image its server renders in a hidden window
   (`src/renderer/whiteboard.html`), and draws with `edit_whiteboard`.
-- **The screen** of a bot's server is its own to see and use, as Grok
-  Bot's bots have theirs (`src/main/computer.ts`), through the server's own
+- **The screen** of a bot's server on a Mac or Linux is its own to see and
+  use, as Grok Bot's bots have theirs (`src/main/computer.ts`), through the
+  server's own
   [Multidesktop](https://wrkrsh.com/multidesktop), so one copy of its bridge holds
   the screen's permissions. When Multidesktop runs as the user's service,
   Multibots uses that desktop through its local socket; otherwise it runs the
