@@ -75,7 +75,8 @@ const tailscaleStatus = async (): Promise<Status | "missing"> => {
       execFile(
         command,
         ["status", "--json"],
-        { timeout: 10_000 },
+        // No console window flashes up on Windows.
+        { timeout: 10_000, windowsHide: true },
         (error, stdout) => done(error && !stdout ? null : stdout),
       ),
     );

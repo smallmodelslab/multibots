@@ -60,13 +60,16 @@ const runShell = (
       cwd,
       detached: !windows,
       env: process.env,
+      windowsHide: true,
     });
     let stopped: string | null = null;
     const stop = (why: string) => {
       if (stopped || !child.pid) return;
       stopped = why;
       if (windows) {
-        spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"]);
+        spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], {
+          windowsHide: true,
+        });
         return;
       }
       const group = -child.pid;
